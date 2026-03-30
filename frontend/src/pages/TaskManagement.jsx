@@ -140,13 +140,7 @@ export default function TaskManagement() {
           <h2>Task Management</h2>
 
           {/* ✅ FIXED BUTTON */}
-          <button
-            className="back-btn"
-            onClick={goToDashboard}
-            style={{ padding: "8px 16px", cursor: "pointer" }}
-          >
-            ← Back to Dashboard
-          </button>
+           <button type="button" className="dpr-back-btn" onClick={() => navigate("/super-admin-dashboard")}>← Back</button>
         </div>
 
         {error && <div style={{ color: "red" }}>{error}</div>}
