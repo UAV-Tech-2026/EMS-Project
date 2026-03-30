@@ -139,8 +139,13 @@ export default function TaskManagement() {
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <h2>Task Management</h2>
 
-          {/* ✅ FIXED BUTTON */}
-           <button type="button" className="dpr-back-btn" onClick={() => navigate("/super-admin-dashboard")}>← Back</button>
+                  <button 
+          type="button" 
+          className="dpr-back-btn" 
+          onClick={goToDashboard}
+        >
+          ← Back
+        </button>
         </div>
 
         {error && <div style={{ color: "red" }}>{error}</div>}
