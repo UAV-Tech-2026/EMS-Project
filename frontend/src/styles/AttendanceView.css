@@ -1,0 +1,115 @@
+.attendance-view-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.attendance-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.attendance-view-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.attendance-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.filter-group input {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  outline: none;
+}
+
+.filter-btn {
+  padding: 0.5rem 1.5rem;
+  background: #3182ce;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.filter-btn:hover {
+  background: #2b6cb0;
+}
+
+.attendance-table-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.attendance-table th {
+  background: #f7fafc;
+  padding: 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #4a5568;
+  border-bottom: 2px solid #edf2f7;
+}
+
+.attendance-table td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #2d3748;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-present { background: #c6f6d5; color: #22543d; }
+.status-absent { background: #fed7d7; color: #822727; }
+.status-half-day { background: #fefcbf; color: #744210; }
+.status-leave { background: #bee3f8; color: #2a4365; }
+.status-lop { background: #fed7d7; color: #822727; }
+.status-field { background: #e9d8fd; color: #553c9a; }
+
+.no-data {
+  text-align: center;
+  padding: 3rem;
+  color: #a0aec0;
+}

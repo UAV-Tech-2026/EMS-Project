@@ -1,0 +1,169 @@
+
+.enrol-page-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  font-family: "Segoe UI", sans-serif;
+}
+
+
+.enrol-form-card {
+  width: 100%;
+  max-width: 950px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 35px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+
+.enrol-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.enrol-header h2 {
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.enrol-header p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+
+.enrol-alert {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.enrol-error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.enrol-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+
+.enrol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+
+.enrol-form input,
+.enrol-form select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+}
+
+.enrol-form input:focus,
+.enrol-form select:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+
+.enrol-section {
+  margin-top: 25px;
+}
+
+.enrol-section h4 {
+  margin-bottom: 12px;
+  color: white;
+  font-size: 15px;
+}
+
+
+.enrol-exp-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.enrol-date-group {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.enrol-date-group label {
+  margin-bottom: 4px;
+  color: #475569;
+}
+
+
+.enrol-file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 15px;
+}
+
+.enrol-file-input label {
+  font-size: 13px;
+  margin-bottom: 5px;
+  display: block;
+  color: #475569;
+}
+
+.enrol-file-input input {
+  padding: 6px;
+}
+
+
+.enrol-btn-primary {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  background: #2563eb;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.enrol-btn-primary:hover {
+  background: #1e40af;
+}
+
+.enrol-btn-secondary {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: white;
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.enrol-btn-secondary:hover {
+  background: #2563eb;
+  color: white;
+}
+
+
+@media (max-width: 600px) {
+  .enrol-form-card {
+    padding: 20px;
+  }
+}

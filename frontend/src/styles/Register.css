@@ -1,0 +1,131 @@
+
+.ems-reg-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #6a5acd; 
+  padding: 20px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.ems-reg-box {
+  background: #ffffff;
+  width: 100%;
+  max-width: 450px;
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: none;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+}
+
+.ems-reg-top h1 {
+  font-size: 2.2rem;
+  color: #1a202c;
+  margin: 0;
+  text-shadow: none; 
+}
+
+.ems-reg-top p {
+  color: #64748b;
+  margin: 5px 0 15px;
+  font-size: 0.9rem;
+}
+
+.ems-reg-top h3 {
+  color: #1a202c;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+}
+
+
+.ems-reg-form {
+  background-color: #1e293b;
+  padding: 25px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-shadow: none;
+  align-items: stretch; 
+}
+
+
+.ems-reg-group {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  width: 100%;
+}
+
+.ems-reg-group label {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+
+.ems-reg-group input,
+.ems-reg-select {
+  width: 100%;
+  padding: 10px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: black;
+
+  font-size: 14px;
+  outline: none;
+}
+
+
+/* when typing / focus */
+.ems-reg-group input:focus,
+.ems-reg-select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25);
+}
+
+.ems-reg-error {
+  color: #ff8080;
+  font-size: 0.85rem;
+  text-align: left;
+  border-left: 3px solid #ff8080;
+  padding-left: 10px;
+}
+
+
+.ems-reg-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #7c3aed;
+  color:black;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: none; 
+  transition: opacity 0.2s;
+  margin-top: 10px;
+}
+
+.ems-reg-button:hover {
+  opacity: 0.9;
+}
+
+
+.ems-reg-bottom-text {
+  margin-top: 20px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.ems-reg-bottom-text a {
+  color: #6a5acd;
+  text-decoration: none;
+  font-weight: bold;
+}

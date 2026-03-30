@@ -1,0 +1,189 @@
+/* Container Layout */
+.spreadsheet-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8fafc; /* Very light slate */
+  overflow: hidden;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Header Styling */
+.spreadsheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-left h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* Action Buttons */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.action-btn.export { background-color: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.action-btn.export:hover { background-color: #dcfce7; }
+
+.action-btn.add { background-color: #ffffff; color: #1e293b; border-color: #cbd5e1; }
+.action-btn.add:hover { background-color: #f1f5f9; }
+
+.action-btn.save { background-color: #1e40af; color: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.action-btn.save:hover { background-color: #1e3a8a; transform: translateY(-1px); }
+
+/* Table Styling */
+.table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0; /* Flush to edges like Excel */
+  background-color: #ffffff;
+}
+
+.excel-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+.excel-table th {
+  position: sticky;
+  top: 0;
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  z-index: 5;
+}
+
+.excel-table td {
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f1f5f9;
+  padding: 0;
+  transition: background 0.1s;
+}
+
+.excel-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Inputs & Selects inside Cells */
+.cell-input input, 
+.cell-input select {
+  width: 100%;
+  height: 40px;
+  border: none;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  background: transparent;
+  color: #334155;
+  outline: none;
+}
+
+.cell-input input:focus, 
+.cell-input select:focus {
+  background-color: #ffffff;
+  box-shadow: inset 0 0 0 2px #3b82f6;
+  z-index: 2;
+  position: relative;
+}
+
+/* Status Dropdown Colors */
+.status-select {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-select.pending { color: #64748b; }
+.status-select.in-progress { color: #d97706; background-color: #fffbeb !important; }
+.status-select.completed { color: #059669; background-color: #ecfdf5 !important; }
+.status-select.on-hold { color: #dc2626; background-color: #fef2f2 !important; }
+.status-select.review { color: #7c3aed; background-color: #f5f3ff !important; }
+
+/* Action Cell */
+.cell-action {
+  width: 45px;
+  text-align: center;
+  background-color: #f8fafc;
+}
+
+.row-delete {
+  color: #94a3b8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.row-delete:hover {
+  color: #ef4444;
+  background-color: #fee2e2;
+}
+
+/* Custom Scrollbar */
+.table-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 5px;
+  border: 2px solid #f1f5f9;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Loading state */
+.spreadsheet-loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  gap: 1rem;
+  color: #1e40af;
+  font-weight: 500;
+}

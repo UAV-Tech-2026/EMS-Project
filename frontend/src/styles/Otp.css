@@ -1,0 +1,231 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* ─── Scoped wrapper — avoids collisions with global styles ─── */
+.otpv2__wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #060d1a;
+  font-family: 'DM Sans', sans-serif;
+  padding: 16px;          /* stops card from touching screen edges on mobile */
+  box-sizing: border-box;
+}
+
+/* ─── Card ─── */
+.otpv2__card {
+  background: #0d1b2e;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 20px;
+  padding: 44px 40px 36px;
+  width: 100%;            /* fills available space */
+  max-width: 460px;       /* caps at design width on large screens */
+  text-align: center;
+  position: relative;
+  /* REMOVED overflow:hidden — it was clipping box 5 & 6 on narrow screens */
+}
+
+/* soft glow — now uses a pseudo that won't clip inputs */
+.otpv2__card::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* stack children above the glow */
+.otpv2__card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Icon badge ─── */
+.otpv2__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+/* ─── Heading ─── */
+.otpv2__heading {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 6px;
+  letter-spacing: -0.3px;
+}
+
+/* ─── Sub-text ─── */
+.otpv2__subtext {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+/* ─── 6-box row ─── */
+.otpv2__box-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;               /* slightly tighter gap so all 6 fit on small screens */
+  margin-bottom: 10px;
+  flex-wrap: nowrap;      /* never wrap — keep them on one line */
+}
+
+/* ─── Individual digit box ─── */
+.otpv2__digit {
+  /* use flex-shrink so boxes scale down gracefully instead of overflowing */
+  width: 52px;
+  min-width: 0;
+  flex: 1 1 40px;         /* grow/shrink within the row */
+  max-width: 58px;        /* cap so they don't get too wide on big screens */
+  height: 58px;
+  border-radius: 12px;
+  background: #0c1a32;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  font-size: 22px;
+  font-weight: 700;
+  color: #f1f5f9 !important;                    /* ← add this */
+  -webkit-text-fill-color: #f1f5f9 !important;
+  text-align: center;
+  font-family: 'Syne', sans-serif;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  caret-color: #3b82f6;
+  box-sizing: border-box; /* prevents padding from inflating width */
+}
+
+.otpv2__digit:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.otpv2__digit--filled {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: #0f2040;
+}
+
+/* ─── Error text ─── */
+.otpv2__error {
+  color: #ef4444;
+  font-size: 12px;
+  margin: 0 0 12px;
+}
+
+/* ─── Countdown timer ─── */
+.otpv2__timer {
+  font-size: 12px;
+  color: #475569;
+  margin-bottom: 24px;
+}
+
+.otpv2__timer-value {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+/* ─── Button row ─── */
+.otpv2__btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* Verify button */
+.otpv2__btn-verify {
+  flex: 1;
+  padding: 13px;
+  border: none;
+  border-radius: 10px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.2s;
+}
+
+.otpv2__btn-verify:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.otpv2__btn-verify:disabled {
+  background: #1e3a5f;
+  color: #4a6fa5;
+  cursor: not-allowed;
+}
+
+/* Back button */
+.otpv2__btn-back {
+  flex: 1;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.2s, color 0.2s;
+}
+
+.otpv2__btn-back:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #f1f5f9;
+}
+
+/* ─── Resend row ─── */
+.otpv2__resend {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.otpv2__resend-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  padding: 0;
+}
+
+.otpv2__resend-btn:hover {
+  text-decoration: underline;
+}
+
+.otpv2__resend-btn:disabled {
+  color: #334155;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* ─── Responsive: very small phones (< 360px) ─── */
+@media (max-width: 360px) {
+  .otpv2__card {
+    padding: 36px 20px 28px;
+  }
+
+  .otpv2__digit {
+    height: 50px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+}

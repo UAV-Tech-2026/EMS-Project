@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: .
+    container_name: ems-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_USER=postgres
+      - DB_PASSWORD=data7
+      - DB_NAME=ems_dbs1
+      - DATABASE_URL=postgres://postgres:data7@172.31.14.42:5432/ems_dbs1
+      - JWT_SECRET=ems_2026
+
+volumes:
+  postgres_data:

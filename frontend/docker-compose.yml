@@ -1,0 +1,9 @@
+version: "3.9"
+
+services:
+  frontend:
+    build: .
+    container_name: ems-frontend
+    ports:
+      - "80:80"
+    restart: always

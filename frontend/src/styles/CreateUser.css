@@ -1,0 +1,337 @@
+.create-user-wrapper {
+  min-height: 100vh;
+  display: flex;
+  background: linear-gradient(135deg, #0f172a, #0b1220);
+  padding: 60px;
+  gap: 60px;
+  font-family: "Inter", sans-serif;
+  color: #ffffff;
+}
+
+.title-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-section h1 {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #e2e8f0;
+}
+
+.create-form {
+  flex: 2;
+  background: #111827;
+  padding: 50px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.form-columns {
+  display: flex;
+  gap: 50px;
+}
+
+.left-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.right-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+input,
+select {
+  background: #1f2937;
+  border: 1px solid #2d3748;
+  padding: 14px 16px;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+input:focus,
+select:focus {
+  border-color: #6366f1;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.right-column h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #cbd5e1;
+}
+
+.experience-card {
+  background: #1e293b;
+  padding: 18px;
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  border: 1px solid #2d3748;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+}
+
+.file-input {
+  background: #1f2937;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed #475569;
+  cursor: pointer;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 40px;
+  justify-content: flex-end;
+}
+
+.submit-btn {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  border: none;
+  padding: 14px 40px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.5);
+}
+
+.back-btn {
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 14px 30px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.remove-btn {
+  background: #ef444420;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.remove-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+label {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-top: 10px;
+}
+
+.error-msg {
+  font-size: 12px;
+  color: #f87171;
+  margin-top: -10px;
+}
+
+@media (max-width: 1100px) {
+  .create-user-wrapper {
+    flex-direction: column;
+    padding: 30px;
+  }
+
+  .form-columns {
+    flex-direction: column;
+  }
+
+  .submit-btn {
+    align-self: center;
+    width: 100%;
+  }
+}
+
+input[type="date"] {
+  color: #ffffff;
+  background: #1f2937;
+  position: relative;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+input[type="date"]::-moz-focus-inner {
+  border: 0;
+}
+
+input[type="date"] {
+  padding-right: 12px;
+}
+
+/* ════════════════════════════════
+   SALARY BREAKDOWN — Fixed Fields
+════════════════════════════════ */
+
+.salary-fixed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.salary-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.salary-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-top: 0;
+}
+
+/* ₹ prefix input wrapper — overrides the global input style */
+.salary-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  padding: 0;
+}
+
+.salary-input-wrap:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.salary-input-wrap span {
+  padding: 0 11px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  background: #111827;
+  border-right: 1px solid #334155;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Override global input style inside wrapper */
+.salary-input-wrap input {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 12px 10px;
+  color: #f1f5f9;
+  font-size: 14px;
+  flex: 1;
+  width: 100%;
+}
+
+.salary-input-wrap input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Live net pay preview bar */
+.salary-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: -6px;
+}
+
+.sp-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.sp-item span {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sp-item strong {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sp-earn   { color: #22c55e; }
+.sp-deduct { color: #ef4444; }
+.sp-net    { color: #a78bfa; }
+.sp-sep    { font-size: 18px; color: #475569; padding-bottom: 14px; }
+
+/* Document labels — override generic label margin */
+.doc-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px !important;
+  margin-bottom: 0;
+}

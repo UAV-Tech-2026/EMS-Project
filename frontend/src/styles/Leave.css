@@ -1,0 +1,130 @@
+/* Container */
+.leave-container {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+  min-height: 100vh;
+  background: #0f172a;
+}
+
+.leave-card {
+  background: #1e293b;
+  padding: 30px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1200px;
+  /* Allow for wider tables */
+  border: 1px solid #334155;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  color: #f1f5f9;
+}
+
+/* ── Admin Action Buttons ───────────────────── */
+.approve-btn,
+.reject-btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.approve-btn {
+  background: #10b981;
+  color: #fff;
+}
+
+.approve-btn:hover {
+  opacity: 0.85;
+}
+
+.reject-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.reject-btn:hover {
+  opacity: 0.85;
+}
+
+.leave-card h2 {
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* Table Styles */
+.leave-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.leave-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  padding: 15px;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  border-bottom: 2px solid #334155;
+}
+
+.leave-table td {
+  padding: 15px;
+  border-bottom: 1px solid #334155;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.leave-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Status Badges */
+.leave-table span {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Buttons */
+.approve-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reject-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.approve-btn:hover {
+  background: #059669;
+}
+
+.reject-btn:hover {
+  background: #dc2626;
+}
+
+/* Apply Form Specifics */
+.leave-apply-form {
+  max-width: 500px;
+  margin: 0 auto;
+}

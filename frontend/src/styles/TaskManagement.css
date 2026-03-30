@@ -1,0 +1,92 @@
+
+.task-page-wrapper {
+  display: flex;
+  min-height: 500px;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-width: 900px;
+  margin: 30px auto;
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+
+.task-container {
+  flex: 1.5;
+  padding: 40px;
+  text-align: center;
+}
+
+
+.task-image-section {
+  flex: 1;
+  background: linear-gradient(135deg, #6366f1, #4338ca);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-image-section::after {
+  content: "📈";
+  font-size: 80px;
+  opacity: 0.2;
+}
+
+.task-title {
+  font-size: 1.8rem;
+  color: #1e293b;
+  margin-bottom: 10px;
+}
+
+.task-subtitle {
+  color: #64748b;
+  margin-bottom: 30px;
+}
+
+
+.excel-card {
+  background: #f8fafc;
+  padding: 25px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.excel-card:hover {
+  transform: translateY(-5px);
+  background: #eef2ff;
+}
+
+.excel-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+
+.excel-btn {
+  background: #4f46e5;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.excel-btn:hover {
+  background: #4338ca;
+}
+
+@media (max-width: 768px) {
+  .task-page-wrapper {
+    flex-direction: column;
+  }
+
+  .task-image-section {
+    height: 120px;
+  }
+}

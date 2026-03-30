@@ -1,0 +1,32 @@
+.employees-container {
+  margin-top: 30px;
+}
+
+.employees-container h2 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.employees-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.employees-table th {
+  background-color: #1e293b;
+  color: white;
+  padding: 12px;
+  text-align: left;
+}
+
+.employees-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.employees-table tr:hover {
+  background-color: #f1f5f9;
+}

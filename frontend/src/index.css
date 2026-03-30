@@ -1,0 +1,54 @@
+:root {
+  --ems-primary: #10b981; /* Emerald Green */
+  --ems-accent: #3b82f6; /* Blue */
+  --ems-bg: #0f172a; /* Deep Navy Background */
+  --ems-card: #1e293b; /* Slate Card Background */
+  --ems-text: #f1f5f9; /* Near-White Text for clarity */
+  --ems-muted: #94a3b8; /* Dimmed text */
+  --ems-border: #334155; /* Subtle border */
+  
+  --ems-input-bg: #1e293b; 
+  --ems-input-text: #ffffff;
+  --ems-input-border: #475569;
+}
+
+body {
+  background-color: var(--ems-bg);
+  color: var(--ems-text);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* GLOBAL INPUT OVERRIDES */
+input, select, textarea {
+  background-color: var(--ems-input-bg) !important;
+  color: var(--ems-input-text) !important;
+  caret-color: var(--ems-input-text) !important;
+  border: 1px solid var(--ems-input-border);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+/* FIX: This stops the browser from forcing a white background during typing/autofill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ems-input-text) !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--ems-input-bg) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Ensure focus states don't flip back to white */
+input:focus, select:focus {
+  background-color: var(--ems-input-bg) !important;
+  color: var(--ems-input-text) !important;
+  outline: 2px solid var(--ems-accent);
+}
+
+/* Standardizing scrolls for a premium feel */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--ems-bg); }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
