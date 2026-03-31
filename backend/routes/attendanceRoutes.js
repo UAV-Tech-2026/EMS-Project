@@ -55,7 +55,7 @@ router.get("/employees-list", verifyToken, isAdminOrSuper, async (req, res) => {
       SELECT u.id, u.fullname, e.employee_uav_id
       FROM users u
       JOIN employees e ON u.id = e.user_id
-      WHERE u.role = 'employee'
+      WHERE u.role IN ('employee', 'intern')
       ORDER BY e.employee_uav_id ASC
     `);
     res.json(result.rows);
