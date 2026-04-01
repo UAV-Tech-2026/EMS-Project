@@ -99,7 +99,7 @@ router.post("/login", async (req, res) => {
       "UPDATE users SET totp_secret_temp=$1 WHERE id=$2",
       [secret.base32, user.id]
     );
-
+    
     const qrDataUrl = await qrcode.toDataURL(secret.otpauth_url);
 
     return res.json({
@@ -114,6 +114,9 @@ router.post("/login", async (req, res) => {
     console.error("LOGIN ERROR:", error.message);
     res.status(500).json({ msg: "Server error" });
   }
+  console.log("Entered:", password);
+console.log("DB Hash:", user.password);
+console.log("Match:", isMatch);
 });
 
 

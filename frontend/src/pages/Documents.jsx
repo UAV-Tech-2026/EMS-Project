@@ -176,7 +176,6 @@ export default function Documents() {
 
         {/* ── Upload Zone ── */}
         <div style={{
-          background: "#fff",
           borderRadius: "14px",
           border: dragOver ? "2px dashed #3b82f6" : "2px dashed #cbd5e1",
           padding: "28px",

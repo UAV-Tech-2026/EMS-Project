@@ -1074,3 +1074,20 @@
   .sad-att-hero { flex-direction: column; gap: 20px; }
   .sad-ah-right { justify-content: center; }
 }
+
+
+.sad-stat-action-btn {
+  margin-top: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.sad-stat-action-btn:hover {
+  background: rgba(255,255,255,0.25);
+}

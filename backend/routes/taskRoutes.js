@@ -184,7 +184,7 @@ router.get("/list", verifyToken, async (req, res) => {
     const params = [];
     const roleMatch = req.user.role?.toLowerCase();
 
-    if (roleMatch === "employee") {
+    if (roleMatch === "employee" || roleMatch === "intern") {
       query += " WHERE t.assigned_to = $1";
       params.push(req.user.id);
     }
@@ -210,7 +210,7 @@ router.get("/all", verifyToken, async (req, res) => {
     const params = [];
     const roleMatch = req.user.role?.toLowerCase();
 
-    if (roleMatch === "employee") {
+    if (roleMatch === "employee" || roleMatch === "intern") {
       query += " WHERE t.assigned_to = $1";
       params.push(req.user.id);
     }
@@ -232,7 +232,7 @@ router.get("/calendar-events", verifyToken, async (req, res) => {
     const params = [];
     const roleMatch = req.user.role?.toLowerCase();
 
-    if (roleMatch === "employee") {
+    if (roleMatch === "employee" || roleMatch === "intern") {
       query += " WHERE t.assigned_to = $1";
       params.push(req.user.id);
     }
@@ -268,7 +268,7 @@ router.get("/download-excel", verifyToken, async (req, res) => {
     const params = [];
     const roleMatch = req.user.role?.toLowerCase();
 
-    if (roleMatch === "employee") {
+    if (roleMatch === "employee" || roleMatch === "intern") {
       query += " WHERE t.assigned_to = $1";
       params.push(req.user.id);
     }

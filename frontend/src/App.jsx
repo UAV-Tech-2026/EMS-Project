@@ -16,7 +16,7 @@ import AdminLeaveManagement  from "./pages/AdminLeaveManagement";
 import PayslipRequest        from "./pages/PayslipRequest";
 
 import SuperAdminProfile    from "./pages/SuperAdminProfile";
-import SuperAdminAttendance from "./pages/SuperAdminAttendance";
+
 import TaskCalender         from "./pages/TaskCalender";
 import PayslipApprovals     from "./pages/PayslipApprovals";
 
@@ -51,7 +51,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={["super_admin"]} />}>
         <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />
         <Route path="/super-admin-profile"   element={<SuperAdminProfile />} />
-        <Route path="/super-admin-attendance"element={<SuperAdminAttendance />} />
+        
         <Route path="/task-reports"          element={<TaskCalender />} />
         <Route path="/payslip-approvals"     element={<PayslipApprovals />} />
       </Route>

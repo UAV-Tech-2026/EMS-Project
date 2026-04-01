@@ -1,55 +1,52 @@
-import bcrypt from "bcryptjs";
-import pool from "./db.js";
+import 'dotenv/config';
+import bcrypt from 'bcryptjs';
+import pkg from 'pg';
 
-async function seed() {
-  const client = await pool.connect();
+const { Pool } = pkg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+const run = async () => {
   try {
-    
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        name VARCHAR(100),
-        email VARCHAR(100),
-        role VARCHAR(50) DEFAULT 'employee',
-        created_at TIMESTAMP DEFAULT NOW()
-      )
+    // Add mobile column if it doesn't exist yet
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(15)
     `);
 
-    const username = "superadmin";
-    const plainPassword = "super123";
-    const name = "Super Administrator";
-    const email = "admin@uavtech.com";
-    const role = "super_admin";
-
-   
-    const { rows } = await client.query(
-      "SELECT * FROM users WHERE role = 'super_admin'"
+    // Check if superadmin already exists
+    const { rows } = await pool.query(
+      "SELECT id FROM users WHERE role = 'super_admin' LIMIT 1"
     );
 
-    if (rows.length === 0) {
-      const hash = await bcrypt.hash(plainPassword, 10);
-
-      await client.query(
-        "INSERT INTO users (username, password, name, email, role) VALUES ($1, $2, $3, $4, $5)",
-        [username, hash, name, email, role]
-      );
-
-      console.log("Super Admin created successfully");
-      console.log("Username: superadmin");
-      console.log("Password: super123");
-    } else {
-      console.log("Super Admin already exists");
+    if (rows.length > 0) {
+      console.log('✅ Superadmin already exists, skipping seed.');
+      return;
     }
 
-  } catch (err) {
-    console.error("SEED ERROR:", err);
-  } finally {
-    client.release();
-    process.exit(0);
-  }
-}
+    const hash = await bcrypt.hash(
+      process.env.SUPERADMIN_PASSWORD || 'changeme123',
+      10
+    );
 
-seed();
+    await pool.query(
+      `INSERT INTO users (username, fullname, name, password, role, mobile)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        'superadmin',
+        'Super Admin',
+        'Super Admin',
+        hash,
+        'super_admin',
+        process.env.SUPERADMIN_MOBILE,
+      ]
+    );
+
+    console.log('✅ Superadmin created! Mobile:', process.env.SUPERADMIN_MOBILE);
+    console.log('📱 On first login, scan the QR code with Google Authenticator.');
+  } catch (err) {
+    console.error('❌ Seed failed:', err.message);
+  } finally {
+    await pool.end();
+  }
+};
+
+export {run};

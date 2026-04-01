@@ -63,6 +63,7 @@ export const ensureSchema = async () => {
         applied_at TIMESTAMP DEFAULT NOW()
       )
     `);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(15)`);
 
     // 4. Patch missing columns in 'leaves' table
     const columns = [

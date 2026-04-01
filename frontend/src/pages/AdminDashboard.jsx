@@ -4,32 +4,30 @@ import AdminDPR from "./AdminDPR";
 import "../styles/AdminDashboard.css";
 import { api } from "../utils/api";
 
+import DirectoryPanel from "./DirectoryPanel";
 import AdminLeaveManagement from "./AdminLeaveManagement";
 import {
   Menu, X, ClipboardCheck, CalendarCheck, Users,
-  ClipboardList, Banknote, ListTodo, LogOut, UserCheck, GitBranch
+  ClipboardList, Banknote, ListTodo, LogOut, UserCheck
 } from "lucide-react";
 
-// 1. IMPORT THE COMPONENTS YOU WANT TO SHOW
 import BulkAttendance from "./BulkAttendance";
 import CreateUser from "./CreateUser";
 import TaskManagement from "./TaskManagement";
-import DependencyTracker from "./DependencyTracker";
+import AttendanceUpload from "./AttendanceUpload";
 
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showDependency, setShowDependency] = useState(false);
 
-
-  // 2. ADD MODAL STATES (Matches SuperAdmin logic)
+  const [showDirectory, setShowDirectory] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showEnroll, setShowEnroll] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showDPR, setShowDPR] = useState(false);
-
   const [showLeave, setShowLeave] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
 
   const [taskStats, setTaskStats] = useState({
     total_tasks: 0,
@@ -63,16 +61,14 @@ export default function AdminDashboard() {
         </div>
 
         <nav>
-          {/* 3. CHANGE navigate() TO setShowState(true) */}
           <button onClick={() => { setShowBulk(true); setSidebarOpen(false); }}><ClipboardCheck /> Attendance</button>
+          <button onClick={() => { setShowUpload(true); setSidebarOpen(false); }}><ClipboardCheck /> Upload Attendance</button>
           <button onClick={() => navigate("/admin-leave-management")}><CalendarCheck /> Leave</button>
           <button onClick={() => { setShowEnroll(true); setSidebarOpen(false); }}><Users /> Employees</button>
           <button onClick={() => { setShowDPR(true); setSidebarOpen(false); }}><ClipboardList /> DPR</button>
           <button onClick={() => navigate("/payslip-request")}><Banknote /> Payslip</button>
           <button onClick={() => { setShowTaskModal(true); setSidebarOpen(false); }}><ListTodo /> Tasks</button>
-          <button onClick={() => { setShowDependency(true); setSidebarOpen(false); }}>
-            <GitBranch /> Dependencies
-          </button>
+          <button onClick={() => { setShowDirectory(true); setSidebarOpen(false); }}><Users /> Directory</button>
         </nav>
 
         <button className="logout" onClick={() => { localStorage.clear(); navigate("/login"); }}>
@@ -98,7 +94,7 @@ export default function AdminDashboard() {
             <p>{taskStats.assigned_tasks}</p>
           </div>
           <div className="card">
-            <GitBranch />
+            <UserCheck />
             <h3>Dependent</h3>
             <p>{taskStats.dependent_tasks}</p>
           </div>
@@ -109,13 +105,18 @@ export default function AdminDashboard() {
             <ClipboardCheck />
             <h4>Attendance</h4>
           </div>
-
-
+          <div className="action-card" onClick={() => setShowUpload(true)}>
+            <ClipboardList />
+            <h4>Upload Attendance</h4>
+          </div>
+          <div className="action-card" onClick={() => setShowDirectory(true)}>
+            <Users />
+            <h4>Directory</h4>
+          </div>
           <div className="action-card" onClick={() => setShowDPR(true)}>
             <ClipboardList />
             <h4>DPR</h4>
           </div>
-
           <div className="action-card" onClick={() => navigate("/payslip-request")}>
             <Banknote />
             <h4>Payslip</h4>
@@ -126,20 +127,24 @@ export default function AdminDashboard() {
           </div>
           <div className="action-card" onClick={() => setShowEnroll(true)}>
             <Users />
-            <h4>Employees</h4>
+            <h4>Enroll Employees</h4>
           </div>
           <div className="action-card" onClick={() => setShowTaskModal(true)}>
             <ListTodo />
             <h4>Tasks</h4>
           </div>
-          <div className="action-card" onClick={() => setShowDependency(true)}>
-            <GitBranch />
-            <h4>Dependencies</h4>
-          </div>
         </div>
       </main>
 
-      {/* 4. ADD THE MODAL OVERLAYS (Copy this exactly) */}
+      {showUpload && (
+        <div className="sad-modal-overlay">
+          <div className="sad-modal-content">
+            <button className="sad-modal-close" onClick={() => setShowUpload(false)}>✕</button>
+            <AttendanceUpload />
+          </div>
+        </div>
+      )}
+
       {showBulk && (
         <div className="sad-modal-overlay">
           <div className="sad-modal-content">
@@ -185,12 +190,11 @@ export default function AdminDashboard() {
         </div>
       )}
 
-
-      {showDependency && (
+      {showDirectory && (
         <div className="sad-modal-overlay">
           <div className="sad-modal-content">
-            <button className="sad-modal-close" onClick={() => setShowDependency(false)}>✕</button>
-            <DependencyTracker />
+            <button className="sad-modal-close" onClick={() => setShowDirectory(false)}>✕</button>
+            <DirectoryPanel />
           </div>
         </div>
       )}

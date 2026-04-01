@@ -3,6 +3,7 @@ import pool from "../db.js";
 import multer from "multer";
 import ExcelJS from "exceljs";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import axios from "axios";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -52,11 +53,18 @@ router.get("/", verifyToken, isAdminOrSuper, async (req, res) => {
 router.get("/employees-list", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id, u.fullname, e.employee_uav_id
+      SELECT u.id, u.fullname, u.role, e.employee_uav_id
       FROM users u
       JOIN employees e ON u.id = e.user_id
-      WHERE u.role IN ('employee', 'intern')
-      ORDER BY e.employee_uav_id ASC
+      WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
+      ORDER BY
+        CASE u.role
+          WHEN 'super_admin' THEN 1
+          WHEN 'admin'       THEN 2
+          WHEN 'employee'    THEN 3
+          WHEN 'intern'      THEN 4
+        END,
+        u.fullname ASC
     `);
     res.json(result.rows);
   } catch (err) {
@@ -236,6 +244,28 @@ router.get("/my", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("MY ATTENDANCE ERROR:", err);
     res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.get("/directory", verifyToken, isAdminOrSuper, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        u.id,
+        u.fullname,
+        u.role,
+        u.designation,
+        e.employee_uav_id,
+        COALESCE(u.status, 'Active') AS status
+      FROM users u
+      JOIN employees e ON u.id = e.user_id
+      WHERE u.role IN ('employee', 'intern')
+      ORDER BY u.role ASC, e.employee_uav_id ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("DIRECTORY ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
   }
 });
 
@@ -440,4 +470,174 @@ router.get("/export-excel", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
+
+
+router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
+ 
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(req.file.path);
+    const worksheet = workbook.worksheets[0];
+ 
+    // Fetch all users for name→id lookup
+    const usersRes = await pool.query(
+      "SELECT id, fullname, employee_uav_id FROM users u JOIN employees e ON u.id = e.user_id"
+    );
+    const users = usersRes.rows;
+ 
+    let count = 0;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+ 
+      worksheet.eachRow(async (row, rowNumber) => {
+        if (rowNumber === 1) return; // skip header
+ 
+        const empId     = row.getCell(1).value?.toString()?.trim(); // Employee UAV ID
+        const name      = row.getCell(2).value?.toString()?.trim(); // Name
+        let   date      = row.getCell(3).value;                     // Date
+        const status    = row.getCell(4).value?.toString()?.trim(); // Status
+        const checkIn   = row.getCell(5).value?.toString()?.trim() || null;
+        const checkOut  = row.getCell(6).value?.toString()?.trim() || null;
+ 
+        if (!status) return;
+ 
+        // Normalise date
+        if (date && typeof date === "object") date = date.toISOString().split("T")[0];
+        else if (date) date = new Date(date).toISOString().split("T")[0];
+        else return;
+ 
+        // Find user by UAV ID or name
+        const user = users.find(u =>
+          u.employee_uav_id === empId ||
+          u.fullname?.toLowerCase() === name?.toLowerCase()
+        );
+        if (!user) return;
+ 
+        const hoursWorked = calcHours(checkIn, checkOut);
+ 
+        await client.query(
+          `INSERT INTO attendance (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (user_id, attendance_date) DO UPDATE SET
+             status       = EXCLUDED.status,
+             check_in     = EXCLUDED.check_in,
+             check_out    = EXCLUDED.check_out,
+             marked_by    = EXCLUDED.marked_by,
+             hours_worked = EXCLUDED.hours_worked`,
+          [user.id, user.employee_uav_id, date, status,
+           checkIn, checkOut, req.user.id, hoursWorked || null]
+        );
+        count++;
+      });
+ 
+      await client.query("COMMIT");
+      res.json({ msg: `Successfully uploaded ${count} attendance records!` });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("EXCEL UPLOAD ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+ 
+ 
+// ─── ROUTE 2: Import from Google Drive URL ────────────────────────
+// Converts a Google Drive share URL to a direct download URL
+// The file must be shared as "Anyone with the link - Viewer"
+ 
+router.post("/upload-from-drive", verifyToken, isAdminOrSuper, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ msg: "No URL provided" });
+ 
+    // Extract file ID from Google Drive URL
+    // Supports: /file/d/FILE_ID/view  and  ?id=FILE_ID
+    let fileId = null;
+    const match1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match1) fileId = match1[1];
+    else if (match2) fileId = match2[1];
+    else return res.status(400).json({ msg: "Could not extract file ID from URL. Make sure it's a valid Google Drive link." });
+ 
+    // Direct download URL
+    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+ 
+    // Download the file into a temp buffer
+    const response = await axios.get(downloadUrl, { responseType: "arraybuffer", timeout: 15000 });
+    const buffer = Buffer.from(response.data);
+ 
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+ 
+    const usersRes = await pool.query(
+      "SELECT u.id, u.fullname, e.employee_uav_id FROM users u JOIN employees e ON u.id = e.user_id"
+    );
+    const users = usersRes.rows;
+ 
+    let count = 0;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+ 
+      worksheet.eachRow(async (row, rowNumber) => {
+        if (rowNumber === 1) return;
+ 
+        const empId    = row.getCell(1).value?.toString()?.trim();
+        const name     = row.getCell(2).value?.toString()?.trim();
+        let   date     = row.getCell(3).value;
+        const status   = row.getCell(4).value?.toString()?.trim();
+        const checkIn  = row.getCell(5).value?.toString()?.trim() || null;
+        const checkOut = row.getCell(6).value?.toString()?.trim() || null;
+ 
+        if (!status) return;
+ 
+        if (date && typeof date === "object") date = date.toISOString().split("T")[0];
+        else if (date) date = new Date(date).toISOString().split("T")[0];
+        else return;
+ 
+        const user = users.find(u =>
+          u.employee_uav_id === empId ||
+          u.fullname?.toLowerCase() === name?.toLowerCase()
+        );
+        if (!user) return;
+ 
+        const hoursWorked = calcHours(checkIn, checkOut);
+ 
+        await client.query(
+          `INSERT INTO attendance (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (user_id, attendance_date) DO UPDATE SET
+             status       = EXCLUDED.status,
+             check_in     = EXCLUDED.check_in,
+             check_out    = EXCLUDED.check_out,
+             marked_by    = EXCLUDED.marked_by,
+             hours_worked = EXCLUDED.hours_worked`,
+          [user.id, user.employee_uav_id, date, status,
+           checkIn, checkOut, req.user.id, hoursWorked || null]
+        );
+        count++;
+      });
+ 
+      await client.query("COMMIT");
+      res.json({ msg: `Successfully imported ${count} records from Google Drive!` });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error("DRIVE IMPORT ERROR:", err.message);
+    res.status(500).json({ msg: err.response?.status === 403
+      ? "Access denied. Make sure the file is shared as 'Anyone with the link'."
+      : err.message });
+  }
+});
 export default router;

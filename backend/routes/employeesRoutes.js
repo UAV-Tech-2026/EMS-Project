@@ -119,11 +119,21 @@ router.get("/recent", verifyToken, async (req, res) => {
 
 router.get("/list", verifyToken, async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT u.id, u.fullname, u.role
-       FROM users u 
-       WHERE u.role='employee' `
-    );
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.fullname,
+        u.email,
+        u.role,
+        e.employee_uav_id,
+        e.designation,
+        u.status
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.role = 'employee'
+      ORDER BY u.fullname ASC
+    `);
+
     res.json(result.rows);
   } catch (err) {
     console.error("EMPLOYEES LIST ERROR:", err.message);
@@ -161,4 +171,26 @@ router.get("/my-activity", verifyToken, async (req, res) => {
   }
 });
 
+
+
+router.get("/all-assignable", verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, fullname, role, designation
+      FROM users
+      WHERE role IN ('employee', 'intern', 'admin')
+      ORDER BY
+        CASE role
+          WHEN 'admin'       THEN 1
+          WHEN 'employee'    THEN 2
+          WHEN 'intern'      THEN 3
+        END,
+        fullname ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("ALL ASSIGNABLE ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
 export default router;
