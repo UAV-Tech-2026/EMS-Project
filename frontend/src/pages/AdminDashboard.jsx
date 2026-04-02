@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AdminDPR from "./AdminDPR";
 import "../styles/AdminDashboard.css";
 import { api } from "../utils/api";
-
+import AttendanceRecords from "./AttendanceRecords";
 import DirectoryPanel from "./DirectoryPanel";
 import AdminLeaveManagement from "./AdminLeaveManagement";
 import {
@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   const [showDPR, setShowDPR] = useState(false);
   const [showLeave, setShowLeave] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showAttRecords, setShowAttRecords] = useState(false);
 
   const [taskStats, setTaskStats] = useState({
     total_tasks: 0,
@@ -125,6 +126,10 @@ export default function AdminDashboard() {
             <CalendarCheck />
             <h4>Leave</h4>
           </div>
+          <div className="action-card" onClick={() => setShowAttRecords(true)}>
+  <ClipboardCheck />
+  <h4>View Attendance</h4>
+</div>
           <div className="action-card" onClick={() => setShowEnroll(true)}>
             <Users />
             <h4>Enroll Employees</h4>
@@ -198,6 +203,16 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+
+      {showAttRecords && (
+  <div className="sad-modal-overlay">
+    <div className="sad-modal-content">
+      <button className="sad-modal-close" onClick={() => setShowAttRecords(false)}>✕</button>
+      <AttendanceRecords />
+    </div>
+  </div>
+)}
     </div>
   );
 }

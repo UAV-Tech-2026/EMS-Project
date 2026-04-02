@@ -417,7 +417,7 @@ export default function EmployeeDashboard() {
           <section className="empdb__section empdb__announcement">
             <h3 className="empdb__section-title">Company Announcement</h3>
             <p className="empdb__announcement-text">
-              📢 Company Annual Meeting on 25th January
+              Company Annual Meeting on 25th January
             </p>
           </section>
 
@@ -437,4 +437,3 @@ function ActionCard({ title, desc, btn, onClick }) {
     </div>
   );
 }
-

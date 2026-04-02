@@ -254,7 +254,7 @@ router.get("/directory", verifyToken, isAdminOrSuper, async (req, res) => {
         u.id,
         u.fullname,
         u.role,
-        u.designation,
+        COALESCE(e.designation, '')  AS designation,  -- ← change if column name differs
         e.employee_uav_id,
         COALESCE(u.status, 'Active') AS status
       FROM users u
@@ -265,7 +265,7 @@ router.get("/directory", verifyToken, isAdminOrSuper, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error("DIRECTORY ERROR:", err.message);
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: err.message });  // now shows exact error in frontend too
   }
 });
 

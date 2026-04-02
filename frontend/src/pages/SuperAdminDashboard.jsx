@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, Banknote, CheckSquare,
   LayoutDashboard, GitBranch, ClipboardCheck
 } from "lucide-react";
-
+import AttendanceRecords from "./AttendanceRecords";
 import DirectoryPanel    from "./DirectoryPanel";
 import TaskManagement    from "./TaskManagement";
 import BulkAttendance    from "./BulkAttendance";
@@ -38,6 +38,7 @@ export default function SuperAdminDashboard() {
   const [showPayslip,      setShowPayslip]      = useState(false);
   const [showDirectory,    setShowDirectory]    = useState(false);
   const [showUpload,       setShowUpload]       = useState(false);
+  const [showAttRecords, setShowAttRecords] = useState(false);
 
   const todayStr      = new Date().toISOString().split("T")[0];
   const firstOfMonth  = todayStr.slice(0, 7) + "-01";
@@ -124,6 +125,10 @@ export default function SuperAdminDashboard() {
           <div className="sad-nav-item" onClick={() => setShowTaskModal(true)}>
             <ClipboardList size={15} /> Tasks
           </div>
+          <div className="sad-nav-item" onClick={() => setShowAttRecords(true)}>
+  <ClipboardCheck />
+  <h4>View Attendance</h4>
+</div>
 
           <div className="sad-nav-item" onClick={() => setShowDownloadModal(true)}>
             <Download size={15} /> Export Data
@@ -372,6 +377,15 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       )}
+
+      {showAttRecords && (
+  <div className="sad-modal-overlay">
+    <div className="sad-modal-content">
+      <button className="sad-modal-close" onClick={() => setShowAttRecords(false)}>✕</button>
+      <AttendanceRecords />
+    </div>
+  </div>
+)}
 
       {showDownloadModal && (
         <div className="sad-modal-overlay">

@@ -11,7 +11,7 @@ import dpr from "./routes/dpr.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 import payslipRoutes from "./routes/payslipRoutes.js";
 import payslipRequests from "./routes/payslipRequests.js";
-import { run as seedSuperAdmin } from "./seed_user.js";
+
 
 
 const app = express();
@@ -28,7 +28,7 @@ pool.query("SELECT 1", async (err, res) => {
     console.log("✓ Database connected successfully");
     // Ensure database schema is healthy on start
     await ensureSchema();
-    await seedSuperAdmin(); 
+    
   }
 });
 

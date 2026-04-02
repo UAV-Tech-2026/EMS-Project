@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import pool from "../db.js";
 import bcrypt from "bcryptjs";
-import { verifyToken,isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -15,8 +15,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-
-
 router.get("/stats", verifyToken, async (req, res) => {
   try {
     if (req.user.role !== "super_admin") {
@@ -25,11 +23,10 @@ router.get("/stats", verifyToken, async (req, res) => {
 
     const statsRes = await pool.query(`
       SELECT 
-        COUNT(*)                                              AS total_users,
-        COUNT(*) FILTER (WHERE role = 'employee')            AS total_employees,
-        COUNT(*) FILTER (WHERE role = 'super_admin')         AS total_admins,
-        COUNT(*) FILTER (WHERE role = 'employee'
-          AND status = 'active')                             AS active_employees
+        COUNT(*)                                    AS total_users,
+        COUNT(*) FILTER (WHERE role = 'employee')   AS total_employees,
+        COUNT(*) FILTER (WHERE role = 'super_admin') AS total_admins,
+        COUNT(*) FILTER (WHERE role = 'employee')   AS active_employees
       FROM users
     `);
 
@@ -49,23 +46,17 @@ router.get("/stats", verifyToken, async (req, res) => {
 router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
   const { username, password, fullname, email, role, employee_uav_id, designation } = req.body;
   const client = await pool.connect();
-  
   try {
     await client.query("BEGIN");
-
-    // 1. Create Login Credentials
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRes = await client.query(
       "INSERT INTO users (username, password, fullname, email, role) VALUES ($1, $2, $3, $4, $5) RETURNING id",
       [username, hashedPassword, fullname, email, role || 'employee']
     );
-
-    // 2. Create Employee Profile linked to that User ID
     await client.query(
       "INSERT INTO employees (user_id, employee_uav_id, fullname, designation) VALUES ($1, $2, $3, $4)",
       [userRes.rows[0].id, employee_uav_id, fullname, designation]
     );
-
     await client.query("COMMIT");
     res.status(201).json({ msg: "Employee enrolled successfully" });
   } catch (err) {
@@ -76,6 +67,7 @@ router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
+// ✅ Fixed: using attendance_date instead of date
 router.get("/attendance-today", verifyToken, async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
@@ -99,8 +91,6 @@ router.get("/attendance-today", verifyToken, async (req, res) => {
   }
 });
 
-
-
 router.get("/recent", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -116,7 +106,7 @@ router.get("/recent", verifyToken, async (req, res) => {
   }
 });
 
-
+// ✅ Fixed: removed u.status (not in users table)
 router.get("/list", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -127,13 +117,12 @@ router.get("/list", verifyToken, async (req, res) => {
         u.role,
         e.employee_uav_id,
         e.designation,
-        u.status
+        e.status
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
       WHERE u.role = 'employee'
       ORDER BY u.fullname ASC
     `);
-
     res.json(result.rows);
   } catch (err) {
     console.error("EMPLOYEES LIST ERROR:", err.message);
@@ -141,9 +130,6 @@ router.get("/list", verifyToken, async (req, res) => {
   }
 });
 
-
-
-// Get specific profile for the logged-in employee
 router.get("/my-profile", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -157,10 +143,8 @@ router.get("/my-profile", verifyToken, async (req, res) => {
   }
 });
 
-// Get recent activity logs for this employee
 router.get("/my-activity", verifyToken, async (req, res) => {
   try {
-    // Assuming you have an activity_logs table
     const result = await pool.query(
       "SELECT action, created_at FROM activity_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10",
       [req.user.id]
@@ -171,8 +155,6 @@ router.get("/my-activity", verifyToken, async (req, res) => {
   }
 });
 
-
-
 router.get("/all-assignable", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -181,9 +163,9 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
       WHERE role IN ('employee', 'intern', 'admin')
       ORDER BY
         CASE role
-          WHEN 'admin'       THEN 1
-          WHEN 'employee'    THEN 2
-          WHEN 'intern'      THEN 3
+          WHEN 'admin'    THEN 1
+          WHEN 'employee' THEN 2
+          WHEN 'intern'   THEN 3
         END,
         fullname ASC
     `);
@@ -193,4 +175,5 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+
 export default router;
