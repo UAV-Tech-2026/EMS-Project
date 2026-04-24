@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
 import "../styles/BulkAttendance.css";
-
+import { useNavigate } from "react-router-dom";
 
 const NEEDS_TIME  = ["Present", "0.5", "Field Work","CCL"];
 
@@ -33,6 +33,7 @@ export default function BulkAttendance() {
   const [attendanceData,setAttendanceData]= useState({});
   const [loading,       setLoading]       = useState(true);
   const [submitted,     setSubmitted]     = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,14 +46,16 @@ export default function BulkAttendance() {
           api.get(`/attendance/today?date=${date}`)
         ]);
 
+        const filteredEmps = empRes.data.filter(u => u.role === "employee" || u.role === "intern");
+
         const initial = {};
-       empRes.data.forEach(emp => {
+        filteredEmps.forEach(emp => {
           const existing = recordRes.data.find(r => r.user_id === emp.id);
           
           const inTime  = existing?.check_in  || "";
           const outTime = existing?.check_out || "";
 
-          // Clear out-time if it's invalid (before or equal to in-time)
+          
           let safeOut = outTime;
           if (inTime && outTime) {
             const [ih, im] = inTime.split(":").map(Number);
@@ -63,11 +66,11 @@ export default function BulkAttendance() {
           initial[emp.id] = {
             status: existing?.status   || "",
             in:     inTime,
-            out:    safeOut             // ← use sanitised value
+            out:    safeOut             
           };
         });
 
-        setEmployees(empRes.data);
+        setEmployees(filteredEmps);
         setAttendanceData(initial);
       } catch (err) {
         console.error("Fetch error:", err);
@@ -87,7 +90,7 @@ export default function BulkAttendance() {
       updated.out = "";
     }
 
-    // Guard: only run if value is a valid time string
+    
     if (field === "in" && value && updated.out) {
       const [ih, im] = value.split(":").map(Number);
       const [oh, om] = updated.out.split(":").map(Number);
@@ -161,13 +164,42 @@ export default function BulkAttendance() {
     <div className="bulk-container">
 
       
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", paddingBottom: "20px", borderBottom: "1.5px solid #e2e8f0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{
+            width: 42, height: 42,
+            background: "#ffffff",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            overflow: "hidden",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+          }}>
+            <img 
+              src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"} 
+              alt="Logo" 
+              style={{ width: 36, height: 36, objectFit: "contain" }}
+              onError={(e) => { 
+                if (e.target.src !== window.location.origin + "/logo.jpg") {
+                  e.target.src = "/logo.jpg";
+                } else {
+                  e.target.style.display = 'none'; 
+                }
+              }}
+            />
+          </div>
+          <div>
+            <h1 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>Bulk Attendance Log</h1>
+            <p style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>Date — {date}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bulk-header">
-        <input
-          type="date"
-          value={date}
-          readOnly
-          style={{ cursor: "not-allowed", opacity: 0.7 }}
-        />
+        <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>BULK ATTENDANCE LOG</h2>
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
 
@@ -255,14 +287,14 @@ export default function BulkAttendance() {
                     onChange={e => handleUpdate(emp.id, "status", e.target.value)}
                   >
                     <option value="">— Select Status —</option>
-                    <option value="Present">✅  Present</option>
-                    <option value="0.5">🌓  Half Day (0.5)</option>
-                    <option value="Field Work">🚗  Field Work</option>
-                    <option value="CL">📅  CL (Casual Leave)</option>
-                    <option value="SL">🏥  SL (Sick Leave)</option>
-                    <option value="CCL">👶  CCL</option>
-                    <option value="Absent">❌  Absent</option>
-                    <option value="LOP">💸  LOP (Loss of Pay)</option>
+                    <option value="Present"> Present</option>
+                    <option value="0.5">  Half Day (0.5)</option>
+                    <option value="Field Work"> Field Work</option>
+                    <option value="CL">  CL (Casual Leave)</option>
+                    <option value="SL"> SL (Sick Leave)</option>
+                    <option value="CCL"> CCL</option>
+                    <option value="Absent">  Absent</option>
+                    <option value="LOP">  LOP (Loss of Pay)</option>
                   </select>
                   {submitted && statErr && (
                     <span className="field-error">Required</span>
@@ -341,6 +373,7 @@ export default function BulkAttendance() {
           </tfoot>
         )}
       </table>
+      
     </div>
   );
 }

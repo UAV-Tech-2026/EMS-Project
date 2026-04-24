@@ -1,11 +1,33 @@
 .create-user-wrapper {
-  min-height: 100vh;
   display: flex;
-  background: linear-gradient(135deg, #0f172a, #0b1220);
-  padding: 60px;
-  gap: 60px;
-  font-family: "Inter", sans-serif;
-  color: #ffffff;
+  flex-direction: column;
+  background: transparent;
+  padding: 0;
+  font-family: "DM Sans", sans-serif;
+  color: #1e293b;
+  width: 100%;
+}
+
+/* ── Top logo bar ── */
+.create-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  margin-bottom: 28px;
+  border-bottom: 1.5px solid #cbd5e1 !important;
+}
+
+.create-top-nav img {
+  height: 36px;
+  object-fit: contain;
+}
+
+.create-top-nav h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
 }
 
 .title-section {
@@ -19,141 +41,181 @@
   font-size: 48px;
   font-weight: 700;
   line-height: 1.2;
-  color: #e2e8f0;
+  color: #1e293b;
 }
 
+/* ── Main form card ── */
 .create-form {
-  flex: 2;
-  background: #111827;
-  padding: 50px;
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  padding: 20px 24px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
 }
 
 .form-columns {
   display: flex;
-  gap: 50px;
+  gap: 30px;
+  transition: all 0.3s ease;
+}
+
+.form-columns.admin-mode {
+  justify-content: center;
+}
+
+.form-columns.admin-mode .left-column {
+  max-width: 550px;
+  width: 100%;
 }
 
 .left-column {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .right-column {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  border-left: 1.5px solid #e2e8f0;
+  padding-left: 30px;
 }
 
+/* ── Inputs & selects ── */
 input,
 select {
-  background: #1f2937;
-  border: 1px solid #2d3748;
-  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  padding: 13px 16px;
   border-radius: 10px;
-  color: #ffffff;
+  color: #1e293b;
   font-size: 14px;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input::placeholder {
+  color: #94a3b8;
 }
 
 input:focus,
 select:focus {
-  border-color: #6366f1;
+  border-color: #10b981;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+  background: #ffffff;
 }
 
+select option {
+  color: #1e293b;
+  background: #ffffff;
+}
+
+/* ── Section headings in right column ── */
 .right-column h3 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #cbd5e1;
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+  margin-top: 4px;
 }
 
+/* ── Experience card ── */
 .experience-card {
-  background: #1e293b;
-  padding: 18px;
-  border-radius: 14px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  border: 1px solid #2d3748;
+  gap: 12px;
+  border: 1.5px solid #e2e8f0;
 }
 
+/* ── Add Experience button ── */
 .add-btn {
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #10b981, #059669);
   border: none;
-  padding: 12px;
+  padding: 11px;
   border-radius: 10px;
   font-weight: 600;
+  font-size: 14px;
   color: white;
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.25s;
 }
 
 .add-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.28);
 }
 
 .file-input {
-  background: #1f2937;
+  background: #f8fafc;
   padding: 12px;
   border-radius: 10px;
-  border: 1px dashed #475569;
+  border: 1.5px dashed #94a3b8;
   cursor: pointer;
 }
 
+/* ── Form action buttons ── */
 .form-buttons {
   display: flex;
-  gap: 16px;
-  margin-top: 40px;
+  gap: 14px;
+  margin-top: 36px;
   justify-content: flex-end;
+  padding-top: 24px;
+  border-top: 1.5px solid #e2e8f0;
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #10b981, #059669);
   border: none;
-  padding: 14px 40px;
-  border-radius: 12px;
-  font-size: 16px;
+  padding: 13px 38px;
+  border-radius: 10px;
+  font-size: 15px;
   font-weight: 600;
   color: white;
   cursor: pointer;
-  transition: 0.3s ease;
+  transition: 0.25s ease;
 }
 
 .submit-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(124, 58, 237, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35);
 }
 
+/* ── Back to Dashboard — purple outlined ── */
 .back-btn {
-  background: #1e293b;
-  border: 1px solid #334155;
-  padding: 14px 30px;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 2px solid #10b981;
+  padding: 13px 28px;
+  border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #10b981;
   cursor: pointer;
-  transition: 0.3s ease;
+  transition: 0.25s ease;
 }
 
 .back-btn:hover {
-  background: #334155;
-  color: #f1f5f9;
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.28);
+  transform: translateY(-2px);
 }
 
+/* ── Remove experience button ── */
 .remove-btn {
-  background: #ef444420;
-  border: 1px solid #ef4444;
+  background: #fef2f2;
+  border: 1.5px solid #ef4444;
   color: #ef4444;
   padding: 6px 12px;
   border-radius: 7px;
@@ -169,41 +231,74 @@ select:focus {
 }
 
 label {
-  font-size: 14px;
-  color: #94a3b8;
-  margin-top: 10px;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 8px;
 }
 
 .error-msg {
   font-size: 12px;
-  color: #f87171;
+  color: #ef4444;
   margin-top: -10px;
+}
+
+/* ── Scrollbar Styling ── */
+.create-user-modal-inner::-webkit-scrollbar {
+  width: 8px;
+}
+
+.create-user-modal-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.create-user-modal-inner::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 20px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.create-user-modal-inner:hover::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+}
+
+.create-user-modal-inner::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
 }
 
 @media (max-width: 1100px) {
   .create-user-wrapper {
-    flex-direction: column;
-    padding: 30px;
+    padding: 24px 20px 40px 20px;
   }
 
   .form-columns {
     flex-direction: column;
   }
 
-  .submit-btn {
-    align-self: center;
+  .right-column {
+    border-left: none;
+    border-top: 1.5px solid #e2e8f0;
+    padding-left: 0;
+    padding-top: 24px;
+  }
+
+  .submit-btn,
+  .back-btn {
     width: 100%;
+    text-align: center;
   }
 }
 
+/* ── Date inputs ── */
 input[type="date"] {
-  color: #ffffff;
-  background: #1f2937;
+  color: #1e293b;
+  background: #f8fafc;
   position: relative;
+  padding-right: 12px;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  opacity: 0.45;
   cursor: pointer;
 }
 
@@ -211,12 +306,8 @@ input[type="date"]::-moz-focus-inner {
   border: 0;
 }
 
-input[type="date"] {
-  padding-right: 12px;
-}
-
 /* ════════════════════════════════
-   SALARY BREAKDOWN — Fixed Fields
+   SALARY BREAKDOWN
 ════════════════════════════════ */
 
 .salary-fixed-grid {
@@ -234,18 +325,18 @@ input[type="date"] {
 .salary-field label {
   font-size: 11px;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   margin-top: 0;
 }
 
-/* ₹ prefix input wrapper — overrides the global input style */
+/* ₹ prefix input wrapper */
 .salary-input-wrap {
   display: flex;
   align-items: center;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.2s;
@@ -254,30 +345,29 @@ input[type="date"] {
 
 .salary-input-wrap:focus-within {
   border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 
 .salary-input-wrap span {
-  padding: 0 11px;
-  color: #64748b;
+  padding: 0 12px;
+  color: #6366f1;
   font-size: 14px;
   font-weight: 700;
-  background: #111827;
-  border-right: 1px solid #334155;
+  background: #ede9fe;
+  border-right: 1.5px solid #cbd5e1;
   align-self: stretch;
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-/* Override global input style inside wrapper */
 .salary-input-wrap input {
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
   padding: 12px 10px;
-  color: #f1f5f9;
+  color: #1e293b;
   font-size: 14px;
   flex: 1;
   width: 100%;
@@ -294,11 +384,11 @@ input[type="date"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
   border-radius: 10px;
   padding: 14px 18px;
-  margin-top: -6px;
+  margin-top: -4px;
 }
 
 .sp-item {
@@ -310,7 +400,7 @@ input[type="date"] {
 
 .sp-item span {
   font-size: 10px;
-  color: #64748b;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -320,18 +410,28 @@ input[type="date"] {
   font-weight: 800;
 }
 
-.sp-earn   { color: #22c55e; }
-.sp-deduct { color: #ef4444; }
-.sp-net    { color: #a78bfa; }
-.sp-sep    { font-size: 18px; color: #475569; padding-bottom: 14px; }
+.sp-earn   { color: #16a34a; }
+.sp-deduct { color: #dc2626; }
+.sp-net    { color: #7c3aed; }
+.sp-sep    { font-size: 18px; color: #94a3b8; padding-bottom: 14px; }
 
-/* Document labels — override generic label margin */
+/* Document labels */
 .doc-label {
   font-size: 11px !important;
   font-weight: 700 !important;
-  color: #94a3b8 !important;
+  color: #64748b !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 8px !important;
   margin-bottom: 0;
+}
+
+.text-input-field {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #1e293b;
+}
+
+.text-input-field::placeholder {
+  color: #94a3b8;
 }

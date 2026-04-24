@@ -1,0 +1,277 @@
+/* ── ControlPanel upgrades ── add these to SuperAdminDashboard.css ── */
+
+/* Tabs */
+.sad-cp-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.sad-cp-tab {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.sad-cp-tab:hover {
+    background: #f9fafb;
+    color: #111827;
+}
+
+.sad-cp-tab--active {
+    background: #f3f4f6;
+    color: #111827;
+    border-color: #d1d5db;
+}
+
+/* Role card */
+.sad-cp-role-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+}
+
+.sad-cp-role-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sad-cp-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e0e7ff;
+    color: #4338ca;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sad-cp-role-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.sad-cp-role-desc {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.sad-cp-summary-line {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Table wrapper */
+.sad-cp-table-wrap {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Upgraded permission table */
+.sad-cp-perm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.sad-cp-perm-table thead tr {
+    background: #f9fafb;
+}
+
+.sad-cp-perm-table th {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sad-cp-perm-table th:not(:first-child) {
+    text-align: center;
+}
+
+.sad-cp-perm-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+}
+
+.sad-cp-perm-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sad-cp-perm-table tbody tr:hover td {
+    background: #fafafa;
+}
+
+.sad-cp-feat-cell {
+    min-width: 180px;
+}
+
+.sad-cp-feat-label {
+    display: block;
+    font-weight: 600;
+    color: #111827;
+}
+
+.sad-cp-feat-desc {
+    display: block;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 2px;
+}
+
+.sad-cp-toggle-cell {
+    text-align: center;
+}
+
+/* Toggle switch */
+.sad-cp-toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.sad-cp-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.sad-cp-toggle-track {
+    width: 40px;
+    height: 22px;
+    border-radius: 999px;
+    background: #d1d5db;
+    position: relative;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.sad-cp-toggle input:checked~.sad-cp-toggle-track {
+    background: #6366f1;
+}
+
+.sad-cp-toggle input:disabled~.sad-cp-toggle-track {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sad-cp-toggle-thumb {
+    position: absolute;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.sad-cp-toggle input:checked~.sad-cp-toggle-track .sad-cp-toggle-thumb {
+    transform: translateX(18px);
+}
+
+/* Visibility badge */
+.sad-cp-vis-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid;
+}
+
+.sad-cp-vis-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.sad-cp-vis-rw {
+    background: #f0fdf4;
+    color: #16a34a;
+    border-color: #bbf7d0;
+}
+
+.sad-cp-vis-ro {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+
+.sad-cp-vis-hd {
+    background: #f9fafb;
+    color: #9ca3af;
+    border-color: #e5e7eb;
+}
+
+/* Save button */
+.sad-cp-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #6366f1;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.sad-cp-save-btn:hover:not(:disabled) {
+    background: #4f46e5;
+}
+
+.sad-cp-save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Empty / loading state */
+.sad-cp-no-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: #9ca3af;
+    font-size: 14px;
+    text-align: center;
+}

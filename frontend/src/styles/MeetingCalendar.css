@@ -1,0 +1,246 @@
+/* ── TaskCalender.css (Light Theme) ──────────────────────────────────── */
+
+:root {
+  --cal-bg: #f8fafc;
+  --cal-surface: #ffffff;
+  --cal-border: #e2e8f0;
+  --cal-text: #0f172a;
+  --cal-muted: #64748b;
+  --cal-accent: #4f46e5;
+  --cal-today: rgba(79, 70, 229, 0.05);
+}
+
+.calendar-view-container {
+  background: var(--cal-surface);
+  border: 1px solid var(--cal-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.calendar-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--cal-text);
+  margin: 0;
+}
+
+.cal-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.refresh-btn, .cal-close-btn, .cal-back-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--cal-border);
+  background: #fff;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-back-btn {
+  color: #64748b;
+}
+
+.cal-back-btn:hover {
+  background: #f1f5f9;
+  color: var(--cal-accent);
+}
+
+.refresh-btn:hover { background: #f1f5f9; color: var(--cal-accent); }
+.cal-close-btn:hover { background: #fee2e2; color: #ef4444; border-color: #fecaca; }
+
+/* FullCalendar Overrides for Light Theme */
+.fc {
+  background: var(--cal-surface) !important;
+  color: var(--cal-text) !important;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+}
+
+.fc-toolbar {
+  padding: 18px 24px !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--cal-border);
+}
+
+.fc-toolbar-title {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: var(--cal-text) !important;
+  letter-spacing: -0.02em;
+}
+
+.fc-button {
+  background: #f1f5f9 !important;
+  border: 1px solid var(--cal-border) !important;
+  color: var(--cal-muted) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-transform: capitalize !important;
+  padding: 8px 16px !important;
+  box-shadow: none !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+.fc-button:hover { 
+  background: #e2e8f0 !important; 
+  color: var(--cal-text) !important; 
+}
+
+.fc-button-active {
+  background: var(--cal-accent) !important;
+  border-color: var(--cal-accent) !important;
+  color: #ffffff !important;
+}
+
+/* Calendar Grid */
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: var(--cal-border) !important;
+}
+
+.fc-col-header-cell {
+  background: #f8fafc !important;
+  padding: 12px 0 !important;
+}
+
+.fc-col-header-cell-cushion {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--cal-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  text-decoration: none !important;
+}
+
+.fc-daygrid-day-number {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--cal-muted) !important;
+  padding: 8px 12px !important;
+  text-decoration: none !important;
+}
+
+.fc-day-today {
+  background: var(--cal-today) !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+  color: var(--cal-accent) !important;
+  background: rgba(79, 70, 229, 0.1);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  margin: 6px 12px !important;
+}
+
+/* Events */
+.fc-event {
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  margin: 2px 4px !important;
+  cursor: pointer !important;
+}
+
+.fc-event-main {
+  padding: 2px 4px !important;
+}
+
+.fc-daygrid-event-dot {
+  border-color: currentColor !important;
+}
+
+.fc-more-link {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: var(--cal-accent) !important;
+  text-decoration: none !important;
+  padding: 2px 8px !important;
+}
+
+.fc-daygrid-more-link:hover {
+  background: rgba(79, 70, 229, 0.05) !important;
+  text-decoration: underline !important;
+}
+
+/* Meeting Specific Styles */
+.calendar-event-pills {
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.status-pending { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-left: 3px solid #f59e0b; }
+.status-in_progress { background: rgba(16, 185, 129, 0.1); color: #10b981; border-left: 3px solid #10b981; animation: pulse-green 2s infinite; }
+
+@keyframes pulse-green {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.event-main-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event-sub-info { font-size: 9px; opacity: 0.8; margin-top: 1px; }
+
+/* Modal Enhancements */
+.meeting-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-item label { display: block; font-size: 11px; font-weight: 700; color: var(--cal-muted); text-transform: uppercase; margin-bottom: 4px; }
+.detail-item div { font-weight: 600; color: var(--cal-text); }
+
+.status-pill { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+.detail-desc { border-top: 1px solid var(--cal-border); padding-top: 16px; }
+.detail-desc label { font-size: 11px; font-weight: 700; color: var(--cal-muted); text-transform: uppercase; display: block; margin-bottom: 8px; }
+
+.meeting-join-link { color: var(--cal-accent); text-decoration: none; font-weight: 700; }
+.meeting-join-link:hover { text-decoration: underline; }
+
+.start-meeting-action-btn {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.start-meeting-action-btn:hover { transform: scale(1.05); background: #059669; }
+
+/* Creation Form */
+.meeting-form { display: flex; flex-direction: column; gap: 16px; }
+.create-meeting-btn { background: var(--cal-accent); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.create-meeting-btn:hover { background: #4338ca; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 700; color: var(--cal-text); }
+.form-group input, .form-group textarea {
+  padding: 10px; border: 1px solid var(--cal-border); border-radius: 8px; font-size: 14px;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.cal-loading-state { padding: 40px; text-align: center; color: var(--cal-muted); font-weight: 600; }

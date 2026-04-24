@@ -1,131 +1,144 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   EMS REGISTER — ems-reg- namespace
+   Theme: Premium Light
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --reg-bg: #f8fafc;
+  --reg-card: #ffffff;
+  --reg-border: #e2e8f0;
+  --reg-text: #0f172a;
+  --reg-muted: #64748b;
+  --reg-accent: #4f46e5;
+  --reg-accent-hover: #4338ca;
+  --reg-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
 
 .ems-reg-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #6a5acd; 
-  padding: 20px;
-  font-family: 'Segoe UI', sans-serif;
+  background-color: var(--reg-bg);
+  padding: 40px 24px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  position: relative;
 }
 
 .ems-reg-box {
-  background: #ffffff;
+  background: var(--reg-card);
   width: 100%;
-  max-width: 450px;
-  padding: 30px;
-  border-radius: 15px;
-  box-shadow: none;
-  text-align: center;
-  border: 1px solid #e2e8f0;
+  max-width: 440px;
+  padding: 48px 40px;
+  border-radius: 20px;
+  box-shadow: var(--reg-shadow);
+  border: 1px solid var(--reg-border);
+  position: relative;
+  z-index: 1;
 }
 
 .ems-reg-top h1 {
-  font-size: 2.2rem;
-  color: #1a202c;
-  margin: 0;
-  text-shadow: none; 
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--reg-text);
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
 }
 
 .ems-reg-top p {
-  color: #64748b;
-  margin: 5px 0 15px;
-  font-size: 0.9rem;
+  color: var(--reg-muted);
+  font-size: 14px;
+  margin-bottom: 32px;
 }
-
-.ems-reg-top h3 {
-  color: #1a202c;
-  font-size: 1.1rem;
-  margin-bottom: 20px;
-}
-
 
 .ems-reg-form {
-  background-color: #1e293b;
-  padding: 25px;
-  border-radius: 12px;
+  background-color: transparent;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  box-shadow: none;
-  align-items: stretch; 
+  gap: 18px;
 }
-
 
 .ems-reg-group {
   display: flex;
   flex-direction: column;
   text-align: left;
-  width: 100%;
 }
 
 .ems-reg-group label {
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 13px;
-  margin-bottom: 6px;
+  color: var(--reg-muted);
+  font-weight: 700;
+  font-size: 11px;
+  margin-bottom: 7px;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-
 
 .ems-reg-group input,
 .ems-reg-select {
   width: 100%;
-  padding: 10px;
-  background-color: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: black;
-
+  padding: 11px 14px;
+  background-color: #f8fafc;
+  border: 1px solid var(--reg-border);
+  border-radius: 10px;
+  color: var(--reg-text);
   font-size: 14px;
   outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
 }
 
-
-/* when typing / focus */
 .ems-reg-group input:focus,
 .ems-reg-select:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25);
+  border-color: var(--reg-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
 }
 
 .ems-reg-error {
-  color: #ff8080;
-  font-size: 0.85rem;
-  text-align: left;
-  border-left: 3px solid #ff8080;
-  padding-left: 10px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 4px;
 }
-
 
 .ems-reg-button {
   width: 100%;
-  padding: 12px;
-  background-color: #7c3aed;
-  color:black;
+  padding: 14px;
+  background-color: var(--reg-accent);
+  color: #ffffff;
   border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: bold;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: none; 
-  transition: opacity 0.2s;
-  margin-top: 10px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  margin-top: 12px;
 }
 
 .ems-reg-button:hover {
-  opacity: 0.9;
+  background-color: var(--reg-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
 }
 
-
 .ems-reg-bottom-text {
-  margin-top: 20px;
-  color: #475569;
-  font-size: 0.9rem;
+  margin-top: 24px;
+  color: var(--reg-muted);
+  font-size: 14px;
 }
 
 .ems-reg-bottom-text a {
-  color: #6a5acd;
+  color: var(--reg-accent);
   text-decoration: none;
-  font-weight: bold;
+  font-weight: 700;
+}
+
+.ems-reg-bottom-text a:hover {
+  text-decoration: underline;
 }

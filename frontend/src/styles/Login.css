@@ -1,84 +1,81 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ══════════════════════════════════════════
-   EMS LOGIN — emslogin__ namespace
-   Theme: Premium dark with electric blue accent
-   Clean, corporate, trustworthy
-══════════════════════════════════════════ */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+:root {
+  --lg-bg: #eff3f8;
+  --lg-surface: rgba(255, 255, 255, 0.98);
+  --lg-border: rgba(31, 78, 121, 0.13);
+  --lg-border-outer: rgba(31, 78, 121, 0.08);
+  --lg-text: #1e293b;
+  --lg-muted: #64748b;
+  --lg-accent: #1F4E79;
+  --lg-accent-hover: #163a5a;
+  --lg-shadow: 0 20px 50px -12px rgba(31, 78, 121, 0.12);
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .emslogin__wrapper {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #070d1a;
+  background: radial-gradient(circle at top left, #f0f4fa, #e8eef8, #edf2f7);
   font-family: 'Outfit', sans-serif;
-  padding: 20px;
+  padding: 24px;
   position: relative;
   overflow: hidden;
 }
 
-/* ── Animated background mesh ── */
 .emslogin__wrapper::before {
   content: '';
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(37, 99, 235, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 60% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.04) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.03) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.03) 0, transparent 50%);
   pointer-events: none;
-  z-index: 0;
 }
 
-/* Grid lines background */
-.emslogin__wrapper::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
-  z-index: 0;
+/* ── Outer glow ring ── */
+.emslogin__card-wrap {
+  position: relative;
+  border-radius: 26px;
+  width: 100%;
+  max-width: 484px;  
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(31,78,121,0.18) 0%, rgba(148,184,220,0.10) 50%, rgba(31,78,121,0.14) 100%);
+  box-shadow:
+    0 0 0 1px rgba(31,78,121,0.07),
+    -32px 20px 64px -8px rgba(31, 78, 121, 0.22),
+    -12px 8px 32px -4px rgba(31, 78, 121, 0.16),
+    -60px 30px 80px -20px rgba(74, 144, 217, 0.14);
+  animation: emslogin-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ── Card ── */
 .emslogin__card {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 440px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--lg-surface);
+  border: 1.5px solid rgba(31, 78, 121, 0.12);
   border-radius: 24px;
-  padding: 48px 40px 40px;
-  backdrop-filter: blur(20px);
-  box-shadow:
-    0 0 0 1px rgba(37, 99, 235, 0.1),
-    0 32px 64px rgba(0, 0, 0, 0.4),
-    0 0 80px rgba(37, 99, 235, 0.05);
-  animation: emslogin-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  padding: 48px 48px;
+  box-shadow: 
+    0 0 0 1px rgba(255,255,255,0.9) inset,
+    0 1px 0 0 rgba(255,255,255,1) inset,
+    -8px 4px 24px -4px rgba(31, 78, 121, 0.08);
 }
 
 @keyframes emslogin-rise {
-  from { opacity: 0; transform: translateY(24px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ── Header ── */
 .emslogin__header {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 
 .emslogin__logo {
@@ -87,238 +84,146 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
-  border-radius: 16px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 500;
-  color: #fff;
-  letter-spacing: -1px;
+  background: #fff;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  border: 1.5px solid rgba(31, 78, 121, 0.12);
+  box-shadow: 0 4px 12px rgba(31,78,121,0.10);
+  mix-blend-mode: normal;
+}
+
+.emslogin__logo img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .emslogin__title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  color: #f8fafc;
-  letter-spacing: -0.5px;
+  color: var(--lg-text);
+  letter-spacing: -0.02em;
   margin-bottom: 6px;
 }
 
 .emslogin__subtitle {
-  font-size: 13.5px;
-  color: #64748b;
-  font-weight: 400;
-  letter-spacing: 0.2px;
+  font-size: 14px;
+  color: var(--lg-muted);
 }
 
-/* ── Form ── */
+/* thin divider under header */
+.emslogin__header::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lg-accent), #4a90d9);
+  border-radius: 2px;
+  margin: 14px auto 0;
+  opacity: 0.5;
+}
+
 .emslogin__form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
-/* ── Field ── */
 .emslogin__field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .emslogin__label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--lg-muted);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.05em;
 }
 
 .emslogin__input {
   width: 100%;
-  padding: 13px 16px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 18px;
+  background: #f8fafc;
+  border: 1.5px solid #dde4ee;
   border-radius: 12px;
-  font-size: 14.5px;
-  font-weight: 400;
-  color: #f1f5f9;
+  font-size: 15px;
+  color: var(--lg-text);
   font-family: 'Outfit', sans-serif;
   outline: none;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-  caret-color: #3b82f6;
-}
-
-.emslogin__input::placeholder {
-  color: #334155;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .emslogin__input:focus {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.05);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  border-color: var(--lg-accent);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(31, 78, 121, 0.09);
+  transform: translateY(-1px);
 }
 
-.emslogin__input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ── Error ── */
 .emslogin__error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 10px;
-  font-size: 13px;
-  color: #fca5a5;
-  font-weight: 500;
 }
 
-.emslogin__error::before {
-  content: '⚠';
-  font-size: 14px;
-}
-
-/* ── Primary button ── */
 .emslogin__btn-primary {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  padding: 15px;
+  background: linear-gradient(135deg, #1F4E79 0%, #2563a8 100%);
   color: #fff;
   border: none;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  font-family: 'Outfit', sans-serif;
   cursor: pointer;
-  transition: all 0.2s;
-  letter-spacing: 0.2px;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
-  margin-top: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px -6px rgba(31, 78, 121, 0.45);
+  margin-top: 10px;
+  letter-spacing: 0.01em;
 }
 
 .emslogin__btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1d4ed8, #1e40af);
-  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.45);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #163a5a 0%, #1F4E79 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -8px rgba(31, 78, 121, 0.55);
 }
 
 .emslogin__btn-primary:active {
   transform: translateY(0);
 }
 
-.emslogin__btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* ── Forgot password link ── */
-.emslogin__forgot {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: 'Outfit', sans-serif;
-  cursor: pointer;
-  text-align: center;
-  padding: 4px;
-  transition: color 0.2s;
-  text-decoration: none;
-}
-
-.emslogin__forgot:hover {
-  color: #60a5fa;
-  text-decoration: underline;
-}
-
-/* ── Divider ── */
-.emslogin__divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0;
-}
-
-.emslogin__divider::before,
-.emslogin__divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(255,255,255,0.06);
-}
-
-.emslogin__divider span {
-  font-size: 11px;
-  color: #334155;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-}
-
-/* ── Section headings (forgot/reset) ── */
-.emslogin__section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #f1f5f9;
-  margin-bottom: 4px;
-  letter-spacing: -0.3px;
-}
-
-/* ── Secondary button (back etc) ── */
 .emslogin__btn-secondary {
   width: 100%;
   padding: 12px;
-  background: transparent;
-  color: #64748b;
-  border: 1.5px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
+  background: #fff;
+  color: var(--lg-muted);
+  border: 1.5px solid #dde4ee;
+  border-radius: 10px;
   font-size: 14px;
-  font-weight: 500;
-  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .emslogin__btn-secondary:hover {
-  background: rgba(255,255,255,0.04);
-  color: #94a3b8;
-  border-color: rgba(255,255,255,0.12);
+  background: #f8fafc;
+  border-color: #b8c8db;
+  color: var(--lg-text);
 }
 
-/* ── Footer tag ── */
 .emslogin__footer {
-  margin-top: 28px;
+  margin-top: 32px;
   text-align: center;
-  font-size: 11.5px;
-  color: #1e293b;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.5px;
-}
-
-/* ── Responsive ── */
-@media (max-width: 480px) {
-  .emslogin__card {
-    padding: 36px 24px 32px;
-    border-radius: 20px;
-  }
-
-  .emslogin__title {
-    font-size: 22px;
-  }
-
-  .emslogin__input {
-    font-size: 16px; /* prevents iOS zoom */
-  }
-}
-
-@media (max-width: 360px) {
-  .emslogin__card {
-    padding: 28px 18px 24px;
-  }
+  font-size: 12px;
+  color: var(--lg-muted);
 }

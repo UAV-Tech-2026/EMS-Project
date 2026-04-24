@@ -11,12 +11,29 @@ export default function PayslipView() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [user, setUser] = useState(null);
+  const [ytdData, setYtdData] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
+    if (stored) {
+      const u = JSON.parse(stored);
+      setUser(u);
+      fetchYtd(u.id);
+    }
     fetchRequests();
   }, []);
+
+  const fetchYtd = async (uid) => {
+    try {
+      const today = new Date();
+      const from = `${today.getFullYear()}-01-01`;
+      const to = today.toISOString().split('T')[0];
+      const res = await api.get(`/payslip/my?from=${from}&to=${to}`);
+      setYtdData(res.data);
+    } catch (err) {
+      console.error("YTD Fetch failed", err);
+    }
+  };
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -60,11 +77,53 @@ export default function PayslipView() {
     <div className="leave-container" style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <div className="leave-card" style={{ background: '#fff', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0 }}>My Payslips</h2>
-          <Link to="/employee-dashboard" style={{ padding: '8px 16px', background: '#3182ce', color: '#fff', borderRadius: '6px', textDecoration: 'none', fontWeight: 600 }}>
-            Back to Dashboard
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: 42, height: 42,
+              background: "#ffffff",
+              borderRadius: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+            }}>
+              <img 
+                src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"} 
+                alt="Logo" 
+                style={{ height: '36px', width: '36px', objectFit: 'contain' }} 
+                onError={(e) => { 
+                  if (e.target.src !== window.location.origin + "/logo.jpg") {
+                    e.target.src = "/logo.jpg";
+                  } else {
+                    e.target.style.display = 'none'; 
+                  }
+                }} 
+              />
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1e293b' }}>My Payslips</h2>
+          </div>
         </div>
+
+        {/* YTD Dashboard for Employee */}
+        {ytdData && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #90cdf4' }}>
+              <div style={{ color: '#2c5282', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>YTD Gross (Jan - Dec)</div>
+              <div style={{ color: '#2a4365', fontSize: '1.5rem', fontWeight: 800 }}>₹{ytdData.cumulative.ytd_gross.toLocaleString("en-IN")}</div>
+            </div>
+            <div style={{ background: 'linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #feb2b2' }}>
+              <div style={{ color: '#822727', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>YTD Deductions</div>
+              <div style={{ color: '#742a2a', fontSize: '1.5rem', fontWeight: 800 }}>₹{ytdData.cumulative.ytd_deductions.toLocaleString("en-IN")}</div>
+            </div>
+            <div style={{ background: 'linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #9ae6b4' }}>
+              <div style={{ color: '#22543d', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>YTD Net Paid</div>
+              <div style={{ color: '#234e33', fontSize: '1.5rem', fontWeight: 800 }}>₹{ytdData.cumulative.ytd_net.toLocaleString("en-IN")}</div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #e2e8f0' }}>
           <h3 style={{ marginTop: 0, fontSize: '1rem', color: '#4a5568' }}>Request New Payslip</h3>
@@ -74,6 +133,8 @@ export default function PayslipView() {
               <input 
                 type="month" 
                 value={form.month} 
+                min={`${new Date().getFullYear() - 2}-01`}
+                max={`${new Date().getFullYear() + 2}-12`}
                 onChange={e => setForm({ month: e.target.value })} 
                 required 
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '6px' }}
@@ -136,6 +197,34 @@ export default function PayslipView() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div style={{ marginTop: "2rem", display: "flex", justifyContent: "flex-end" }}>
+        <button 
+          onClick={() => {
+            const role = JSON.parse(localStorage.getItem("user"))?.role;
+            if (role === "super_admin") navigate("/super-admin-dashboard");
+            else if (role === "admin_hr") navigate("/admin-dashboard");
+            else if (role === "admin") navigate("/admin-dashboard");
+            else navigate("/employee-dashboard");
+          }} 
+          style={{
+            background: "#fff",
+            color: "#475569",
+            border: "1px solid #e2e8f0",
+            padding: "10px 24px",
+            borderRadius: "10px",
+            fontWeight: "700",
+            fontSize: "14px",
+            cursor: "pointer",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}
+        >
+          ← Back to Dashboard
+        </button>
       </div>
     </div>
   );

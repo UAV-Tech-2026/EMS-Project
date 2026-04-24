@@ -1,6 +1,7 @@
 import express from "express";
 import pool from "../db.js";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { createNotification } from "./notificationRoutes.js";
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.post("/", verifyToken, async (req, res) => {
     const role = req.user.role?.toLowerCase();
     const { employee_id, month } = req.body;
 
-    if (!["admin", "super_admin", "employee"].includes(role)) {
+    if (!["admin", "super_admin", "employee", "admin_hr"].includes(role)) {
       return res.status(403).json({ msg: "Access denied" });
     }
 
@@ -79,8 +80,8 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// ─── SUPER ADMIN: Get ALL requests ───────────────────────────────────────
-router.get("/all", verifyToken, superAdminOnly, async (req, res) => {
+// ─── SUPER ADMIN & ADMIN: Get ALL requests ───────────────────────────────────────
+router.get("/all", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { status } = req.query;
 
@@ -109,8 +110,8 @@ router.get("/all", verifyToken, superAdminOnly, async (req, res) => {
   }
 });
 
-// ─── SUPER ADMIN: Approve or Reject a request ────────────────────────────
-router.patch("/:id", verifyToken, superAdminOnly, async (req, res) => {
+// ─── SUPER ADMIN & ADMIN: Approve or Reject a request ────────────────────────────
+router.patch("/:id", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { status, rejection_reason, payslip_url } = req.body;
     const { id } = req.params;
@@ -122,11 +123,25 @@ router.patch("/:id", verifyToken, superAdminOnly, async (req, res) => {
       return res.status(400).json({ msg: "rejection_reason is required when rejecting" });
     }
 
+    // Get the requester's user_id before updating
+    const reqRes = await pool.query("SELECT requested_by, month FROM payslip_requests WHERE id = $1", [id]);
+    if (reqRes.rows.length === 0) {
+      return res.status(404).json({ msg: "Payslip request not found" });
+    }
+    const { requested_by, month } = reqRes.rows[0];
+
     await pool.query(
       `UPDATE payslip_requests
        SET status = $1, rejection_reason = $2, payslip_url = $3, reviewed_at = NOW(), reviewed_by = $4
        WHERE id = $5`,
       [status, rejection_reason || null, payslip_url || null, req.user.id, id]
+    );
+
+    // Trigger notification
+    await createNotification(
+      requested_by,
+      `Your payslip request for ${month} has been ${status}.`,
+      status === "approved" ? "success" : "warning"
     );
 
     res.json({ msg: `Request ${status} successfully` });

@@ -1,82 +1,112 @@
-/* Dark theme for Bulk Attendance */
+/* ── BulkAttendance.css (Light Theme) ────────────────────────────────── */
+
+:root {
+  --bulk-bg: #f1f5f9;
+  --bulk-surface: #ffffff;
+  --bulk-border: #e2e8f0;
+  --bulk-text: #0f172a;
+  --bulk-muted: #64748b;
+  --bulk-faint: #94a3b8;
+  --bulk-accent: #4f46e5;
+  --bulk-radius: 12px;
+  --bulk-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
 .bulk-container {
-    background: #0f172a;
-    padding: 20px;
-    color: #f1f5f9;
+  background: var(--bulk-bg);
+  padding: 32px 24px;
+  min-height: 100vh;
+  color: var(--bulk-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 .bulk-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #1e293b;
-    border-radius: 12px;
-    border: 1px solid #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 24px;
+  background: var(--bulk-surface);
+  border-radius: var(--bulk-radius);
+  border: 1px solid var(--bulk-border);
+  box-shadow: var(--bulk-shadow);
 }
 
 /* Badges */
 .badge-hours {
-  background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--bulk-accent);
+  border: 1px solid rgba(79, 70, 229, 0.2);
   border-radius: 20px;
   padding: 6px 14px;
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.badge-error { background: rgba(239, 68, 68, 0.15); color: #f87171; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
-.badge-warn  { background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
-.badge-ok    { background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; }
+.badge-error { background: #fee2e2; color: #dc2626; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+.badge-warn  { background: #fef3c7; color: #d97706; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+.badge-ok    { background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 12px; }
 
 /* Table */
 .bulk-table {
   width: 100%;
   border-collapse: collapse;
-  background: #1e293b;
-  border-radius: 12px;
+  background: var(--bulk-surface);
+  border-radius: var(--bulk-radius);
   overflow: hidden;
-  border: 1px solid #334155;
+  border: 1px solid var(--bulk-border);
+  box-shadow: var(--bulk-shadow);
 }
 
 .bulk-table th {
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
-  padding: 15px;
+  background: #f8fafc;
+  color: var(--bulk-muted);
+  padding: 16px 20px;
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 11px;
   text-transform: uppercase;
-  font-weight: 800;
-  border-bottom: 2px solid #334155;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--bulk-border);
 }
 
 .bulk-table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #334155;
-  color: #f1f5f9;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  color: var(--bulk-text);
+  font-size: 14px;
 }
 
 .bulk-table tr:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: #f8fafc;
 }
 
 /* Inputs in table */
 .bulk-table select, 
 .bulk-table input {
   width: 100%;
-  background: #0f172a !important;
-  border: 1px solid #475569 !important;
-  color: #ffffff !important;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: #f8fafc !important;
+  border: 1px solid var(--bulk-border) !important;
+  color: var(--bulk-text) !important;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.bulk-table select:focus, 
+.bulk-table input:focus {
+  border-color: var(--bulk-accent) !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
 .bulk-table input:disabled {
-    opacity: 0.3;
+    opacity: 0.4;
     cursor: not-allowed;
+    background: #f1f5f9 !important;
 }
 
 /* Hours pill */
@@ -84,66 +114,81 @@
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 0.82rem;
-  background: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: var(--bulk-text);
 }
 
 .hours-leave {
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 700;
-  color: #94a3b8;
-  background: #0f172a;
+  color: var(--bulk-muted);
+  background: #f8fafc;
   padding: 4px 10px;
   border-radius: 10px;
   text-transform: uppercase;
+  border: 1px solid var(--bulk-border);
 }
 
 .hours-pending {
-  font-size: 0.75rem;
-  color: #fbbf24;
+  font-size: 11px;
+  color: #d97706;
   font-style: italic;
+  font-weight: 600;
 }
 
 .hours-error {
-  font-size: 0.75rem;
-  color: #f87171;
+  font-size: 11px;
+  color: #dc2626;
   font-weight: 700;
 }
 
 .hours-empty {
-  color: #475569;
+  color: var(--bulk-faint);
 }
 
 /* Footer Summary */
 .summary-row {
-  background: #0f172a;
+  background: #f8fafc;
 }
 
 .summary-row td {
-  border-top: 2px solid #334155;
-  color: #ffffff !important;
+  border-top: 2px solid var(--bulk-border);
+  color: var(--bulk-text) !important;
+  font-weight: 700;
 }
 
 .bulk-row-error {
-    background: rgba(239, 68, 68, 0.08) !important;
+    background: #fff1f2 !important;
 }
 
 .bulk-input-error {
     border-color: #ef4444 !important;
-    background: rgba(239, 68, 68, 0.1) !important;
-    color: #f87171 !important;
+    background: #fff8f8 !important;
+    color: #b91c1c !important;
 }
 
 .save-btn {
-    background: #3b82f6;
+    background: var(--bulk-accent);
     color: white;
     border: none;
-    padding: 12px 24px;
+    padding: 12px 28px;
     border-radius: 8px;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
 }
+
 .save-btn:hover:not(:disabled) {
-    background: #2563eb;
+    background: #4338ca;
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.save-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }

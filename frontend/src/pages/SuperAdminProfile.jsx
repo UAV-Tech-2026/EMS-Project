@@ -4,9 +4,10 @@ import axios from "axios";
 export default function SuperAdminProfile({ onClose }) {
   const user = JSON.parse(localStorage.getItem("user"));
   const [formData, setFormData] = useState({
-    name: user?.name || "",
+    name: user?.fullname || user?.name || "",
     email: user?.email || "",
-    phone: user?.phone || ""
+    phone: user?.phone || "",
+    password: ""
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,15 +23,22 @@ export default function SuperAdminProfile({ onClose }) {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/users/update-profile`,
+        `${import.meta.env.VITE_API_URL}/auth/users/update-profile`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      localStorage.setItem("user", JSON.stringify(response.data));
+
+      // Merge backend response with existing session to keep token/permissions
+      const updatedUser = { ...user, ...response.data };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      alert("Profile updated successfully!");
       if (onClose) onClose();
+      window.location.reload(); // Refresh to update all dashboard name instances
     } catch (err) {
       console.error("Update failed:", err);
-      setError("Failed to update profile. Please try again.");
+      const msg = err.response?.data?.msg || "Failed to update profile. Please try again.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -171,7 +179,12 @@ export default function SuperAdminProfile({ onClose }) {
           <div className="pm-fields">
             <div className="pm-field">
               <label>Full Name</label>
-              <input name="name" value={formData.name} onChange={handleChange} placeholder="Enter your name" />
+              <input 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange}
+                placeholder="Enter full name"
+              />
             </div>
             <div className="pm-field">
               <label>Email Address</label>
@@ -179,12 +192,23 @@ export default function SuperAdminProfile({ onClose }) {
             </div>
             <div className="pm-field">
               <label>Phone Number</label>
-                <input
-              name="phone"
-              placeholder="+91-XXXXXXXXXX"
-              pattern="\+91-[0-9]{10}"
-              required
-            />
+              <input
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="+91-XXXXXXXXXX"
+                required
+              />
+            </div>
+            <div className="pm-field">
+              <label>New Password (Leave blank to keep current)</label>
+              <input
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+              />
             </div>
           </div>
 

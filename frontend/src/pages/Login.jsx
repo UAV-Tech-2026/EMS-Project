@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { authApi } from "../utils/api";
 import "../styles/Login.css";
@@ -6,6 +6,12 @@ import OtpVerification from "./OtpVerification";
 
 export default function Login() {
   const navigate = useNavigate();
+
+  const location = useLocation();
+const sessionMsg =
+  location.state?.reason === "inactivity" ? "You were logged out due to inactivity." :
+  location.state?.reason === "expired"    ? "Your session expired. Please log in again." :
+  null;
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,23 +24,6 @@ export default function Login() {
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [resetOtp, setResetOtp] = useState("");
-
-  // ✅ FIX 1: Prevent logged-in users from seeing login page
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (token) {
-      const user = JSON.parse(localStorage.getItem("user"));
-
-      if (user?.role === "super_admin") {
-        navigate("/super-admin-dashboard", { replace: true });
-      } else if (user?.role === "admin") {
-        navigate("/admin-dashboard", { replace: true });
-      } else {
-        navigate("/employee-dashboard", { replace: true });
-      }
-    }
-  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -64,28 +53,51 @@ export default function Login() {
     }
   };
 
-  // ✅ FIX 2: Use replace:true to remove login from history
+  
   const finalizeLogin = ({ token, user }) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
 
-    if (user.role === "super_admin")
-      navigate("/super-admin-dashboard", { replace: true });
-    else if (user.role === "admin")
-      navigate("/admin-dashboard", { replace: true });
-    else
-      navigate("/employee-dashboard", { replace: true });
+    const role = (user.role || "").toLowerCase().trim();
+    console.log("Login finalized. User role:", role);
+    navigate("/dashboard", { replace: true });
   };
 
   return (
     <div className="emslogin__wrapper">
-      <div className="emslogin__card">
+      <div className="emslogin__card-wrap">
+       <div className="emslogin__card">
 
-        {/* Header */}
         <div className="emslogin__header">
-          <div className="emslogin__logo">EMS</div>
-          <h1 className="emslogin__title">Welcome back</h1>
-          <p className="emslogin__subtitle">Employee Management System</p>
+          <div className="emslogin__logo" style={{ marginBottom: '24px' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              background: '#fff',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.06)',
+              border: '1.5px solid #f1f5f9'
+            }}>
+              <img
+                src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
+                alt="Logo"
+                style={{ width: '48px', height: '48px', objectFit: 'contain' }}
+                onError={(e) => {
+                  if (e.target.src !== window.location.origin + "/logo.jpg") {
+                    e.target.src = "/logo.jpg";
+                  } else {
+                    e.target.style.display = 'none';
+                    e.target.parentNode.innerText = 'UAV';
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <h1 className="emslogin__title">Work Stock Pro</h1>
         </div>
 
         {/* LOGIN */}
@@ -93,49 +105,82 @@ export default function Login() {
           <div className="emslogin__form">
             <form onSubmit={handleLogin} style={{ display: "contents" }}>
               <div className="emslogin__field">
-                <label>Username</label>
-                <input name="username" required disabled={loading} />
+                <label className="emslogin__label">Username</label>
+                <input
+                  name="username"
+                  className="emslogin__input"
+                  placeholder="Enter your username"
+                  required
+                  disabled={loading}
+                />
               </div>
 
               <div className="emslogin__field">
-                <label>Password</label>
-                <input type="password" name="password" required disabled={loading} />
+                <label className="emslogin__label">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  className="emslogin__input"
+                  placeholder="••••••••"
+                  required
+                  disabled={loading}
+                />
               </div>
 
               {error && <div className="emslogin__error">{error}</div>}
 
-              <button disabled={loading}>
+               {sessionMsg && (
+                <div style={{
+                  background: "#fef3c7", color: "#92400e",
+                  border: "1px solid #fde68a", borderRadius: 8,
+                  padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                  marginBottom: 14, display: "flex", alignItems: "center", gap: 8
+                }}>
+                  ⚠️ {sessionMsg}
+                </div>
+              )}
+
+              {error && <div className="emslogin__error">{error}</div>}
+
+              <button className="emslogin__btn-primary" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </button>
             </form>
 
-            <button onClick={() => setStep("forgot")}>
+            <button className="emslogin__btn-secondary" onClick={() => setStep("forgot")}>
               Forgot Password?
             </button>
           </div>
         )}
 
-        {/* OTP */}
+        
         {step === "otp" && (
           <OtpVerification
             tempToken={tempToken}
             setupRequired={setupRequired}
             qrCode={qrCode}
             onBack={() => setStep("login")}
+            onSuccess={finalizeLogin}
           />
         )}
 
-        {/* FORGOT PASSWORD */}
+        
         {step === "forgot" && (
           <div className="emslogin__form">
-            <input
-              type="email"
-              placeholder="Enter email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <div className="emslogin__field">
+              <label className="emslogin__label">Email Address</label>
+              <input
+                type="email"
+                className="emslogin__input"
+                placeholder="email@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
             <button
+              className="emslogin__btn-primary"
+              disabled={loading}
               onClick={async () => {
                 if (!email) return setError("Email required");
                 try {
@@ -150,29 +195,41 @@ export default function Login() {
                 }
               }}
             >
-              Send OTP
+              {loading ? "Sending..." : "Send OTP"}
             </button>
 
-            <button onClick={() => setStep("login")}>Back</button>
+            <button className="emslogin__btn-secondary" onClick={() => setStep("login")}>
+              Back to Login
+            </button>
           </div>
         )}
 
-        {/* RESET */}
+        
         {step === "reset" && (
           <div className="emslogin__form">
-            <input
-              placeholder="OTP"
-              value={resetOtp}
-              onChange={(e) => setResetOtp(e.target.value)}
-            />
-            <input
-              type="password"
-              placeholder="New Password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
+            <div className="emslogin__field">
+              <label className="emslogin__label">Verification Code</label>
+              <input
+                className="emslogin__input"
+                placeholder="6-digit code"
+                value={resetOtp}
+                onChange={(e) => setResetOtp(e.target.value)}
+              />
+            </div>
+            <div className="emslogin__field">
+              <label className="emslogin__label">New Password</label>
+              <input
+                type="password"
+                className="emslogin__input"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
 
             <button
+              className="emslogin__btn-primary"
+              disabled={loading}
               onClick={async () => {
                 try {
                   setLoading(true);
@@ -190,12 +247,15 @@ export default function Login() {
                 }
               }}
             >
-              Reset Password
+              {loading ? "Resetting..." : "Reset Password"}
             </button>
 
-            <button onClick={() => setStep("login")}>Back</button>
+            <button className="emslogin__btn-secondary" onClick={() => setStep("login")}>
+              Cancel
+            </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

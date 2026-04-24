@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../utils/api";
 import "../styles/AttendanceView.css";
+import "../styles/EmployeeDashboard.css";
 
 export default function AttendanceView() {
+  const navigate = useNavigate();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const today = new Date();
+  const minDate = new Date(new Date().setFullYear(today.getFullYear() - 2)).toISOString().split("T")[0];
+  const maxDate = new Date(new Date().setFullYear(today.getFullYear() + 2)).toISOString().split("T")[0];
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   const formatDate = (date) => {
     const y = date.getFullYear();
@@ -55,20 +59,46 @@ export default function AttendanceView() {
   return (
     <div className="attendance-view-container">
       <header className="attendance-view-header">
-        <h1 className="attendance-view-title">My Attendance History</h1>
-        <Link to="/employee-dashboard" className="filter-btn" style={{ textDecoration: 'none' }}>
-           Back to Dashboard
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{
+            width: 42, height: 42,
+            background: "#ffffff",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            overflow: "hidden",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+          }}>
+            <img
+              src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
+              alt="Logo"
+              style={{ width: 36, height: 36, objectFit: "contain" }}
+              onError={(e) => {
+                if (e.target.src !== window.location.origin + "/logo.jpg") {
+                  e.target.src = "/logo.jpg";
+                } else {
+                  e.target.style.display = 'none';
+                }
+              }}
+            />
+          </div>
+          <h1 className="attendance-view-title" style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1e293b' }}>
+            Attendance History
+          </h1>
+        </div>
       </header>
 
       <div className="attendance-filters">
         <div className="filter-group">
           <label>From Date</label>
-          <input type="date" name="from" value={filters.from} onChange={handleFilterChange} />
+          <input type="date" name="from" value={filters.from} min={minDate} max={maxDate} onChange={handleFilterChange} />
         </div>
         <div className="filter-group">
           <label>To Date</label>
-          <input type="date" name="to" value={filters.to} onChange={handleFilterChange} />
+          <input type="date" name="to" value={filters.to} min={minDate} max={maxDate} onChange={handleFilterChange} />
         </div>
         <button className="filter-btn" onClick={fetchAttendance}>Apply Filters</button>
       </div>
@@ -107,6 +137,36 @@ export default function AttendanceView() {
           </table>
         )}
       </div>
-    </div>
+
+      {/* ── Back Button ── */}
+      <div style={{ marginTop: "2rem", display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={() => {
+            const role = JSON.parse(localStorage.getItem("user"))?.role;
+            if (role === "super_admin") navigate("/super-admin-dashboard");
+            else if (role === "admin_hr") navigate("/admin-dashboard");
+            else if (role === "admin") navigate("/admin-dashboard");
+            else navigate("/employee-dashboard");
+          }}
+          style={{
+            background: "#fff",
+            color: "#475569",
+            border: "1px solid #e2e8f0",
+            padding: "10px 24px",
+            borderRadius: "10px",
+            fontWeight: "700",
+            fontSize: "14px",
+            cursor: "pointer",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
+
+    </div> 
   );
 }

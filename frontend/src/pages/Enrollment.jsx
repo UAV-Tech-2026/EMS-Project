@@ -32,16 +32,13 @@ export default function AdminEnrollment() {
     setExperiences([...experiences, { organization: "", role: "", from: "", to: "" }]);
   };
 
- 
   const validateForm = () => {
-    
     const phoneRegex = /^\+91-[0-9]{10}$/;
     if (!phoneRegex.test(form.phone)) {
       setError("Phone must be in format: +91-XXXXXXXXXX");
       return false;
     }
 
-    
     const emailRegex = /^[a-zA-Z0-9._%+-]+@uavtech\.ai$/;
     if (!emailRegex.test(form.email)) {
       setError("Official email must end with @uavtech.ai");
@@ -66,23 +63,18 @@ export default function AdminEnrollment() {
       return;
     }
 
-    if (!validateForm()) return; 
+    if (!validateForm()) return;
 
     try {
-      const formData = new FormData();
-      
-      
-      Object.keys(form).forEach(key => formData.append(key, form[key]));
-      
-      
-      formData.append("experiences", JSON.stringify(experiences));
+      const payload = {
+        ...form,
+        experiences: JSON.stringify(experiences),
+        aadhar_proof: adharFile,
+        address_proof: addressFile,
+      };
 
-      if (adharFile) formData.append("aadhar_proof", adharFile);
-      if (addressFile) formData.append("address_proof", addressFile);
-
-      const res = await axios.post(`${API_URL}/employees`, formData, {
+      await axios.post(`${API_URL}/employees/enroll`, payload, {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
@@ -91,7 +83,6 @@ export default function AdminEnrollment() {
       setTimeout(() => navigate("/admin-dashboard"), 2000);
 
     } catch (err) {
-      
       setError(err.response?.data?.msg || err.response?.data?.message || "Enrollment failed");
     }
   };
@@ -111,22 +102,23 @@ export default function AdminEnrollment() {
           <div className="enrol-grid">
             <input name="name" placeholder="Full Name" onChange={handleChange} required />
             <input name="father_name" placeholder="Father Name" onChange={handleChange} />
-            
-            
-            <input 
-              name="phone" 
-              placeholder="+91-XXXXXXXXXX" 
+
+            <input
+              name="phone"
+              placeholder="+91-XXXXXXXXXX"
               title="Example: +91-9876543210"
-              onChange={handleChange} 
-              required />
-            <input 
-              name="email" 
-              placeholder="Official Email (@uavtech.ai)" 
-              onChange={handleChange} 
-              required />
+              onChange={handleChange}
+              required
+            />
+            <input
+              name="email"
+              placeholder="Official Email (@uavtech.ai)"
+              onChange={handleChange}
+              required
+            />
             <input name="alt_email" placeholder="Alternate Email" type="email" onChange={handleChange} />
             <input name="designation" placeholder="Designation" onChange={handleChange} />
-            
+
             <select name="role" value={form.role} onChange={handleChange} required>
               <option value="">Select Role</option>
               <option value="employee">Employee</option>
@@ -158,15 +150,15 @@ export default function AdminEnrollment() {
           </section>
 
           <section className="enrol-section">
-            <h4>Documents</h4>
+            <h4>Documents (Drive Links)</h4>
             <div className="enrol-file-grid">
               <div className="enrol-file-input">
-                <label>Valid Proof (PDF/JPG)</label>
-                <input type="file" onChange={(e) => setAdharFile(e.target.files[0])} />
+                <label>Valid Proof (Google Drive Link)</label>
+                <input type="url" placeholder="Paste link here" onChange={(e) => setAdharFile(e.target.value)} />
               </div>
               <div className="enrol-file-input">
-                <label>Address Proof (PDF/JPG)</label>
-                <input type="file" onChange={(e) => setAddressFile(e.target.files[0])} />
+                <label>Address Proof (Google Drive Link)</label>
+                <input type="url" placeholder="Paste link here" onChange={(e) => setAddressFile(e.target.value)} />
               </div>
             </div>
           </section>

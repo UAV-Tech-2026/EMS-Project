@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed_user.js"
+    "seed": "node seed_user.js",
+    "migrate": "node migrate_bank_pan.mjs"
   },
   "dependencies": {
     "axios": "^1.13.6",

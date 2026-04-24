@@ -6,7 +6,7 @@ async function initialize() {
   try {
     await client.query("BEGIN");
 
-    // 1. USERS
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -24,7 +24,7 @@ async function initialize() {
       )
     `);
 
-    // 2. EMPLOYEES
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS employees (
         id SERIAL PRIMARY KEY,
@@ -32,20 +32,23 @@ async function initialize() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         fullname VARCHAR(100),
         designation VARCHAR(100),
+        department VARCHAR(100),
         phone VARCHAR(20),
         adhar_path TEXT,
         address_path TEXT,
+        account_number VARCHAR(20),
+        pan_number VARCHAR(10),
         basic_salary NUMERIC DEFAULT 0,
         hra NUMERIC DEFAULT 0,
         epf_amount NUMERIC DEFAULT 0,
         pt_amount NUMERIC DEFAULT 0,
         total_cl INTEGER DEFAULT 12,
-        total_sl INTEGER DEFAULT 12,
+        total_ml INTEGER DEFAULT 12,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // 3. LEAVES
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS leaves (
         id SERIAL PRIMARY KEY,
@@ -58,13 +61,14 @@ async function initialize() {
         total_days INTEGER,
         reason TEXT,
         status VARCHAR(20) DEFAULT 'pending',
+        certificate_path TEXT,
         approved_by INTEGER REFERENCES users(id),
         approved_at TIMESTAMP,
         applied_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // 4. ATTENDANCE
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS attendance (
         id SERIAL PRIMARY KEY,
@@ -76,11 +80,12 @@ async function initialize() {
         status VARCHAR(20),
         marked_by INTEGER REFERENCES users(id),
         hours_worked VARCHAR(50),
+        ot_hours NUMERIC DEFAULT 0,
         UNIQUE (user_id, attendance_date)
       )
     `);
 
-    // 5. TASKS
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,
@@ -88,19 +93,21 @@ async function initialize() {
         assigned_to INTEGER REFERENCES users(id),
         assigned_by INTEGER REFERENCES users(id),
         reviewed_by INTEGER REFERENCES users(id),
-        man_hours VARCHAR(50),
+        target_date VARCHAR(50),
         start_date DATE,
         due_date DATE,
         end_date DATE,
         status VARCHAR(50) DEFAULT 'Pending',
         days_taken INTEGER,
-        depends_on INTEGER REFERENCES users(id),
+        depends_on INTEGER REFERENCES tasks(id),
+        parent_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+        description TEXT,
         link TEXT,
         assignment_date DATE DEFAULT CURRENT_DATE
       )
     `);
 
-    // 6. DPR ENTRIES
+   
     await client.query(`
       CREATE TABLE IF NOT EXISTS dpr_entries (
         id SERIAL PRIMARY KEY,
@@ -119,7 +126,7 @@ async function initialize() {
       )
     `);
 
-    // 7. DPR TASKS
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS dpr_tasks (
         id SERIAL PRIMARY KEY,
@@ -134,7 +141,7 @@ async function initialize() {
       )
     `);
 
-    // 8. PAYSLIP REQUESTS
+    
     await client.query(`
       CREATE TABLE IF NOT EXISTS payslip_requests (
         id SERIAL PRIMARY KEY,
@@ -150,7 +157,89 @@ async function initialize() {
       )
     `);
 
-    // SEED SUPERADMIN if not exists
+   
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS payroll_history (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        month VARCHAR(7), 
+        from_date DATE,
+        to_date DATE,
+        basic NUMERIC DEFAULT 0,
+        hra NUMERIC DEFAULT 0,
+        gross NUMERIC DEFAULT 0,
+        epf NUMERIC DEFAULT 0,
+        pt NUMERIC DEFAULT 0,
+        lop NUMERIC DEFAULT 0,
+        ot_pay NUMERIC DEFAULT 0,
+        net_salary NUMERIC DEFAULT 0,
+        present_days NUMERIC DEFAULT 0,
+        lop_days NUMERIC DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'approved',
+        approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, month)
+      )
+    `);
+
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS meetings (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        meeting_date DATE NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        meeting_link TEXT,
+        status VARCHAR(20) DEFAULT 'Pending',
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        started_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        feature_name VARCHAR(100) NOT NULL,
+        can_read BOOLEAN DEFAULT FALSE,
+        can_write BOOLEAN DEFAULT FALSE,
+        UNIQUE (user_id, feature_name)
+      )
+    `);
+
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bulletins (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) DEFAULT 'Bulletin',
+        content TEXT NOT NULL,
+        author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS shared_documents (
+        id SERIAL PRIMARY KEY,
+        shared_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        document_name VARCHAR(255),
+        file_name VARCHAR(255),
+        file_path TEXT,
+        file_size BIGINT DEFAULT 0,
+        file_type VARCHAR(100),
+        target_role VARCHAR(50) DEFAULT 'admin',
+        target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        message TEXT DEFAULT '',
+        shared_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    
     const adminCheck = await client.query("SELECT * FROM users WHERE role = 'super_admin'");
     if (adminCheck.rows.length === 0) {
       const hash = await bcrypt.hash("super123", 10);

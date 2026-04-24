@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { authApi } from "../utils/api";
 import "../styles/Login.css";
 
-export default function OtpVerification({ tempToken, setupRequired, qrCode, onBack }) {
-  const navigate = useNavigate();
+// ✅ FIX: Removed useNavigate — navigation is now handled by parent via onSuccess()
+// This ensures the same finalizeLogin logic (correct paths, localStorage) is always used
+export default function OtpVerification({ tempToken, setupRequired, qrCode, onBack, onSuccess }) {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -12,11 +12,10 @@ export default function OtpVerification({ tempToken, setupRequired, qrCode, onBa
   const handleVerify = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) return setError("Please enter 6-digit code");
-    
+
     setLoading(true);
     setError("");
     try {
-      // API call to verify the OTP (Google Authenticator or email OTP)
       const res = await authApi.post("/verify-otp", {
         tempToken,
         otp,
@@ -24,14 +23,9 @@ export default function OtpVerification({ tempToken, setupRequired, qrCode, onBa
       });
 
       if (res.data.token && res.data.user) {
-        // Success: Store credentials and navigate to the appropriate dashboard
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        
-        const { role } = res.data.user;
-        if (role === "super_admin")  navigate("/super-admin-dashboard");
-        else if (role === "admin")   navigate("/admin-dashboard");
-        else                         navigate("/employee-dashboard");
+        // ✅ FIX: Delegate to parent's finalizeLogin instead of navigating here
+        // This guarantees localStorage is set and the correct route is used
+        onSuccess({ token: res.data.token, user: res.data.user });
       } else {
         setError("Invalid response from server");
       }
@@ -44,74 +38,95 @@ export default function OtpVerification({ tempToken, setupRequired, qrCode, onBa
 
   return (
     <div className="emslogin__form">
-      <p className="emslogin__section-title">
-        {setupRequired ? "Security Setup" : "Two-Factor Auth"}
-      </p>
-      
+      <div style={{ textAlign: "center", marginBottom: "24px" }}>
+        <h2 className="emslogin__title" style={{ fontSize: "20px", marginBottom: "8px" }}>
+          {setupRequired ? "Security Setup" : "Two-Factor Authentication"}
+        </h2>
+        <p style={{ fontSize: "14px", color: "var(--lg-muted)" }}>
+          {setupRequired
+            ? "Protect your account with Google Authenticator"
+            : "Enter the code from your authenticator app"}
+        </p>
+      </div>
+
       {setupRequired && qrCode && (
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <p style={{ fontSize: "12px", color: "#64748b", marginBottom: "10px" }}>
-            Scan this QR code with Google Authenticator app on your phone
+        <div style={{
+          textAlign: "center",
+          marginBottom: "28px",
+          background: "rgba(31, 78, 121, 0.03)",
+          padding: "24px",
+          borderRadius: "16px",
+          border: "1px dashed rgba(31, 78, 121, 0.2)"
+        }}>
+          <p style={{ fontSize: "12px", fontWeight: "600", color: "#1F4E79", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Step 1: Scan QR Code
           </p>
-          <img src={qrCode} alt="QR Code" style={{ 
-            width: "160px", 
-            borderRadius: "12px", 
-            padding: "10px", 
+          <div style={{
+            display: "inline-block",
+            padding: "12px",
             background: "#fff",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
-          }} />
+            borderRadius: "16px",
+            boxShadow: "0 10px 20px rgba(0,0,0,0.06)"
+          }}>
+            <img src={qrCode} alt="QR Code" style={{ width: "160px", display: "block" }} />
+          </div>
+          <p style={{ fontSize: "11px", color: "#64748b", marginTop: "14px", lineHeight: "1.5" }}>
+            Open Google Authenticator and scan this code <br/> to link your account.
+          </p>
         </div>
       )}
 
-      <p style={{ fontSize: "13px", color: "#64748b", marginBottom: "16px", textAlign: "center" }}>
-        {setupRequired 
-          ? "Enter the 6-digit code from your app to complete setup." 
-          : "Enter the code from your Google Authenticator app to continue."}
-      </p>
-
       <form onSubmit={handleVerify}>
-        <div className="emslogin__field">
-          <label className="emslogin__label">6-Digit Code</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            className="emslogin__input"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="000000"
-            required
-            autoFocus
-            disabled={loading}
-            style={{ 
-              textAlign: "center", 
-              letterSpacing: "8px", 
-              fontSize: "24px", 
-              fontWeight: "800",
-              color: "#1F4E79"
-            }}
-          />
+        <div className="emslogin__field" style={{ marginBottom: "24px" }}>
+          <label className="emslogin__label" style={{ textAlign: "center", display: "block", marginBottom: "12px" }}>
+            {setupRequired ? "Step 2: Enter 6-Digit Code" : "Verification Code"}
+          </label>
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              className="emslogin__input"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000 000"
+              required
+              autoFocus
+              disabled={loading}
+              style={{
+                textAlign: "center",
+                letterSpacing: "12px",
+                fontSize: "28px",
+                fontWeight: "800",
+                color: "#1F4E79",
+                height: "70px",
+                background: "#fcfdfe"
+              }}
+            />
+          </div>
         </div>
 
-        {error && <div className="emslogin__error">{error}</div>}
+        {error && <div className="emslogin__error" style={{ marginBottom: "20px" }}>{error}</div>}
 
-        <button 
-          type="submit" 
-          className="emslogin__btn-primary" 
-          disabled={loading || otp.length !== 6}
-          style={{ marginTop: "10px" }}
-        >
-          {loading ? "Verifying..." : "Verify & Login"}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <button
+            type="submit"
+            className="emslogin__btn-primary"
+            disabled={loading || otp.length !== 6}
+            style={{ margin: 0 }}
+          >
+            {loading ? "Verifying..." : "Verify & Sign In"}
+          </button>
 
-        <button 
-          type="button" 
-          className="emslogin__btn-secondary" 
-          onClick={onBack} 
-          disabled={loading}
-        >
-          ← Back to Login
-        </button>
+          <button
+            type="button"
+            className="emslogin__btn-secondary"
+            onClick={onBack}
+            disabled={loading}
+          >
+            ← Back to Login
+          </button>
+        </div>
       </form>
     </div>
   );

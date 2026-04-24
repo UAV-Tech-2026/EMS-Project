@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../utils/api";
-import { Search, Users, Briefcase, GraduationCap } from "lucide-react";
+import { Search, Users, Briefcase, GraduationCap, Camera, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import "../styles/DirectoryPanel.css";
 
 export default function DirectoryPanel() {
@@ -9,22 +9,59 @@ export default function DirectoryPanel() {
   const [error, setError]           = useState(null);
   const [filter, setFilter]         = useState("all");
   const [search, setSearch]         = useState("");
+  const [uploadingId, setUploadingId] = useState(null);
+  const [toast, setToast]           = useState(null);
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isSuper = user.role === "super_admin";
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchDirectory = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/attendance/directory");
+      setPeople(res.data);
+    } catch (err) {
+      console.error("Directory fetch error:", err);
+      setError("Failed to load directory. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDirectory = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get("/attendance/directory");
-        setPeople(res.data);
-      } catch (err) {
-        console.error("Directory fetch error:", err);
-        setError("Failed to load directory. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDirectory();
   }, []);
+
+  const handleFileChange = async (e, targetUserId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("error", "File too large (Max 2MB)");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("profile_pic", file);
+    formData.append("target_user_id", targetUserId);
+
+    setUploadingId(targetUserId);
+    try {
+      await api.post("/employees/upload-profile-pic", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      showToast("success", "Profile photo updated successfully!");
+      fetchDirectory(); // Refresh to see new initials/photo if we added photo support to table
+    } catch (err) {
+      showToast("error", "Failed to upload photo");
+    } finally {
+      setUploadingId(null);
+    }
+  };
 
   const empCount  = people.filter(p => p.role === "employee").length;
   const intCount  = people.filter(p => p.role === "intern").length;
@@ -55,6 +92,20 @@ export default function DirectoryPanel() {
 
   return (
     <div className="dp-wrap">
+      
+      {toast && (
+        <div style={{
+          position: "fixed", top: "20px", right: "20px", zIndex: 1000,
+          background: toast.type === "success" ? "#dcfce7" : "#fee2e2",
+          color: toast.type === "success" ? "#166534" : "#991b1b",
+          padding: "12px 20px", borderRadius: "8px", border: "1px solid currentColor",
+          display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+          fontSize: "13px", fontWeight: 600
+        }}>
+          {toast.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+          {toast.msg}
+        </div>
+      )}
 
       {/* ── Summary cards ── */}
       <div className="dp-summary">
@@ -130,6 +181,7 @@ export default function DirectoryPanel() {
                 <th>Role</th>
                 <th>Designation</th>
                 <th>Status</th>
+                {isSuper && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -159,6 +211,31 @@ export default function DirectoryPanel() {
                         {isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
+                    {isSuper && (
+                      <td>
+                        <label style={{ 
+                          display: "inline-flex", alignItems: "center", gap: "5px",
+                          padding: "6px 12px", background: "#f1f5f9", borderRadius: "6px",
+                          fontSize: "11px", fontWeight: 700, color: "#475569", 
+                          cursor: uploadingId === p.id ? "not-allowed" : "pointer",
+                          transition: "all 0.2s", border: "1px solid #e2e8f0"
+                        }}>
+                          {uploadingId === p.id ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Camera size={12} />
+                          )}
+                          {uploadingId === p.id ? "Uploading..." : "Set Photo"}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            style={{ display: "none" }} 
+                            disabled={uploadingId === p.id}
+                            onChange={(e) => handleFileChange(e, p.id)} 
+                          />
+                        </label>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

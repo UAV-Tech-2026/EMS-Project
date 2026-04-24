@@ -1,57 +1,116 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../utils/api";
+import {
+  BarChart3, LogOut, Calendar,
+  Bell, ClipboardList, FileSpreadsheet,
+  SquareCheck, LayoutDashboard,
+  GitBranch, User, Settings as SettingsIcon,
+  FileText, Plane,
+  MessageSquare,
+  ShieldAlert
+} from "lucide-react";
+import EmployeeRequestForm from "../components/EmployeeRequestForm";
+import MeetingCalendar from "./MeetingCalendar";
+
 import "../styles/EmployeeDashboard.css";
+
+const STATUS_META = {
+  done: { color: "#10b981", label: "Completed" },
+  overdue: { color: "#ef4444", label: "Overdue" },
+  soon: { color: "#f59e0b", label: "Due Soon" },
+  pending: { color: "#3b82f6", label: "Pending" }
+};
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [user,            setUser]            = useState(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [profilePic,      setProfilePic]      = useState(null);
+  const [user, setUser] = useState(null);
+  const [profilePic, setProfilePic] = useState(null);
+  const [activeView, setActiveView] = useState("dashboard");
 
-  // KPI stats
   const [presentCount, setPresentCount] = useState(0);
-  const [absentCount,  setAbsentCount]  = useState(0);
-  const [leaveCount,   setLeaveCount]   = useState(0);
+  const [absentCount, setAbsentCount] = useState(0);
+  const [leaveCount, setLeaveCount] = useState(0);
 
-  // Dashboard data
   const [activity, setActivity] = useState([]);
   const [eodTasks, setEodTasks] = useState([]);
-  const [myTasks,  setMyTasks]  = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
+  const [bulletins, setBulletins] = useState([]);
 
-  // Loading / error states
-  const [statsLoading,    setStatsLoading]    = useState(true);
-  const [eodLoading,      setEodLoading]      = useState(true);
-  const [tasksLoading,    setTasksLoading]    = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [eodLoading, setEodLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [bulletsLoading, setBulletsLoading] = useState(true);
 
-  // ── Load user from localStorage (runs first) ───────────────────────────────
+  // ── Notifications state ──
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(true);
+  const notifRef = useRef(null);
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  // ── Close dropdown on outside click ──
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ── Fetch notifications ──
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await api.get("/notifications/my");
+        setNotifications(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+        setNotifications([]);
+      } finally {
+        setNotifLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await api.post("/notifications/mark-read");
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (err) {
+      console.error("Failed to mark notifications as read:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const stored = localStorage.getItem("user");
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         setUser(parsed);
-        // Restore saved profile pic if any
         if (parsed.profilePic) setProfilePic(parsed.profilePic);
       } catch {
-        // corrupted storage — clear and redirect to login
         localStorage.clear();
         navigate("/login");
       }
+    } else {
+      navigate("/login");
     }
   }, [navigate]);
 
-  // ── Fetch attendance stats ─────────────────────────────────────────────────
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const res = await api.get("/attendance/stats/my");
         setPresentCount(res.data.presentCount ?? 0);
-        setAbsentCount(res.data.absentCount   ?? 0);
-        setLeaveCount(res.data.leaveCount     ?? 0);
+        setAbsentCount(res.data.absentCount ?? 0);
+        setLeaveCount(res.data.leaveCount ?? 0);
       } catch (err) {
         console.error("Failed to fetch attendance stats:", err);
       } finally {
@@ -61,7 +120,6 @@ export default function EmployeeDashboard() {
     fetchStats();
   }, []);
 
-  // ── Fetch EOD tasks ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchEodTasks = async () => {
       try {
@@ -77,18 +135,19 @@ export default function EmployeeDashboard() {
     fetchEodTasks();
   }, []);
 
-  // ── Fetch assigned tasks ───────────────────────────────────────────────────
-  // BUG FIX: filter by assigned_to_name case-insensitively + trimmed
   useEffect(() => {
     const fetchMyTasks = async () => {
       try {
-        const res    = await api.get("/tasks/list");
+        const res = await api.get("/tasks/list");
         const stored = localStorage.getItem("user");
         if (stored) {
-          const parsed   = JSON.parse(stored);
-          const myName   = (parsed.fullname || "").trim().toLowerCase();
+          const parsed = JSON.parse(stored);
+
+          // ✅ FIX: Match by user ID (reliable) instead of name string comparison.
+          // Name matching is fragile (case, spaces) and misses nested work items.
+          const myUserId = parsed.id;
           const filtered = (res.data || []).filter(
-            t => (t.assigned_to_name || "").trim().toLowerCase() === myName
+            t => String(t.assigned_to) === String(myUserId)
           );
           setMyTasks(filtered);
         }
@@ -102,7 +161,6 @@ export default function EmployeeDashboard() {
     fetchMyTasks();
   }, []);
 
-  // ── Fetch activity log ─────────────────────────────────────────────────────
   useEffect(() => {
     const fetchActivity = async () => {
       try {
@@ -118,35 +176,33 @@ export default function EmployeeDashboard() {
     fetchActivity();
   }, []);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchBulletins = async () => {
+      try {
+        const res = await api.get("/bulletins");
+        setBulletins(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Failed to fetch bulletins:", err);
+        setBulletins([]);
+      } finally {
+        setBulletsLoading(false);
+      }
+    };
+    fetchBulletins();
+  }, []);
+
   const handleLogout = useCallback(() => {
     localStorage.clear();
     navigate("/login");
   }, [navigate]);
 
-  const handleProfilePicUpload = useCallback((e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imageDataUrl = reader.result;
-      setProfilePic(imageDataUrl);
-      setUser(prev => {
-        const updated = { ...prev, profilePic: imageDataUrl };
-        localStorage.setItem("user", JSON.stringify(updated));
-        return updated;
-      });
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  const initials = (name = "") =>
+    name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const isLead = user?.designation?.toLowerCase().includes("lead");
 
-  // BUG FIX: parse deadline with explicit time to avoid UTC offset issues in IST
   const parseDeadline = (deadlineStr) => {
     if (!deadlineStr) return null;
-    // If it's a date-only string like "2026-03-26", append time to avoid UTC midnight shift
     return deadlineStr.length === 10
       ? new Date(deadlineStr + "T00:00:00")
       : new Date(deadlineStr);
@@ -154,286 +210,417 @@ export default function EmployeeDashboard() {
 
   const getEodCardStatus = (task) => {
     const deadline = parseDeadline(task.deadline);
-    const now      = new Date();
+    const now = new Date();
     if (task.status === "done" || task.status === "Completed") return "done";
-    if (deadline && now > deadline)                             return "overdue";
-    if (deadline && deadline - now < 2 * 60 * 60 * 1000)      return "soon";
+    if (deadline && now > deadline) return "overdue";
+    if (deadline && deadline - now < 2 * 60 * 60 * 1000) return "soon";
     return "pending";
   };
 
-  const STATUS_META = {
-    done:    { cardClass: "eod-card--done",    badgeClass: "badge--done",    label: "✓ Done"      },
-    overdue: { cardClass: "eod-card--overdue", badgeClass: "badge--overdue", label: "⚠ Overdue"   },
-    soon:    { cardClass: "eod-card--soon",    badgeClass: "badge--soon",    label: "⏰ Due Soon"  },
-    pending: { cardClass: "eod-card--pending", badgeClass: "badge--pending", label: "🕐 Pending"  },
-  };
+  const logoUrl = import.meta.env.VITE_LOGO_URL || "/logo.jpg";
 
-  const TASK_STATUS_STYLE = {
-    Completed:   { bg: "#dcfce7", color: "#166534" },
-    "In Progress": { bg: "#fef08a", color: "#854d0e" },
-    default:     { bg: "#f1f5f9", color: "#475569"  },
-  };
-
-  const getTaskStyle = (status) =>
-    TASK_STATUS_STYLE[status] || TASK_STATUS_STYLE.default;
-
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <>
-      <div className="empdb__layout">
+    <div className="emp-shell">
+      {/* ── SIDEBAR ── */}
+      <aside className="emp-sidebar">
+        <div className="emp-logo-area">
+          <div className="emp-logo-mark">
+            <div style={{
+              width: 38, height: 38,
+              background: "#ffffff",
+              borderRadius: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden"
+            }}>
+              <img
+                src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
+                alt="Logo"
+                style={{ width: 34, height: 34, objectFit: "contain" }}
+                onError={(e) => {
+                  if (e.target.src !== window.location.origin + "/logo.jpg") {
+                    e.target.src = "/logo.jpg";
+                  } else {
+                    e.target.style.display = 'none';
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <div className="emp-logo-text">UAV TECH</div>
+              <div className="emp-logo-sub">Employee Portal</div>
+            </div>
+          </div>
+        </div>
 
-        {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-        <aside className="empdb__sidebar">
-          <div className="empdb__logo">
-            UAV Tech Pvt Ltd
-            <span>Employee Portal</span>
+        <nav className="emp-nav">
+          <div className="emp-nav-label">MAIN</div>
+          <div
+            className={`emp-nav-item ${activeView === "dashboard" ? "emp-nav-active" : ""}`}
+            onClick={() => setActiveView("dashboard")}
+          >
+            <LayoutDashboard size={18} /> Dashboard
           </div>
 
-          <nav className="empdb__nav">
-            <a className="empdb__nav-link empdb__nav-link--active"
-               onClick={() => navigate("/employee-dashboard")}>🏠 Dashboard</a>
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/attendance")}>📅 View Attendance</a>
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/apply-leave")}>🌴 Leave</a>
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/dpr")}>📝 Daily Report</a>
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/payslips")}>💰 Payslips</a>
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/documents")}>📄 Documents</a>
-            {isLead && (
-              <a className="empdb__nav-link"
-                 onClick={() => navigate("/task-management")}>📊 Tasks (Lead)</a>
-            )}
-            <a className="empdb__nav-link"
-               onClick={() => navigate("/settings")}>⚙️ Settings</a>
-          </nav>
+          <div
+            className={`emp-nav-item ${activeView === "requests" ? "emp-nav-active" : ""}`}
+            onClick={() => setActiveView("requests")}
+          >
+            <MessageSquare size={18} /> Requests
+          </div>
 
-          <button className="empdb__sidebar-logout" onClick={handleLogout}>
-            🚪 Logout
+          <div className="emp-nav-label">TOOLS</div>
+
+          {isLead && (
+            <div className="emp-nav-item" onClick={() => navigate("/task-management")}>
+              <GitBranch size={18} /> Team Tasks
+            </div>
+          )}
+
+          <div className="emp-nav-item" onClick={() => navigate("/settings")}>
+            <SettingsIcon size={18} /> Settings
+          </div>
+        </nav>
+
+        <div className="emp-sidebar-footer">
+          <button className="emp-logout-btn" onClick={handleLogout}>
+            <LogOut size={15} /> Logout
           </button>
-        </aside>
+        </div>
+      </aside>
 
-        {/* ── Main ─────────────────────────────────────────────────────────── */}
-        <div className="empdb__main">
-
-          {/* Header */}
-          <header className="empdb__header">
-            <div>
-              <h2 className="empdb__header-title">Employee Dashboard</h2>
-              <p className="empdb__header-sub">
-                Welcome back, {user?.fullname || user?.name || "Employee"} 👋
-              </p>
+      {/* ── MAIN ── */}
+      <div className="emp-main">
+        {/* Topbar */}
+        <div className="emp-topbar">
+          <div>
+            <div className="emp-page-sub">
+              Welcome  <strong>{user?.fullname || "Employee"}</strong>
+            </div>
+          </div>
+          <div className="emp-topbar-right">
+            <div className="emp-date-chip">
+              {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </div>
 
-            <div className="empdb__topbar-right">
-              <div className="empdb__profile"
-                   onClick={() => setShowProfileMenu(p => !p)}>
-                {profilePic ? (
-                  <img src={profilePic} alt="Profile" className="empdb__avatar" />
-                ) : (
-                  <div className="empdb__avatar-placeholder">
-                    {user?.fullname?.charAt(0)?.toUpperCase() || "U"}
-                  </div>
+            {/* ── Bell / Notifications ── */}
+            <div className="emp-notif-wrapper" ref={notifRef}>
+              <button
+                className="emp-notif-bell"
+                onClick={() => setNotifOpen(prev => !prev)}
+                aria-label="Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="emp-notif-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
                 )}
+              </button>
 
-                {showProfileMenu && (
-                  <div className="empdb__profile-menu"
-                       onClick={e => e.stopPropagation()}>
-                    <p className="empdb__profile-name">{user?.fullname}</p>
-                    <p className="empdb__profile-email">{user?.email}</p>
-                    <label className="empdb__profile-upload-label">
-                      📷 Change Photo
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="empdb__profile-file"
-                        onChange={handleProfilePicUpload}
-                      />
-                    </label>
-                    <button className="empdb__logout-btn" onClick={handleLogout}>
-                      🚪 Logout
-                    </button>
+              {notifOpen && (
+                <div className="emp-notif-dropdown">
+                  <div className="emp-notif-header">
+                    <span className="emp-notif-title">
+                      Notifications
+                      {unreadCount > 0 && (
+                        <span className="emp-notif-count-pill">{unreadCount} new</span>
+                      )}
+                    </span>
+                    {unreadCount > 0 && (
+                      <button className="emp-notif-mark-read" onClick={handleMarkAllRead}>
+                        Mark all read
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
+
+                  <div className="emp-notif-list">
+                    {notifLoading ? (
+                      <div className="emp-notif-empty">Loading…</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="emp-notif-empty">
+                        <span className="emp-notif-empty-icon">🎉</span>
+
+                        <div style={{ fontSize: "11px", marginTop: "4px" }}>No new notifications</div>
+                      </div>
+                    ) : (
+                      notifications.map((n, i) => (
+                        <div
+                          key={n.id ?? i}
+                          className={`emp-notif-item ${!n.is_read ? "emp-notif-unread" : ""}`}
+                        >
+                          {!n.is_read && <span className="emp-notif-dot" />}
+                          <div className="emp-notif-body">
+                            <div className="emp-notif-message">{n.message}</div>
+                            {n.created_at && (
+                              <div className="emp-notif-time">
+                                {new Date(n.created_at).toLocaleString("en-IN", {
+                                  day: "numeric", month: "short",
+                                  hour: "2-digit", minute: "2-digit"
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          </header>
 
-          {/* KPI Cards */}
-          <section className="empdb__kpi-grid">
-            {[
-              { label: "Present Days",  value: statsLoading ? "…" : presentCount, accent: false },
-              { label: "Absent",        value: statsLoading ? "…" : absentCount,  accent: false },
-              { label: "Leaves Taken",  value: statsLoading ? "…" : leaveCount,   accent: false },
-              { label: "Performance",   value: "N/A",                              accent: true  },
-            ].map(({ label, value, accent }) => (
-              <div key={label} className="empdb__kpi-card">
-                <div className="empdb__kpi-label">{label}</div>
-                <div className={`empdb__kpi-value${accent ? " empdb__kpi-value--accent" : ""}`}>
-                  {value}
+            <div className="emp-avatar-pill" onClick={() => navigate("/settings")}>
+              {profilePic ? (
+                <img src={profilePic} alt="Avatar" className="emp-avatar-img" />
+              ) : (
+                <div className="emp-avatar-initials">{initials(user?.fullname)}</div>
+              )}
+              <span className="emp-avatar-name">{user?.designation?.toUpperCase() || "EMPLOYEE"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="emp-content">
+          {activeView === "requests" ? (
+            <div style={{ padding: "10px 0" }}>
+              <EmployeeRequestForm />
+            </div>
+          ) : activeView === "meetings" ? (
+            <div style={{ padding: "10px 0" }}>
+              <MeetingCalendar onClose={() => setActiveView("dashboard")} />
+            </div>
+          ) : (
+            <>
+              {/* ── KPI Stat Cards ── */}
+              <div className="emp-stats-row">
+                <div className="emp-stat-card emp-stat-teal">
+                  <span className="emp-stat-badge">Days</span>
+                  <div className="emp-stat-icon"><SquareCheck size={20} /></div>
+                  <div className="emp-stat-number">{statsLoading ? "…" : presentCount}</div>
+                  <div className="emp-stat-label">Present Days</div>
+                </div>
+
+                <div className="emp-stat-card emp-stat-blue">
+                  <span className="emp-stat-badge">Days</span>
+                  <div className="emp-stat-icon"><BarChart3 size={20} /></div>
+                  <div className="emp-stat-number" style={{ color: "#ef4444" }}>
+                    {statsLoading ? "…" : absentCount}
+                  </div>
+                  <div className="emp-stat-label">Absent</div>
+                </div>
+
+                <div className="emp-stat-card emp-stat-green">
+                  <span className="emp-stat-badge">Live</span>
+                  <div className="emp-stat-icon"><Plane size={20} /></div>
+                  <div className="emp-stat-number">{statsLoading ? "…" : leaveCount}</div>
+                  <div className="emp-stat-label">Leaves Taken</div>
+                </div>
+
+                <div className="emp-stat-card emp-stat-purple">
+                  <span className="emp-stat-badge">Today</span>
+                  <div className="emp-stat-icon"><BarChart3 size={20} /></div>
+
+                  <div className="emp-stat-label">Efficiency</div>
                 </div>
               </div>
-            ))}
-          </section>
 
-          {/* Quick Actions */}
-          <section className="empdb__section">
-            <h3 className="empdb__section-title">Quick Actions</h3>
-            <div className="empdb__action-grid">
-              <ActionCard title="Apply Leave"          desc="Submit leave request"            btn="Apply"        onClick={() => navigate("/apply-leave")} />
-              <ActionCard title="View Attendance"      desc="Check your attendance records"   btn="View"         onClick={() => navigate("/attendance")} />
-              <ActionCard
-                title="Daily Progress Report"
-                desc="Submit today's work update"
-                btn="Submit DPR"
-                // BUG FIX: pass myTasks via route state so DPR page can pre-fill task list
-                onClick={() => navigate("/dpr", { state: { tasks: myTasks } })}
-              />
-              <ActionCard title="Documents"   desc="Upload or view files"            btn="Upload"       onClick={() => navigate("/documents")} />
-              <ActionCard title="Payslips"    desc="Download your monthly payslips"  btn="View Payslips" onClick={() => navigate("/payslips")} />
-              <ActionCard title="Update Profile" desc="Edit personal info"           btn="Edit"         onClick={() => navigate("/settings")} />
-              {isLead && (
-                <ActionCard title="Task Management" desc="Manage Team Tasks"         btn="Manage Tasks"  onClick={() => navigate("/task-management")} />
-              )}
-            </div>
-          </section>
-
-          {/* Recent Activity */}
-          <section className="empdb__section">
-            <h3 className="empdb__section-title">Recent Activity</h3>
-            <ul className="empdb__activity-list">
-              {activityLoading ? (
-                <li className="empdb__activity-empty">Loading activity…</li>
-              ) : activity.length === 0 ? (
-                <li className="empdb__activity-empty">No recent activity</li>
-              ) : (
-                activity.map((item, index) => (
-                  <li key={index} className="empdb__activity-item">
-                    <span className="empdb__activity-dot" />
-                    {item}
-                  </li>
-                ))
-              )}
-            </ul>
-          </section>
-
-          {/* EOD Tasks */}
-          <section className="empdb__section">
-            <h3 className="empdb__section-title">📋 Today's EOD Task Status</h3>
-            {eodLoading ? (
-              <p className="empdb__eod-empty">Loading tasks…</p>
-            ) : eodTasks.length === 0 ? (
-              <p className="empdb__eod-empty">No tasks assigned for today.</p>
-            ) : (
-              <div className="empdb__eod-grid">
-                {eodTasks.map((task, i) => {
-                  const status   = getEodCardStatus(task);
-                  const meta     = STATUS_META[status];
-                  const deadline = parseDeadline(task.deadline);
-
-                  return (
-                    <div key={i} className={`empdb__eod-card ${meta.cardClass}`}>
-                      <div className="empdb__eod-top">
-                        <span className={`empdb__eod-title${status === "overdue" ? " empdb__eod-title--overdue" : ""}`}>
-                          {task.title}
-                        </span>
-                        <span className={`empdb__badge ${meta.badgeClass}`}>{meta.label}</span>
-                      </div>
-                      {task.description && (
-                        <p className="empdb__eod-desc">{task.description}</p>
-                      )}
-                      {deadline && (
-                        <div className="empdb__eod-meta">
-                          🗓 {deadline.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                          {" — "}
-                          {deadline.toLocaleDateString("en-IN")}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              {/* ── Quick Actions ── */}
+              <div className="emp-section-header">
+                <span className="emp-section-title">QUICK ACTIONS</span>
               </div>
-            )}
-          </section>
+              <div className="emp-actions-grid">
+                <EmpActionCard
+                  icon={<Plane size={20} />}
+                  name="Apply Leave"
+                  desc="Submit leave request"
+                  accent="orange"
+                  onClick={() => navigate("/apply-leave")}
+                />
+                <EmpActionCard
+                  icon={<Calendar size={20} />}
+                  name="View Attendance"
+                  desc="Check your records"
+                  accent="blue"
+                  onClick={() => navigate("/attendance")}
+                />
+                <EmpActionCard
+                  icon={<ClipboardList size={20} />}
+                  name="Daily Report"
+                  desc="Submit work update"
+                  accent="purple"
+                  onClick={() => navigate("/dpr", { state: { tasks: myTasks } })}
+                />
+                <EmpActionCard
+                  icon={<MessageSquare size={20} />}
+                  name="Requests"
+                  desc="General documents"
+                  accent="teal"
+                  onClick={() => setActiveView("requests")}
+                />
+                <EmpActionCard
+                  icon={<FileText size={20} />}
+                  name="Payslips"
+                  desc="View & Request"
+                  accent="teal"
+                  onClick={() => navigate("/payslips")}
+                />
+                <EmpActionCard
+                  icon={<Calendar size={20} />}
+                  name="Meetings"
+                  desc="Join Scheduled Calls"
+                  accent="purple"
+                  onClick={() => setActiveView("meetings")}
+                />
 
-          {/* My Task Load */}
-          <section className="empdb__section">
-            <div className="empdb__section-header">
-              <h3 className="empdb__section-title">🔥 My Task Load</h3>
-              <button
-                className="empdb__action-btn"
-                style={{ padding: "6px 14px", fontSize: "13px" }}
-                onClick={() => navigate("/task-management")}
-              >
-                View All
-              </button>
-            </div>
+              </div>
 
-            <div className="empdb__table-wrap">
-              <table className="empdb__table">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Man Hours</th>
-                    <th>Due Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tasksLoading ? (
-                    <tr><td colSpan="4" className="empdb__table-empty">Loading tasks…</td></tr>
-                  ) : myTasks.length === 0 ? (
-                    <tr><td colSpan="4" className="empdb__table-empty">No active tasks assigned!</td></tr>
+              {/* ── Recent Activity ── */}
+              <div className="emp-section-header" style={{ marginTop: "24px" }}>
+                <span className="emp-section-title">RECENT ACTIVITY</span>
+              </div>
+              <div className="emp-bottom-row">
+                {/* EOD Task List */}
+                <div className="emp-bottom-card">
+                  <div className="emp-card-title">📋 Today's EOD Tasks</div>
+                  {eodLoading ? (
+                    <div className="emp-empty-state">Loading tasks…</div>
+                  ) : eodTasks.length === 0 ? (
+                    <div className="emp-empty-state">No tasks for today.</div>
                   ) : (
-                    myTasks.map(task => {
-                      const { bg, color } = getTaskStyle(task.status);
-                      return (
+                    <div className="emp-activity-list">
+                      {eodTasks.map((task, i) => {
+                        const status = getEodCardStatus(task);
+                        const meta = STATUS_META[status];
+                        return (
+                          <div key={i} className="emp-activity-item">
+                            <div className="emp-activity-dot" style={{ background: meta.color }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <div className="emp-activity-text">{task.title}</div>
+                                <span style={{ fontSize: "10px", color: meta.color, fontWeight: "bold" }}>
+                                  {meta.label}
+                                </span>
+                              </div>
+                              <div className="emp-activity-sub">{task.description}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Activity Feed */}
+                <div className="emp-bottom-card">
+                  <div className="emp-card-title">Recent Activity</div>
+                  <div className="emp-activity-list">
+                    {activityLoading ? (
+                      <div className="emp-empty-state">Loading activity…</div>
+                    ) : activity.length === 0 ? (
+                      <div className="emp-empty-state">No recent activity.</div>
+                    ) : (
+                      activity.map((item, index) => (
+                        <div key={index} className="emp-activity-item">
+                          <div className="emp-activity-dot" style={{ background: "#4f46e5" }} />
+                          <div className="emp-activity-text">{item}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Bulletins Section (New Feature) */}
+                <div className="emp-bottom-card">
+                  <div className="emp-card-title"> Latest Bulletins</div>
+                  <div className="emp-activity-list">
+                    {bulletsLoading ? (
+                      <div className="emp-empty-state">Loading bulletins…</div>
+                    ) : bulletins.length === 0 ? (
+                      <div className="emp-empty-state">No news at this time.</div>
+                    ) : (
+                      bulletins.map((bullet, i) => (
+                        <div key={bullet.id || i} className="emp-activity-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "4px", padding: i === 0 ? "0 0 12px 0" : "12px 0", borderBottom: i === bulletins.length - 1 ? "none" : "1px solid #f1f5f9" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
+                            <div className="emp-activity-dot" style={{ background: "#10b981", flexShrink: 0 }} />
+                            <div className="emp-activity-text" style={{ fontWeight: 700, fontSize: "14px", color: "#1e293b" }}>{i + 1}. {bullet.title}</div>
+                          </div>
+                          <div className="emp-activity-sub" style={{ marginLeft: "18px", color: "#64748b", lineHeight: "1.4" }}>{bullet.content}</div>
+                          <div style={{ marginLeft: "18px", fontSize: "10px", color: "#94a3b8", marginTop: "4px" }}>
+                            Posted: {new Date(bullet.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── My Task Load ── */}
+              <div className="emp-section-header" style={{ marginTop: "24px" }}>
+                <span className="emp-section-title"> MY TASK LOAD</span>
+                <button className="emp-view-all-btn" onClick={() => navigate("/task-management")}>
+                  View All
+                </button>
+              </div>
+              <div className="emp-bottom-card" style={{ padding: "10px" }}>
+                <table className="emp-task-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Hours</th>
+                      <th>Due Date</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasksLoading ? (
+                      <tr><td colSpan="4" className="emp-empty-state">Loading…</td></tr>
+                    ) : myTasks.length === 0 ? (
+                      <tr><td colSpan="4" className="emp-empty-state">No active tasks.</td></tr>
+                    ) : (
+                      myTasks.map(task => (
                         <tr key={task.id}>
-                          {/* BUG FIX: was fontWeight:"no" — now valid value "500" */}
-                          <td style={{ fontWeight: "500" }}>{task.title}</td>
-                          <td>{task.man_hours || "—"}</td>
+                          <td className="emp-task-title">{task.title}</td>
+                          <td>{task.target_date || "—"}</td>
+                          <td>{task.due_date ? new Date(task.due_date).toLocaleDateString() : "—"}</td>
                           <td>
-                            {task.due_date
-                              ? new Date(task.due_date + "T00:00:00").toLocaleDateString("en-IN")
-                              : "—"}
-                          </td>
-                          <td>
-                            <span className="empdb__task-badge" style={{ backgroundColor: bg, color }}>
+                            <span
+                              className="emp-task-status"
+                              style={{
+                                background: task.status === "Completed"
+                                  ? "rgba(16,185,129,0.1)"
+                                  : "rgba(245,158,11,0.1)",
+                                color: task.status === "Completed" ? "#10b981" : "#f59e0b"
+                              }}
+                            >
                               {task.status}
                             </span>
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Announcement */}
-          <section className="empdb__section empdb__announcement">
-            <h3 className="empdb__section-title">Company Announcement</h3>
-            <p className="empdb__announcement-text">
-              Company Annual Meeting on 25th January
-            </p>
-          </section>
-
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-// ── Small reusable card ────────────────────────────────────────────────────────
-function ActionCard({ title, desc, btn, onClick }) {
+function EmpActionCard({ icon, name, desc, accent, onClick }) {
   return (
-    <div className="empdb__action-card">
-      <div className="empdb__action-title">{title}</div>
-      <div className="empdb__action-desc">{desc}</div>
-      <button className="empdb__action-btn" onClick={onClick}>{btn}</button>
+    <div className={`emp-action-card emp-action-${accent}`} onClick={onClick}>
+      <div className="emp-action-icon">{icon}</div>
+      <div>
+        <div className="emp-action-name">{name}</div>
+        <div className="emp-action-desc">{desc}</div>
+      </div>
     </div>
   );
 }
