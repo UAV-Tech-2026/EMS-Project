@@ -3,7 +3,14 @@ import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import pool from "./db.js";
-import { ensureSchema } from "./utils/ensure_schema.js";
+import ensureSchemaModule from "./utils/ensure_schema.js";
+
+
+import { runRecurringTaskGenerator } from "./routes/recurringTaskGenerator.js";
+
+const ensureSchema = typeof ensureSchemaModule === "function" 
+  ? ensureSchemaModule 
+  : (ensureSchemaModule.ensureSchema || ensureSchemaModule.default || ensureSchemaModule);
 
 import authRoutes from "./routes/authRoutes.js";
 import employeesRoutes from "./routes/employeesRoutes.js";
@@ -20,17 +27,23 @@ import bulletinRoutes from "./routes/bulletinRoutes.js";
 import sharedDocRoutes from "./routes/sharedDocRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
+import metaRoutes from "./routes/metaRoutes.js";
+import departmentRoutes from "./routes/departmentRoutes.js";
+
+import reimbursementRoutes from "./routes/reimbursementRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-app.use(cors({
-  origin: "*",
+const corsOptions = {
+  origin: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 
@@ -51,13 +64,19 @@ app.use("/api/payslip-requests", payslipRequests);
 app.use("/api/general-requests", requestRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/reimbursements", reimbursementRoutes);
 app.use("/api/permissions", permissionRoutes);
 app.use("/api/bulletins", bulletinRoutes);
 app.use("/api/shared-docs", sharedDocRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/meetings", meetingRoutes);
+app.use("/api/meta", metaRoutes);
+app.use("/api/departments", departmentRoutes);
 app.use("/uploads", express.static("uploads"));
 
+
+
+app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
 
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
@@ -67,6 +86,8 @@ app.use((err, req, res, next) => {
 });
 
 
+let server;
+
 async function startServer() {
   try {
     await pool.query("SELECT 1");
@@ -75,8 +96,11 @@ async function startServer() {
     await ensureSchema();
     console.log("✓ Schema verified");
 
-    // ✅ ONE app.listen() only
-    app.listen(PORT, "0.0.0.0", () => {
+   
+    await runRecurringTaskGenerator();
+    console.log("✓ Recurring task generator ran");
+
+    server = app.listen(PORT, "0.0.0.0", () => {
       console.log(`✓ Server running on port ${PORT}`);
     });
 
@@ -88,13 +112,37 @@ async function startServer() {
 
 startServer();
 
+function gracefulShutdown(signal) {
+  console.log(`${signal} received, shutting down gracefully`);
+ 
+  const timeout = setTimeout(() => {
+    console.log("Shutdown timeout reached, forcing exit");
+    pool.end(() => process.exit(1));
+  }, 10000);
 
-process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
-  pool.end(() => process.exit(0));
+  if (server) {
+    server.close(() => {
+      clearTimeout(timeout);
+      pool.end(() => {
+        console.log("Server closed cleanly");
+        process.exit(0);
+      });
+    });
+  } else {
+    clearTimeout(timeout);
+    pool.end(() => process.exit(0));
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+
 });
 
-process.on("SIGINT", () => {
-  console.log("SIGINT received, shutting down gracefully");
-  pool.end(() => process.exit(0));
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Promise Rejection:", reason);
+  
 });

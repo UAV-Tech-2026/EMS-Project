@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../utils/api";
 import "../styles/BulkAttendance.css";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const NEEDS_TIME  = ["Present", "0.5", "Field Work","CCL"];
 
@@ -27,12 +28,183 @@ function hoursStyle(totalMins) {
   return                            { color: "#f87171", fontWeight: 600 }; 
 }
 
+
+function DPRModal({ emp, date, onClose, onMark }) {
+  const [dprEntry, setDprEntry] = useState(null);
+  const [dprTasks, setDprTasks] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState("");
+
+  useEffect(() => {
+    const fetchDPR = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = sessionStorage.getItem("token");
+        const baseUrl = import.meta.env.VITE_API_URL;
+
+        // Fetch DPR entry (summary row)
+        const allRes = await axios.get(
+          `${baseUrl}/dpr/all?date=${date}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const entry = (allRes.data || []).find(r => r.user_id === emp.id) || null;
+        setDprEntry(entry);
+
+        // Fetch tasks if entry found
+        if (entry) {
+          const taskRes = await axios.get(
+            `${baseUrl}/dpr/tasks/${emp.id}?date=${date}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setDprTasks(taskRes.data || []);
+        }
+      } catch (err) {
+        setError("Failed to load DPR.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDPR();
+  }, [emp.id, date]);
+
+ 
+  const deadlinePassed = (() => {
+    const now = new Date();
+    
+    const deadlineIST = new Date(date + "T18:30:00.000Z"); 
+    
+    const [y, m, d] = date.split("-").map(Number);
+    const midnightIST = new Date(Date.UTC(y, m - 1, d, 18, 30, 0)); // midnight IST of that date (end of day)
+    return now > midnightIST;
+  })();
+
+  const dprSubmitted = !!dprEntry;
+
+  
+  const suggestedStatus = dprSubmitted ? "Present" : (deadlinePassed ? "Absent" : null);
+
+  const fmtT = (v) => (v ? String(v).slice(0, 5) : "—");
+
+  return (
+    <div className="dpr-modal-overlay" onClick={onClose}>
+      <div className="dpr-modal" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="dpr-modal-header">
+          <div>
+            <h3 className="dpr-modal-title">📋 DPR — {emp.fullname}</h3>
+            <p className="dpr-modal-sub">{emp.employee_uav_id} · {date}</p>
+          </div>
+          <button className="dpr-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+    
+        <div className="dpr-modal-body">
+          {loading ? (
+            <div className="dpr-modal-loading">⏳ Loading DPR…</div>
+          ) : error ? (
+            <div className="dpr-modal-error">{error}</div>
+          ) : !dprSubmitted ? (
+            <div className="dpr-modal-empty">
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📭</div>
+              <div style={{ fontWeight: 700, color: "#dc2626", fontSize: "1rem", marginBottom: 4 }}>No DPR Submitted</div>
+              <div style={{ color: "#64748b", fontSize: "0.85rem" }}>
+                {deadlinePassed
+                  ? "Deadline (midnight) has passed. This employee will be marked Absent."
+                  : "DPR not yet submitted. Deadline is midnight of this date."}
+              </div>
+            </div>
+          ) : (
+            <>
+            
+              <div className="dpr-modal-info-grid">
+                <div className="dpr-info-item"><span className="dpr-info-lbl">Project</span><span className="dpr-info-val">{dprEntry.project || "—"}</span></div>
+                <div className="dpr-info-item"><span className="dpr-info-lbl">Location</span><span className="dpr-info-val">{dprEntry.location || "Office"}</span></div>
+                <div className="dpr-info-item"><span className="dpr-info-lbl">Clock-In</span><span className="dpr-info-val dpr-time-chip">{fmtT(dprEntry.clock_in)}</span></div>
+                <div className="dpr-info-item"><span className="dpr-info-lbl">Clock-Out</span><span className="dpr-info-val dpr-time-chip">{fmtT(dprEntry.clock_out)}</span></div>
+              </div>
+
+            
+              {dprTasks.length > 0 && (
+                <div style={{ overflowX: "auto", marginTop: 16 }}>
+                  <table className="dpr-modal-tasks-table">
+                    <thead>
+                      <tr>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Task Code</th>
+                        <th>Summary</th>
+                        <th>Equipment</th>
+                        <th>Personnel</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dprTasks.map((t, i) => (
+                        <tr key={i}>
+                          <td>{fmtT(t.start_time)}</td>
+                          <td>{fmtT(t.end_time)}</td>
+                          <td style={{ fontFamily: "monospace" }}>{t.task_code || "—"}</td>
+                          <td>{t.summary}</td>
+                          <td>{t.equipment || "—"}</td>
+                          <td>{t.personnel || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+            
+              {(dprEntry.requirement || dprEntry.remarks) && (
+                <div className="dpr-modal-remarks">
+                  {dprEntry.requirement && <div><strong>Requirement:</strong> {dprEntry.requirement}</div>}
+                  {dprEntry.remarks && <div style={{ marginTop: 4 }}><strong>Remarks:</strong> {dprEntry.remarks}</div>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        
+        {!loading && !error && (
+          <div className="dpr-modal-footer">
+            {suggestedStatus === "Present" && (
+              <>
+                <div className="dpr-suggest-badge dpr-suggest-present">✅ DPR Submitted — Mark as Present</div>
+                <button className="dpr-action-btn dpr-btn-present" onClick={() => { onMark(emp.id, "Present", dprEntry); onClose(); }}>
+                  Mark Present
+                </button>
+              </>
+            )}
+            {suggestedStatus === "Absent" && (
+              <>
+                <div className="dpr-suggest-badge dpr-suggest-absent">⛔ No DPR — Deadline Passed — Mark as Absent</div>
+                <button className="dpr-action-btn dpr-btn-absent" onClick={() => { onMark(emp.id, "Absent", null); onClose(); }}>
+                  Mark Absent
+                </button>
+              </>
+            )}
+            {!suggestedStatus && (
+              <div className="dpr-suggest-badge" style={{ background: "#fef9c3", color: "#92400e" }}>⏳ Awaiting DPR — Deadline not yet reached</div>
+            )}
+            <button className="dpr-action-btn dpr-btn-cancel" onClick={onClose}>Close</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function BulkAttendance() {
   const [employees,     setEmployees]     = useState([]);
   const [date,          setDate]          = useState(new Date().toISOString().split("T")[0]);
   const [attendanceData,setAttendanceData]= useState({});
   const [loading,       setLoading]       = useState(true);
   const [submitted,     setSubmitted]     = useState(false);
+  const [selectedDept,  setSelectedDept]  = useState("All");
+  const [dprModal,      setDprModal]      = useState(null); // { emp }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,7 +218,14 @@ export default function BulkAttendance() {
           api.get(`/attendance/today?date=${date}`)
         ]);
 
-        const filteredEmps = empRes.data.filter(u => u.role === "employee" || u.role === "intern");
+        const loggedInUser = JSON.parse(sessionStorage.getItem("user") || "{}");
+        const filteredEmps = empRes.data.filter(
+          u => u.role !== "super_admin"
+        ).sort((a, b) => {
+          const idA = a.employee_uav_id || "";
+          const idB = b.employee_uav_id || "";
+          return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+        });
 
         const initial = {};
         filteredEmps.forEach(emp => {
@@ -66,7 +245,8 @@ export default function BulkAttendance() {
           initial[emp.id] = {
             status: existing?.status   || "",
             in:     inTime,
-            out:    safeOut             
+            out:    safeOut,
+            ot:     existing?.ot_hours || ""
           };
         });
 
@@ -128,6 +308,9 @@ export default function BulkAttendance() {
   const summaryH = Math.floor(totalHoursSummary / 60);
   const summaryM = totalHoursSummary % 60;
 
+  const departments = ["All", ...new Set(employees.map(e => e.department).filter(Boolean))];
+  const displayedEmployees = employees.filter(e => selectedDept === "All" || e.department === selectedDept);
+
   const handleSync = async () => {
     setSubmitted(true);
     if (!canSubmit) {
@@ -145,7 +328,8 @@ export default function BulkAttendance() {
       employee_uav_id: emp.employee_uav_id,
       status:          attendanceData[emp.id].status,
       check_in:        attendanceData[emp.id].in  || null,
-      check_out:       attendanceData[emp.id].out || null
+      check_out:       attendanceData[emp.id].out || null,
+      ot_hours:        attendanceData[emp.id].ot  || 0
     }));
 
     try {
@@ -199,19 +383,39 @@ export default function BulkAttendance() {
       </div>
 
       <div className="bulk-header">
-        <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>BULK ATTENDANCE LOG</h2>
+        
 
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
 
           
           {totalHoursSummary > 0 && (
             <span className="badge-hours">
-              🕐 Total: {summaryH}h {summaryM}m across {employees.filter(e => {
+              🕐 Total: {summaryH}h {summaryM}m across {displayedEmployees.filter(e => {
                 const d = attendanceData[e.id];
                 return d && calcHours(d.in, d.out);
               }).length} employees
             </span>
           )}
+
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            style={{
+              padding: "6px 12px",
+              borderRadius: "6px",
+              border: "1px solid #e2e8f0",
+              fontSize: "0.85rem",
+              outline: "none",
+              color: "#1e293b",
+              background: "#f8fafc",
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
 
           {noStatusRows.length > 0 && (
             <span className="badge-error">
@@ -247,11 +451,13 @@ export default function BulkAttendance() {
             <th>Status <span style={{ color: "#dc2626" }}>*</span></th>
             <th>In Time <span style={{ color: "#dc2626", fontSize: "10px" }}>*(Present/Half/Field)</span></th>
             <th>Out Time</th>
+            <th>OT Hours</th>
             <th>Total Hours</th>
+            <th style={{ textAlign: "center" }}>DPR</th>
           </tr>
         </thead>
         <tbody>
-          {employees.map(emp => {
+          {displayedEmployees.map(emp => {
             const current   = attendanceData[emp.id] || { status: "", in: "", out: "" };
             const isFrozen  = TIME_FROZEN.includes(current.status);
             const needsTime = NEEDS_TIME.includes(current.status);
@@ -277,12 +483,19 @@ export default function BulkAttendance() {
                 className={rowErr ? "bulk-row-error" : ""}
               >
                 <td>{emp.employee_uav_id}</td>
-                <td style={{ fontWeight: 600 }}>{emp.fullname || "Unnamed"}</td>
+                <td>
+                  <div style={{ fontWeight: 600 }}>{emp.fullname || "Unnamed"}</div>
+                  {emp.department && (
+                    <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 400, marginTop: "2px" }}>
+                      {emp.department}
+                    </div>
+                  )}
+                </td>
 
                
                 <td>
                   <select
-                    className={statErr ? "bulk-input-error" : ""}
+                    className={"status-select" + (statErr ? " bulk-input-error" : "")}
                     value={current.status}
                     onChange={e => handleUpdate(emp.id, "status", e.target.value)}
                   >
@@ -332,6 +545,32 @@ export default function BulkAttendance() {
                   )}
                 </td>
 
+                {/* OT Hours */}
+                <td style={{ textAlign: "center" }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="12"
+                    step="0.5"
+                    value={current.ot}
+                    disabled={isFrozen || !current.status}
+                    placeholder="0"
+                    onChange={e => handleUpdate(emp.id, "ot", e.target.value)}
+                    style={{
+                      width: 64,
+                      padding: "4px 6px",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.85rem",
+                      textAlign: "center",
+                      outline: "none",
+                      background: isFrozen || !current.status ? "#f1f5f9" : "#fff",
+                      color: current.ot > 0 ? "#7c3aed" : "#94a3b8",
+                      fontWeight: current.ot > 0 ? 700 : 400
+                    }}
+                  />
+                </td>
+
               
                 <td style={{ textAlign: "center", minWidth: 100 }}>
                   {isFrozen ? (
@@ -351,6 +590,17 @@ export default function BulkAttendance() {
                   )}
                 </td>
 
+                {/* DPR View Button */}
+                <td style={{ textAlign: "center", minWidth: 90 }}>
+                  <button
+                    className="dpr-view-btn"
+                    onClick={() => setDprModal({ emp })}
+                    title="View DPR & auto-mark attendance"
+                  >
+                    📋 View DPR
+                  </button>
+                </td>
+
               </tr>
             );
           })}
@@ -366,6 +616,16 @@ export default function BulkAttendance() {
                 Total Working Hours:
               </td>
               <td style={{ textAlign: "center", fontWeight: 700,
+                color: "#7c3aed", fontSize: "0.85rem", padding: "10px 12px" }}>
+                {(() => {
+                  const totalOT = employees.reduce((acc, emp) => {
+                    const ot = parseFloat(attendanceData[emp.id]?.ot || 0);
+                    return acc + (isNaN(ot) ? 0 : ot);
+                  }, 0);
+                  return totalOT > 0 ? `${totalOT}h OT` : "—";
+                })()}
+              </td>
+              <td style={{ textAlign: "center", fontWeight: 700,
                 color: "#1a3a6b", fontSize: "0.9rem", padding: "10px 12px" }}>
                 {summaryH}h {summaryM}m
               </td>
@@ -373,6 +633,26 @@ export default function BulkAttendance() {
           </tfoot>
         )}
       </table>
+
+      {/* DPR Modal */}
+      {dprModal && (
+        <DPRModal
+          emp={dprModal.emp}
+          date={date}
+          onClose={() => setDprModal(null)}
+          onMark={(empId, status, dprEntry) => {
+            setAttendanceData(prev => ({
+              ...prev,
+              [empId]: {
+                ...prev[empId],
+                status,
+                in:  status === "Present" && dprEntry?.clock_in  ? String(dprEntry.clock_in).slice(0,5)  : (status === "Absent" ? "" : prev[empId]?.in  || ""),
+                out: status === "Present" && dprEntry?.clock_out ? String(dprEntry.clock_out).slice(0,5) : (status === "Absent" ? "" : prev[empId]?.out || "")
+              }
+            }));
+          }}
+        />
+      )}
       
     </div>
   );

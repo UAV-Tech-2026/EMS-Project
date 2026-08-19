@@ -1,6 +1,4 @@
-/* ── ControlPanel upgrades ── add these to SuperAdminDashboard.css ── */
 
-/* Tabs */
 .sad-cp-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -31,7 +29,7 @@
     border-color: #d1d5db;
 }
 
-/* Role card */
+
 .sad-cp-role-card {
     display: flex;
     align-items: center;
@@ -82,14 +80,14 @@
     color: #9ca3af;
 }
 
-/* Table wrapper */
+
 .sad-cp-table-wrap {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     overflow: hidden;
 }
 
-/* Upgraded permission table */
+
 .sad-cp-perm-table {
     width: 100%;
     border-collapse: collapse;
@@ -148,7 +146,7 @@
     text-align: center;
 }
 
-/* Toggle switch */
+
 .sad-cp-toggle {
     display: inline-flex;
     align-items: center;
@@ -167,38 +165,51 @@
     width: 40px;
     height: 22px;
     border-radius: 999px;
-    background: #d1d5db;
+    
+    background: #94a3b8;
+    border: 1.5px solid #7b8fa6;
     position: relative;
-    transition: background 0.2s;
+    transition: background 0.2s, border-color 0.2s;
     display: flex;
     align-items: center;
+    box-sizing: border-box;
 }
 
-.sad-cp-toggle input:checked~.sad-cp-toggle-track {
+
+.sad-cp-toggle input:checked ~ .sad-cp-toggle-track {
     background: #6366f1;
+    border-color: #4f46e5;
 }
 
-.sad-cp-toggle input:disabled~.sad-cp-toggle-track {
-    opacity: 0.5;
+
+.sad-cp-toggle input:disabled ~ .sad-cp-toggle-track {
+    opacity: 0.45;
     cursor: not-allowed;
 }
 
 .sad-cp-toggle-thumb {
     position: absolute;
-    left: 3px;
+    left: 2px;
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #fff;
+    background: #ffffff;
     transition: transform 0.2s;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    /* FIX: stronger shadow so thumb is clearly visible on grey track */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.30), 0 0 0 1px rgba(0,0,0,0.08);
 }
 
-.sad-cp-toggle input:checked~.sad-cp-toggle-track .sad-cp-toggle-thumb {
+.sad-cp-toggle input:checked ~ .sad-cp-toggle-track .sad-cp-toggle-thumb {
     transform: translateX(18px);
 }
 
-/* Visibility badge */
+
+.sad-cp-toggle input:focus-visible ~ .sad-cp-toggle-track {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+
 .sad-cp-vis-badge {
     display: inline-flex;
     align-items: center;
@@ -232,13 +243,13 @@
     border-color: #bfdbfe;
 }
 
+
 .sad-cp-vis-hd {
-    background: #f9fafb;
-    color: #9ca3af;
-    border-color: #e5e7eb;
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
 }
 
-/* Save button */
 .sad-cp-save-btn {
     display: inline-flex;
     align-items: center;

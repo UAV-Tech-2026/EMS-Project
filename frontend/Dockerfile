@@ -1,19 +1,24 @@
-# FROM node:24-alpine AS build
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
 
-# WORKDIR /app
+# ✅ ADD THESE
+ARG VITE_API_URL
+ARG VITE_WORKSTOCK_URL
+ARG VITE_WORKSTOCK_API_URL
+ARG VITE_LOGO_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_WORKSTOCK_URL=$VITE_WORKSTOCK_URL
+ENV VITE_WORKSTOCK_API_URL=$VITE_WORKSTOCK_API_URL
+ENV VITE_LOGO_URL=$VITE_LOGO_URL
 
-# COPY package*.json ./
-# RUN npm install --no-audit --no-fund --legacy-peer-deps
-
-# COPY . .
-# RUN npm run build
+RUN npm run build
 
 FROM node:18-alpine
-
 WORKDIR /app
 RUN npm install -g serve
-
 COPY --from=build /app/dist ./dist
-
 EXPOSE 3000
 CMD ["serve", "-s", "dist", "-l", "3000"]

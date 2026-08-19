@@ -195,6 +195,7 @@ async function initialize() {
         status VARCHAR(20) DEFAULT 'Pending',
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         started_at TIMESTAMP,
+        minutes_of_meeting TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);

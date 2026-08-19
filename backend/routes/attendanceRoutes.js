@@ -2,7 +2,7 @@ import express from "express";
 import pool from "../db.js";
 import multer from "multer";
 import ExcelJS from "exceljs";
-import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { verifyToken, isAdminOrSuper, canReadFeature } from "../middleware/authMiddleware.js";
 import axios from "axios";
 
 const router = express.Router();
@@ -56,8 +56,11 @@ router.get("/", verifyToken, isAdminOrSuper, async (req, res) => {
       const deptRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
       const dept = deptRes.rows[0]?.department;
       if (dept) {
-        query += ` WHERE u.department = $1`;
-        params.push(dept);
+        const isHR = dept.toLowerCase().includes("hr") || dept.toLowerCase() === "operations";
+        if (!isHR) {
+          query += ` WHERE u.department = $1`;
+          params.push(dept);
+        }
       }
     }
 
@@ -80,22 +83,35 @@ router.get("/employees-list", verifyToken, isAdminOrSuper, async (req, res) => {
       SELECT u.id, u.fullname, u.role, u.department, e.employee_uav_id
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
-      WHERE u.role IN ('employee', 'intern', 'admin', 'admin_hr', 'super_admin')
+      WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
     `;
     const params = [];
 
     if (req.user.role !== "super_admin") {
-      const deptRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
-      const dept = deptRes.rows[0]?.department;
-      if (dept) {
-        query += ` AND u.department = $1`;
-        params.push(dept);
+      const permRes = await pool.query(
+        "SELECT can_write FROM user_permissions WHERE user_id=$1 AND feature_name='attendance'",
+        [req.user.id]
+      );
+      const hasAttendanceWrite = permRes.rows[0]?.can_write === true;
+
+      if (!hasAttendanceWrite) {
+       
+        const deptRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
+        const dept = deptRes.rows[0]?.department;
+        if (dept) {
+          const isHR = dept.toLowerCase().includes("hr") || dept.toLowerCase() === "operations";
+          if (!isHR) {
+            query += ` AND u.department = $1`;
+            params.push(dept);
+          }
+        }
       }
+      
     }
 
     query += ` ORDER BY CASE u.role
       WHEN 'super_admin' THEN 1 WHEN 'admin' THEN 2
-      WHEN 'admin_hr' THEN 3 WHEN 'employee' THEN 4 WHEN 'intern' THEN 5 END, u.fullname ASC`;
+      WHEN 'employee' THEN 4 WHEN 'intern' THEN 5 END, u.fullname ASC`;
 
     const result = await pool.query(query, params);
     res.json(result.rows);
@@ -114,19 +130,32 @@ router.get("/today", verifyToken, isAdminOrSuper, async (req, res) => {
     let deptClause = "";
 
     if (req.user.role !== "super_admin") {
-      const deptRes = await pool.query(
-        "SELECT department FROM users WHERE id = $1", [req.user.id]
+      
+      const permRes = await pool.query(
+        "SELECT can_write FROM user_permissions WHERE user_id=$1 AND feature_name='attendance'",
+        [req.user.id]
       );
-      const dept = deptRes.rows[0]?.department;
-      if (dept) {
-        params.push(dept);
-        deptJoin   = " JOIN users u ON a.user_id = u.id";
-        deptClause = ` AND u.department = $${params.length}`;
+      const hasAttendanceWrite = permRes.rows[0]?.can_write === true;
+
+      if (!hasAttendanceWrite) {
+        const deptRes = await pool.query(
+          "SELECT department FROM users WHERE id = $1", [req.user.id]
+        );
+        const dept = deptRes.rows[0]?.department;
+        if (dept) {
+          const isHR = dept.toLowerCase().includes("hr") || dept.toLowerCase() === "operations";
+          if (!isHR) {
+            deptJoin = " JOIN users u ON a.user_id = u.id";
+            params.push(dept);
+            deptClause = ` AND u.department = $${params.length}`;
+          }
+        }
       }
+     
     }
 
     const result = await pool.query(
-      `SELECT a.user_id, a.status, a.check_in, a.check_out, a.hours_worked
+      `SELECT a.user_id, a.status, a.check_in, a.check_out, a.hours_worked, a.ot_hours
        FROM attendance a
        ${deptJoin}
        WHERE a.attendance_date = $1${deptClause}`,
@@ -200,16 +229,17 @@ router.post("/bulk-log", verifyToken, isAdminOrSuper, async (req, res) => {
 
       await client.query(
         `INSERT INTO attendance
-           (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked, ot_hours)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (user_id, attendance_date) DO UPDATE SET
            status       = EXCLUDED.status,
            check_in     = EXCLUDED.check_in,
            check_out    = EXCLUDED.check_out,
            marked_by    = EXCLUDED.marked_by,
-           hours_worked = EXCLUDED.hours_worked`,
+           hours_worked = EXCLUDED.hours_worked,
+           ot_hours     = EXCLUDED.ot_hours`,
         [record.user_id, record.employee_uav_id, date,
-        record.status, checkIn, checkOut, req.user.id, hoursWorked]
+        record.status, checkIn, checkOut, req.user.id, hoursWorked, record.ot_hours || 0]
       );
     }
 
@@ -237,7 +267,6 @@ router.post("/check-in", verifyToken, async (req, res) => {
     if (empRes.rows.length === 0)
       return res.status(404).json({ msg: "Employee profile not found" });
 
-    // 0.5 LOP RULE: if check-in time is > 10:20:00, status becomes "0.5 LOP"
     const isLate = time > "10:20:00";
     const status = isLate ? "0.5 LOP" : "Present";
 
@@ -271,7 +300,6 @@ router.post("/check-out", verifyToken, async (req, res) => {
 
     const hoursWorked = calcHours(existing.rows[0].check_in, time);
 
-    // OT RULE: if check-out time is > 20:00:00, calculate OT hours from 18:15
     let otHours = 0;
     if (time > "20:00:00") {
       const parts = time.split(":");
@@ -326,21 +354,37 @@ router.get("/my", verifyToken, async (req, res) => {
 });
 
 
-router.get("/directory", verifyToken, async (req, res) => {
+router.get("/directory", verifyToken, canReadFeature("directory"), async (req, res) => {
   try {
-    const result = await pool.query(`
+    let query = `
       SELECT
         u.id,
         u.fullname,
         u.role,
-        COALESCE(e.designation, '') AS designation,
-        e.employee_uav_id,
-        'Active'                    AS status
+        u.department,
+        COALESCE(e.designation, '')                       AS designation,
+        COALESCE(e.employee_uav_id, '')                   AS employee_uav_id,
+        INITCAP(COALESCE(e.status, 'active'))              AS status
       FROM users u
-      JOIN employees e ON u.id = e.user_id
-      WHERE u.role IN ('employee', 'intern')
-      ORDER BY u.role ASC, e.employee_uav_id ASC
-    `);
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.role IN ('employee', 'intern', 'admin')
+    `;
+    const params = [];
+
+    if (req.user.role !== "super_admin") {
+      const deptRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
+      const dept = deptRes.rows[0]?.department;
+      if (dept) {
+        const isHR = dept.toLowerCase().includes("hr") || dept.toLowerCase() === "operations";
+        if (!isHR) {
+          query += ` AND u.department = $1`;
+          params.push(dept);
+        }
+      }
+    }
+
+    query += ` ORDER BY u.role ASC, COALESCE(e.employee_uav_id, u.fullname) ASC`;
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error("DIRECTORY ERROR:", err.message);
@@ -515,7 +559,7 @@ router.get("/export-excel", verifyToken, isAdminOrSuper, async (req, res) => {
     logRes.rows.forEach((r, ri) => {
       const fill = logStatusFill[r.status] || "FFFFFF";
       const exRow = ws2.getRow(ri + 3);
-      // Show AM/PM in the Excel export too
+     
       [r.emp_name, r.emp_id, r.att_date, to12h(r.check_in), to12h(r.check_out), r.hours_worked, r.status]
         .forEach((val, ci0) => {
           const cell = exRow.getCell(ci0 + 1);

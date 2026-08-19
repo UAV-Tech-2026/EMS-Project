@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { User, Lock, CheckCircle, AlertCircle, ArrowLeft, Camera, Loader2 } from "lucide-react";
-import { api } from "../utils/api";
+import { api, API_URL } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
 
@@ -106,7 +106,6 @@ export default function Settings() {
       try {
         const res = await api.get("/employees/my-profile");
         const d = res.data;
-        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
         setProfile({
           fullname: d.fullname || "",
           email: d.email || "",
@@ -124,12 +123,12 @@ export default function Settings() {
     loadProfile();
   }, []);
 
-  const syncLocalStorage = (updates) => {
+  const syncsessionStorage = (updates) => {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = sessionStorage.getItem("user");
       if (stored) {
         const u = JSON.parse(stored);
-        localStorage.setItem("user", JSON.stringify({ ...u, ...updates }));
+        sessionStorage.setItem("user", JSON.stringify({ ...u, ...updates }));
       }
     } catch (e) { console.error(e); }
   };
@@ -141,12 +140,26 @@ export default function Settings() {
     }
     setProfileSaving(true);
     try {
+      const stored = sessionStorage.getItem("user");
+      let originalPhone = "";
+      if (stored) {
+        originalPhone = JSON.parse(stored).phone || "";
+      }
+
+      const newPhone = profile.phone.trim();
+      const phoneChanged = (newPhone !== originalPhone) && (newPhone !== "");
+
       await api.put("/employees/update-profile", {
         fullname: profile.fullname.trim(),
-        phone: profile.phone.trim(),
+        phone: newPhone,
       });
-      syncLocalStorage({ fullname: profile.fullname.trim(), phone: profile.phone.trim() });
-      showToast("success", "Profile updated successfully!");
+      syncsessionStorage({ fullname: profile.fullname.trim(), phone: newPhone });
+      
+      if (phoneChanged) {
+        showToast("success", "Profile updated! Please log out and back in to set up your new 2FA (QR code).");
+      } else {
+        showToast("success", "Profile updated successfully!");
+      }
     } catch (err) {
       showToast("error", err.response?.data?.msg || "Failed to save profile.");
     } finally {
@@ -168,10 +181,9 @@ export default function Settings() {
       const res = await api.post("/employees/upload-profile-pic", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
       const newPic = `${API_URL}${res.data.profilePic}`;
       setProfile(p => ({ ...p, profile_pic: newPic }));
-      syncLocalStorage({ profilePic: newPic });
+      syncsessionStorage({ profilePic: newPic, profile_pic: res.data.profilePic });
       showToast("success", "Profile photo updated!");
     } catch (err) {
       showToast("error", "Failed to upload photo.");
@@ -199,8 +211,13 @@ export default function Settings() {
         current_password: passwords.current,
         new_password: passwords.newPass,
       });
-      showToast("success", "Password changed successfully!");
       setPasswords({ current: "", newPass: "", confirm: "" });
+      // Password changed → TOTP is reset on server → must re-login to get new QR scanner
+      showToast("success", "Password updated! Redirecting to login to scan your new 2FA QR code…");
+      setTimeout(() => {
+        sessionStorage.clear();
+        navigate("/login");
+      }, 3000);
     } catch (err) {
       showToast("error", err.response?.data?.msg || "Failed to change password.");
     } finally {
@@ -208,11 +225,10 @@ export default function Settings() {
     }
   };
 
-  // ✅ FIX: Role-aware back navigation — was hardcoded to /employee-dashboard
+ 
   const handleBack = () => {
-    const role = JSON.parse(localStorage.getItem("user"))?.role;
+    const role = JSON.parse(sessionStorage.getItem("user"))?.role;
     if (role === "super_admin") navigate("/super-admin-dashboard");
-    else if (role === "admin_hr") navigate("/admin-dashboard");
     else if (role === "admin") navigate("/admin-dashboard");
     else navigate("/employee-dashboard");
   };
@@ -239,7 +255,7 @@ export default function Settings() {
 
       <div style={{ maxWidth: "760px", margin: "0 auto" }}>
 
-        {/* ✅ FIX: was onClick={() => navigate("/employee-dashboard")} — now role-aware */}
+       
         <button
           onClick={handleBack}
           style={{
@@ -284,8 +300,8 @@ export default function Settings() {
           </div>
         </header>
 
-        {/* ── 1. Profile Photo (Super Admin Only) ── */}
-        {JSON.parse(localStorage.getItem("user"))?.role === "super_admin" && (
+       
+        {JSON.parse(sessionStorage.getItem("user"))?.role === "super_admin" && (
           <Card title="Profile Photograph" icon={<Camera size={20} />} subtitle="Visible on your dashboard and ID cards.">
             <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
               <div style={{ position: "relative" }}>
@@ -328,7 +344,7 @@ export default function Settings() {
           </Card>
         )}
 
-        {/* ── 2. Personal Information ── */}
+        
         <Card title="Personal Details" icon={<User size={20} />}>
           {profileLoading ? (
             <div style={{ padding: "20px", textAlign: "center", color: "#64748b" }}>
@@ -359,7 +375,7 @@ export default function Settings() {
           )}
         </Card>
 
-        {/* ── 3. Verification Documents ── */}
+        
         {!profileLoading && (profile.adhar_path || profile.address_path) && (
           <Card title="Verification Documents" icon={<CheckCircle size={20} />} subtitle="Google Drive links provided during enrollment.">
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>

@@ -7,12 +7,12 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const run = async () => {
   try {
-    // Add mobile column if it doesn't exist yet
+    
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(15)
     `);
 
-    // Check if superadmin already exists
+    
     const { rows } = await pool.query(
       "SELECT id FROM users WHERE role = 'super_admin' LIMIT 1"
     );
@@ -36,12 +36,12 @@ const run = async () => {
         'Super Admin',
         hash,
         'super_admin',
-        process.env.SUPERADMIN_MOBILE,
+        '6281915237',
       ]
     );
 
     console.log('✅ Superadmin created! Mobile:', process.env.SUPERADMIN_MOBILE);
-    console.log('📱 On first login, scan the QR code with Google Authenticator.');
+    console.log(' On first login, scan the QR code with Google Authenticator.');
   } catch (err) {
     console.error('❌ Seed failed:', err.message);
   } finally {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 
 export default function SuperAdminProfile({ onClose }) {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(sessionStorage.getItem("user"));
   const [formData, setFormData] = useState({
     name: user?.fullname || user?.name || "",
     email: user?.email || "",
@@ -21,7 +21,7 @@ export default function SuperAdminProfile({ onClose }) {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/auth/users/update-profile`,
         formData,
@@ -30,7 +30,7 @@ export default function SuperAdminProfile({ onClose }) {
 
       // Merge backend response with existing session to keep token/permissions
       const updatedUser = { ...user, ...response.data };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      sessionStorage.setItem("user", JSON.stringify(updatedUser));
       
       alert("Profile updated successfully!");
       if (onClose) onClose();
@@ -168,13 +168,26 @@ export default function SuperAdminProfile({ onClose }) {
           <h2 className="pm-title">Edit Profile</h2>
           <p className="pm-subtitle">Update your account information</p>
 
-          <div className="pm-avatar-row">
-            <div className="pm-avatar">{initials}</div>
-            <div>
-              <div className="pm-avatar-name">{formData.name || "Super Admin"}</div>
-              <div className="pm-avatar-role">Administrator · {user?.email?.split("@")[1] || "uavtech.ai"}</div>
-            </div>
-          </div>
+          {(() => {
+            let pic = user?.profilePic || user?.profile_pic;
+            const baseUrl = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
+            if (pic && pic.startsWith("/uploads")) {
+              pic = `${baseUrl}${pic}`;
+            }
+            return (
+              <div className="pm-avatar-row">
+                {pic ? (
+                  <img src={pic} alt="Avatar" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }} />
+                ) : (
+                  <div className="pm-avatar">{initials}</div>
+                )}
+                <div>
+                  <div className="pm-avatar-name">{formData.name || "Super Admin"}</div>
+                  <div className="pm-avatar-role">Administrator · {user?.email?.split("@")[1] || "uavtech.ai"}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="pm-fields">
             <div className="pm-field">

@@ -25,7 +25,7 @@ const STATUS_COLOR = {
   missing:   { bg: "rgba(239, 68, 68, 0.15)", color: "#ef4444", label: "Missing"   },
 };
 
-function AdminDPR({ onClose }) {
+function AdminDPR({ onClose, readOnly }) {
   const navigate = useNavigate();
   const today = getISTDateString(0);
 
@@ -44,7 +44,7 @@ function AdminDPR({ onClose }) {
     setError("");
     setExpanded(null);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const url = start === end 
         ? `${import.meta.env.VITE_API_URL}/dpr/all?date=${start}`
         : `${import.meta.env.VITE_API_URL}/dpr/all?startDate=${start}&endDate=${end}`;
@@ -67,7 +67,7 @@ function AdminDPR({ onClose }) {
   if (tasks[key]) return;
   setTaskLoad(p => ({ ...p, [key]: true }));
   try {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const { data } = await axios.get(
       `${import.meta.env.VITE_API_URL}/dpr/tasks/${row.user_id}?date=${row.dpr_date}`,
       { headers: { Authorization: `Bearer ${token}` } }
@@ -151,9 +151,8 @@ function AdminDPR({ onClose }) {
                 if (onClose) {
                   onClose();
                 } else {
-                  const role = JSON.parse(localStorage.getItem("user"))?.role;
+                  const role = JSON.parse(sessionStorage.getItem("user"))?.role;
                   if (role === "super_admin") navigate("/super-admin-dashboard");
-                  else if (role === "admin_hr") navigate("/admin-dashboard");
                   else if (role === "admin") navigate("/admin-dashboard");
                   else navigate("/employee-dashboard");
                 }
@@ -209,7 +208,7 @@ function AdminDPR({ onClose }) {
                 <tr>
                   <th>#</th>
                   <th>Employee</th>
-                  <th>UAV ID</th>
+                  <th>UTPL ID</th>
                   <th>Designation</th>
                   <th>Project</th>
                   <th>Clock In</th>
@@ -255,7 +254,7 @@ function AdminDPR({ onClose }) {
                         </td>
                       </tr>
 
-                      {/* Expanded task subtable */}
+                     
                       {isOpen && (
                         <tr className="adpr-subtable-wrap">
                           <td colSpan={10}>
@@ -292,7 +291,7 @@ function AdminDPR({ onClose }) {
                                 </table>
                               )}
 
-                              {/* Requirement & Remarks */}
+                              
                               {(row.requirement || row.remarks) && (
                                 <div className="adpr-remarks">
                                   <div className="adpr-remarks-box">

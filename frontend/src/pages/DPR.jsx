@@ -4,7 +4,7 @@ import { api } from "../utils/api";
 import "../styles/EmployeeDashboard.css";
 
 
-// IST-safe date helpers
+
 function getISTDateString(offsetDays = 0) {
   const now = new Date();
   const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000 + offsetDays * 86400000);
@@ -49,9 +49,9 @@ export default function DPR() {
 
   const [tasks, setTasks] = useState(initialTasks);
 
-  // Load existing DPR when date changes
+ 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     api
       .get(`/dpr/my-dpr?date=${selectedDate}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -109,7 +109,7 @@ export default function DPR() {
     setError("");
     setSaved(false);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await api.post(
         "/dpr/save",
         {
@@ -141,7 +141,7 @@ export default function DPR() {
     setDownloading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const response = await api.get(
         `/dpr/download?date=${selectedDate}`,
         { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }
@@ -194,7 +194,7 @@ export default function DPR() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{
-            width: 42, height: 42,
+            width: 70, height: 70,
             background: "#ffffff",
             borderRadius: 10,
             display: "flex",
@@ -208,7 +208,7 @@ export default function DPR() {
             <img 
               src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"} 
               alt="Logo" 
-              style={{ width: 36, height: 36, objectFit: "contain" }}
+              style={{ width: 62, height: 62, objectFit: "contain" }}
               onError={(e) => { 
                 if (e.target.src !== window.location.origin + "/logo.jpg") {
                   e.target.src = "/logo.jpg";
@@ -368,12 +368,11 @@ export default function DPR() {
           onClick={() => {
             let role = null;
             try {
-              role = JSON.parse(localStorage.getItem("user"))?.role;
+              role = JSON.parse(sessionStorage.getItem("user"))?.role;
             } catch {}
 
             const routes = {
               super_admin: "/super-admin-dashboard",
-              admin_hr: "/admin-dashboard",
               admin: "/admin-dashboard",
               employee: "/employee-dashboard",
             };

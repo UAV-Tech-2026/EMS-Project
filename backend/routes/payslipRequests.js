@@ -11,17 +11,16 @@ const superAdminOnly = (req, res, next) => {
   next();
 };
 
-// ─── ADMIN: Submit a payslip request to Super Admin ──────────────────────
 router.post("/", verifyToken, async (req, res) => {
   try {
     const role = req.user.role?.toLowerCase();
     const { employee_id, month } = req.body;
 
-    if (!["admin", "super_admin", "employee", "admin_hr"].includes(role)) {
+    if (!["admin", "super_admin", "employee"].includes(role)) {
       return res.status(403).json({ msg: "Access denied" });
     }
 
-    // Employees can only request for themselves
+    
     if (role === "employee" && parseInt(employee_id) !== req.user.id) {
       return res.status(403).json({ msg: "You can only request your own payslip" });
     }
@@ -29,13 +28,13 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(400).json({ msg: "employee_id and month are required" });
     }
 
-    // Check employee exists
+    
     const empCheck = await pool.query("SELECT id FROM users WHERE id = $1", [employee_id]);
     if (empCheck.rows.length === 0) {
       return res.status(404).json({ msg: "Employee not found" });
     }
 
-    // Prevent duplicate request for same employee + month
+    
     const dupCheck = await pool.query(
       "SELECT id FROM payslip_requests WHERE requested_by = $1 AND employee_id = $2 AND month = $3 AND status = 'pending'",
       [req.user.id, employee_id, month]
@@ -57,7 +56,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// ─── ADMIN: Get MY submitted requests ────────────────────────────────────
+
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -80,7 +79,7 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// ─── SUPER ADMIN & ADMIN: Get ALL requests ───────────────────────────────────────
+
 router.get("/all", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { status } = req.query;
@@ -110,7 +109,7 @@ router.get("/all", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
-// ─── SUPER ADMIN & ADMIN: Approve or Reject a request ────────────────────────────
+
 router.patch("/:id", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { status, rejection_reason, payslip_url } = req.body;
@@ -123,7 +122,7 @@ router.patch("/:id", verifyToken, isAdminOrSuper, async (req, res) => {
       return res.status(400).json({ msg: "rejection_reason is required when rejecting" });
     }
 
-    // Get the requester's user_id before updating
+    
     const reqRes = await pool.query("SELECT requested_by, month FROM payslip_requests WHERE id = $1", [id]);
     if (reqRes.rows.length === 0) {
       return res.status(404).json({ msg: "Payslip request not found" });
@@ -137,7 +136,7 @@ router.patch("/:id", verifyToken, isAdminOrSuper, async (req, res) => {
       [status, rejection_reason || null, payslip_url || null, req.user.id, id]
     );
 
-    // Trigger notification
+    
     await createNotification(
       requested_by,
       `Your payslip request for ${month} has been ${status}.`,

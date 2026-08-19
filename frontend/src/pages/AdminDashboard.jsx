@@ -1,23 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api, API_URL } from "../utils/api";
 
 import {
   Users, LogOut, UserPlus,
   Calendar, Download, FileSpreadsheet,
-  ClipboardCheck, LayoutDashboard, MessageSquare, Bell, Shield, CalendarCheck, Banknote, ClipboardList, Package
+  ClipboardCheck, LayoutDashboard, MessageSquare, Bell, Shield, CalendarCheck, Banknote, ClipboardList, Package, Plane,
+  ArrowDownToLine, ArrowUpFromLine, List, FileBarChart
 } from "lucide-react";
 import AttendanceRecords from "./AttendanceRecords";
 import BulkAttendance from "./BulkAttendance";
 import AdminLeaveManagement from "./AdminLeaveManagement";
+import AdminApplyLeave from "./AdminApplyLeave";
 import TaskManagement from "./TaskManagement";
 import PayslipGeneration from "./PayslipGeneration";
 import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
+import ControlPanel from "./ControlPanel";
+import MeetingCalendar from "./MeetingCalendar";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
 import DirectoryPanel from "./DirectoryPanel";
+import Departments from "./Departments";
 
 import "../styles/AdminDashboard.css";
 import "../styles/EmployeeDashboard.css";
@@ -26,7 +31,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("user"));
+      return JSON.parse(sessionStorage.getItem("user"));
     } catch {
       return null;
     }
@@ -42,6 +47,7 @@ export default function AdminDashboard() {
   });
 
   const [perms, setPerms] = useState({});
+  const [permsLoaded, setPermsLoaded] = useState(false);
   const [bulletins, setBulletins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showLeaveManagement, setShowLeaveManagement] = useState(false);
@@ -52,6 +58,7 @@ export default function AdminDashboard() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showPayslip, setShowPayslip] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showMeeting, setShowMeeting] = useState(false);
 
   const [showBulletinModal, setShowBulletinModal] = useState(false);
   const [bulletinTitle, setBulletinTitle] = useState("");
@@ -63,7 +70,10 @@ export default function AdminDashboard() {
   const [notifLoading, setNotifLoading] = useState(true);
   const notifRef = useRef(null);
 
+  const [pendingRequests, setPendingRequests] = useState([]);
+
   const unreadCount = notifications.filter(n => !n.is_read).length;
+  const pendingRequestCount = pendingRequests.filter(r => r.status === "pending").length;
 
   const todayStr = new Date().toISOString().split("T")[0];
   const firstOfMonth = todayStr.slice(0, 7) + "-01";
@@ -72,41 +82,67 @@ export default function AdminDashboard() {
 
   const todayNotifs = notifications.filter(n => n.created_at && n.created_at.startsWith(todayStr));
 
+  // ── Poll sessionStorage until permissions are populated by DashboardSwitcher ──
+  // DashboardSwitcher does a background /auth/me + /permissions/my and writes to sessionStorage.
+  // We poll every 300ms so AdminDashboard picks up permissions as soon as they land,
+  // instead of reading once at mount time when they may not be there yet.
   useEffect(() => {
-    const fetchNotificationsAndPerms = async () => {
+    const tryLoad = () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
+        const latest = JSON.parse(sessionStorage.getItem("user") || "{}");
+        if (Array.isArray(latest.permissions) && latest.permissions.length > 0) {
+          const permMap = {};
+          latest.permissions.forEach(p => {
+            permMap[p.feature_name] = { can_read: p.can_read, can_write: p.can_write };
+          });
+          setPerms(permMap);
+          setUser(latest);
+          setPermsLoaded(true);
+          return true; // signal: done
+        }
+      } catch { /* ignore */ }
+      return false;
+    };
 
-        const [notifRes, permRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/notifications/my`, { headers }),
-          axios.get(`${import.meta.env.VITE_API_URL}/permissions/my`, { headers }),
-        ]);
+    // Try immediately in case permissions are already in sessionStorage
+    if (tryLoad()) return;
 
+    const interval = setInterval(() => {
+      if (tryLoad()) {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      }
+    }, 300);
+
+    // Give up after 10s — mark loaded so UI isn't blocked forever
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      setPermsLoaded(true);
+    }, 10000);
+
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, []);
+
+  // ── Fetch notifications separately (network only, not cached) ──
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const notifRes = await api.get("/notifications/my");
         setNotifications(Array.isArray(notifRes.data) ? notifRes.data : []);
-
-        const permMap = {};
-        (Array.isArray(permRes.data) ? permRes.data : []).forEach(p => {
-          permMap[p.feature_name] = { can_read: p.can_read, can_write: p.can_write };
-        });
-        setPerms(permMap);
-
       } catch (err) {
-        console.error("Failed to fetch notifications/permissions:", err);
+        console.error("Failed to fetch notifications:", err);
         setNotifications([]);
       } finally {
         setNotifLoading(false);
       }
     };
-    fetchNotificationsAndPerms();
+    fetchNotifications();
   }, []);
 
   const handleMarkAllRead = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${import.meta.env.VITE_API_URL}/notifications/mark-read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const token = sessionStorage.getItem("token");
+      await api.post("/notifications/mark-read", {});
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (err) {
       console.error("Failed to mark notifications as read:", err);
@@ -127,14 +163,14 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       if (!token) return navigate("/login");
-      const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes, bulletinsRes, attendanceRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/employees/stats`, { headers }),
-        axios.get(`${import.meta.env.VITE_API_URL}/bulletins`, { headers }),
-        axios.get(`${import.meta.env.VITE_API_URL}/employees/attendance-today`, { headers }),
+      const [statsRes, bulletinsRes, attendanceRes, reqRes] = await Promise.all([
+        api.get("/employees/stats"),
+        api.get("/bulletins"),
+        api.get("/employees/attendance-today"),
+        api.get("/general-requests/admin").catch(() => ({ data: [] })),
       ]);
 
       setStats({
@@ -143,32 +179,34 @@ export default function AdminDashboard() {
         totalAdmins: statsRes.data.totalAdmins || 0,
         totalInterns: statsRes.data.totalInterns || 0,
         activeEmployees: statsRes.data.activeEmployees || 0,
-        presentToday: attendanceRes.data.presentToday || 0,
+        presentToday: statsRes.data.presentToday !== undefined ? statsRes.data.presentToday : (attendanceRes.data.presentToday || 0),
       });
       setBulletins(bulletinsRes.data);
+      setPendingRequests(Array.isArray(reqRes.data) ? reqRes.data : []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // navigate is stable — removing it from deps prevents infinite re-fetch loop
 
   useEffect(() => {
-    if (!localStorage.getItem("token") || !localStorage.getItem("user")) {
+    if (!sessionStorage.getItem("token") || !sessionStorage.getItem("user")) {
       navigate("/login");
       return;
     }
     fetchDashboardData();
-  }, [fetchDashboardData, navigate]);
+  // fetchDashboardData is stable (no deps), navigate is stable — safe to list both once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePostBulletin = async () => {
     if (!bulletinContent.trim()) return;
     setBulletinPosting(true);
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${import.meta.env.VITE_API_URL}/bulletins`,
-        { title: bulletinTitle || "Bulletin", content: bulletinContent },
-        { headers: { Authorization: `Bearer ${token}` } }
+      await api.post("/bulletins",
+        { title: bulletinTitle || "Bulletin", content: bulletinContent }
       );
       setBulletinTitle("");
       setBulletinContent("");
@@ -183,34 +221,80 @@ export default function AdminDashboard() {
 
   if (!user) return <div className="stdc-loading">Authenticating…</div>;
   if (loading) return <div className="stdc-loading">Loading dashboard…</div>;
+  if (!permsLoaded) return <div className="stdc-loading">Loading permissions…</div>;
 
   const pendingCount = stats.totalEmployees - stats.presentToday;
   const initials = (name = "") => name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
 
-  const canRead = (feature) => perms[feature]?.can_read === true;
-  const canWrite = (feature) => perms[feature]?.can_write === true;
+  const isSuperAdmin = user?.role?.toLowerCase() === "super_admin";
+
+  // ── WorkStockPro base URL ──
+  const workstockToken = sessionStorage.getItem("token");
+  const wsBase = import.meta.env.VITE_WORKSTOCK_URL || `http://${window.location.hostname}:3001`;
+  // Keep old workstockUrl for backward compat on this component
+  const workstockUrl = `${wsBase}?token=${workstockToken}`;
+
+  // ── Permission helpers ──────────────────────────────────────────────────────
+  // IMPORTANT: Only fall back to role-based default if NO permission record
+  // exists at all for this feature (i.e. super_admin only). Regular admins
+  // must have an explicit can_read=true record to access a feature.
+  const canRead = (feature) => {
+    if (isSuperAdmin) return true;
+    if (perms[feature] !== undefined) return perms[feature].can_read === true;
+    // No record exists → deny by default for regular admins
+    return false;
+  };
+
+  const canWrite = (feature) => {
+    if (isSuperAdmin) return true;
+    if (perms[feature] !== undefined) return perms[feature].can_write === true;
+    // No record exists → deny by default for regular admins
+    return false;
+  };
+
+  // Build comma-separated SMS permissions string
+  const buildSmsPerms = () => {
+    const smsFeatures = ["workstockpro", "sms_stock_in", "sms_withdrawal", "sms_master_list", "sms_reports"];
+    if (isSuperAdmin) return smsFeatures.join(",");
+    return smsFeatures.filter(f => canRead(f)).join(",");
+  };
+
+  const buildSmsWritePerms = () => {
+    const smsFeatures = ["workstockpro", "sms_stock_in", "sms_withdrawal", "sms_master_list", "sms_reports"];
+    if (isSuperAdmin) return smsFeatures.join(",");
+    return smsFeatures.filter(f => canWrite(f)).join(",");
+  };
+
+  // Build WorkStock iframe URL for a given sub-path and feature
+  const wsUrl = (path = "", feature = activeView) => {
+    const urlPath = path ? `/${path}` : "";
+    const isReadOnly = !canWrite(feature);
+    return `${wsBase}${urlPath}?token=${workstockToken}&sms_perms=${encodeURIComponent(buildSmsPerms())}&sms_write_perms=${encodeURIComponent(buildSmsWritePerms())}&read_only=${isReadOnly}`;
+  };
+  // ───────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="stdc-shell">
 
-   
+      {/* ── Sidebar ── */}
       <aside className="stdc-sidebar">
         <div className="stdc-logo-area">
           <div className="stdc-logo-mark">
             <div style={{
-              width: 38, height: 38,
+              width: 72, height: 72,
               background: "#ffffff",
-              borderRadius: 8,
+              borderRadius: 12,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              overflow: "hidden"
+              overflow: "hidden",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.2)"
             }}>
               <img
                 src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
                 alt="Logo"
-                style={{ width: 34, height: 34, objectFit: "contain" }}
+                style={{ width: 64, height: 64, objectFit: "contain" }}
                 onError={(e) => {
                   if (e.target.src !== window.location.origin + "/logo.jpg") {
                     e.target.src = "/logo.jpg";
@@ -221,8 +305,8 @@ export default function AdminDashboard() {
               />
             </div>
             <div>
-              <div className="stdc-logo-text">UAV TECH</div>
-              <div className="stdc-logo-sub">Admin Portal</div>
+              <div className="stdc-logo-text">WorkStockPro</div>
+              <div className="stdc-logo-sub" title={user?.department || "Admin Portal"}>{user?.department || "Admin Portal"}</div>
             </div>
           </div>
         </div>
@@ -230,6 +314,7 @@ export default function AdminDashboard() {
         <nav className="stdc-nav">
           <div className="stdc-nav-label">Main</div>
 
+          {/* Dashboard — always visible */}
           <div
             className={`stdc-nav-item ${activeView === "dashboard" ? "stdc-nav-active" : ""}`}
             onClick={() => setActiveView("dashboard")}
@@ -237,13 +322,34 @@ export default function AdminDashboard() {
             <LayoutDashboard size={18} /> Dashboard
           </div>
 
-          <div
-            className={`stdc-nav-item ${activeView === "request-panel" ? "stdc-nav-active" : ""}`}
-            onClick={() => setActiveView("request-panel")}
-          >
-            <MessageSquare size={18} /> Request Panel
-          </div>
+          {/* Request Panel — permission gated */}
+          {canRead("request_panel") && (
+            <div
+              className={`stdc-nav-item ${activeView === "request-panel" ? "stdc-nav-active" : ""}`}
+              onClick={() => setActiveView("request-panel")}
+              style={{ position: "relative" }}
+            >
+              <MessageSquare size={18} /> Request Panel
+              {pendingRequestCount > 0 && (
+                <span style={{
+                  marginLeft: "auto",
+                  background: "#ef4444",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  borderRadius: 20,
+                  padding: "1px 6px",
+                  minWidth: 18,
+                  textAlign: "center",
+                  lineHeight: "16px",
+                }}>
+                  {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+                </span>
+              )}
+            </div>
+          )}
 
+          {/* Leave Management — permission gated */}
           {canRead("leaves") && (
             <div
               className={`stdc-nav-item ${activeView === "leaves" ? "stdc-nav-active" : ""}`}
@@ -253,6 +359,15 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* My Leave — always visible (personal) */}
+          <div
+            className={`stdc-nav-item ${activeView === "my-leave" ? "stdc-nav-active" : ""}`}
+            onClick={() => setActiveView("my-leave")}
+          >
+            <Plane size={18} /> My Leave
+          </div>
+
+          {/* Directory — permission gated */}
           {canRead("directory") && (
             <div
               className={`stdc-nav-item ${activeView === "directory" ? "stdc-nav-active" : ""}`}
@@ -262,6 +377,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* DPR Overview — permission gated */}
           {canRead("dpr") && (
             <div
               className={`stdc-nav-item ${activeView === "dpr" ? "stdc-nav-active" : ""}`}
@@ -270,43 +386,101 @@ export default function AdminDashboard() {
               <ClipboardList size={18} /> DPR Overview
             </div>
           )}
+
+          {/* WorkStock Pro — SMS dashboard, permission gated */}
+          {(canRead("workstockpro") || canRead("sms_stock_in") || canRead("sms_withdrawal") || canRead("sms_master_list") || canRead("sms_reports")) && (
+            <>
+              <div className="stdc-nav-label" style={{ marginTop: 10 }}>Stock (SMS)</div>
+              
+              {canRead("workstockpro") && (
+                <div
+                  className={`stdc-nav-item ${activeView === "workstockpro" ? "stdc-nav-active" : ""}`}
+                  onClick={() => setActiveView("workstockpro")}
+                >
+                  <Package size={18} /> SMS Dashboard
+                </div>
+              )}
+              
+              {canRead("sms_stock_in") && (
+                <div
+                  className={`stdc-nav-item ${activeView === "sms_stock_in" ? "stdc-nav-active" : ""}`}
+                  onClick={() => setActiveView("sms_stock_in")}
+                >
+                  <ArrowDownToLine size={18} /> Stock In
+                </div>
+              )}
+              
+              {canRead("sms_withdrawal") && (
+                <div
+                  className={`stdc-nav-item ${activeView === "sms_withdrawal" ? "stdc-nav-active" : ""}`}
+                  onClick={() => setActiveView("sms_withdrawal")}
+                >
+                  <ArrowUpFromLine size={18} /> Withdrawal
+                </div>
+              )}
+              
+              {canRead("sms_master_list") && (
+                <div
+                  className={`stdc-nav-item ${activeView === "sms_master_list" ? "stdc-nav-active" : ""}`}
+                  onClick={() => setActiveView("sms_master_list")}
+                >
+                  <List size={18} /> Master List
+                </div>
+              )}
+              
+              {canRead("sms_reports") && (
+                <div
+                  className={`stdc-nav-item ${activeView === "sms_reports" ? "stdc-nav-active" : ""}`}
+                  onClick={() => setActiveView("sms_reports")}
+                >
+                  <FileBarChart size={18} /> All Withdrawals
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Control Panel — super admin only */}
+          {isSuperAdmin && (
+          <div
+            className={`stdc-nav-item ${activeView === "control-panel" ? "stdc-nav-active" : ""}`}
+            onClick={() => setActiveView("control-panel")}
+          >
+            <Shield size={18} /> Control Panel
+          </div>
+          )}
         </nav>
 
         <div className="stdc-sidebar-footer">
           <button
             className="stdc-logout-btn"
-            onClick={() => { localStorage.clear(); navigate("/login"); }}
+            onClick={() => { sessionStorage.clear(); navigate("/login", { replace: true }); }}
           >
             <LogOut size={15} /> Logout
           </button>
         </div>
       </aside>
 
-      
+      {/* ── Main content ── */}
       <div className="stdc-main">
 
         <div className="stdc-topbar">
           <div className="stdc-topbar-left">
             <div className="stdc-page-title">
-              {user?.role === 'admin_hr' ? 'HR Admin Dashboard' : 'Admin Dashboard'}
+              {user?.department ? `${user.department} Dashboard` : "Admin Dashboard"}
             </div>
           </div>
 
           <div style={{ flex: 1 }}></div>
 
-          <button
-            onClick={() => setShowBulletinModal(true)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 16px", background: "#10b981", color: "#fff",
-              border: "none", borderRadius: 8, fontFamily: "DM Sans, sans-serif",
-              fontWeight: 700, fontSize: 13, cursor: "pointer", marginRight: 12
-            }}
-          >
-            + New Bulletin
-          </button>
-
           <div className="stdc-topbar-right">
+            {canWrite("bulletins") && (
+              <button 
+                onClick={() => setShowBulletinModal(true)}
+                style={{ padding: "6px 14px", height: "34px", display: "flex", alignItems: "center", marginRight: "8px", border: "none", color: "#fff", background: "#4f46e5", borderRadius: "8px", fontWeight: "600", cursor: "pointer", fontSize: "13px" }}
+              >
+                + New Bulletin
+              </button>
+            )}
             <div className="stdc-date-chip">
               {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </div>
@@ -375,26 +549,60 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="stdc-avatar-pill">
-              <div className="stdc-avatar">{initials(user?.fullname)}</div>
-              <span className="stdc-avatar-name">{user?.fullname || "HR Admin"}</span>
-            </div>
+            {(() => {
+              let pic = user?.profilePic || user?.profile_pic;
+              if (pic && pic.startsWith("/uploads")) {
+                pic = `${API_URL}${pic}`;
+              }
+              return (
+                <div className="stdc-avatar-pill" onClick={() => navigate("/settings")}>
+                  {pic ? (
+                    <img src={pic} alt="Avatar" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    <div className="stdc-avatar">{initials(user?.fullname || (user?.department ? `${user.department} Admin` : "Admin"))}</div>
+                  )}
+                  <span className="stdc-avatar-name">{user?.fullname || (user?.department ? `${user.department} Admin` : "Admin")}</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
-        {/* ── CONTENT ── */}
+        {/* ── Views ── */}
         <div className="stdc-content">
 
-          {activeView === "request-panel" ? (
+          {activeView === "request-panel" && canRead("request_panel") ? (
             <RequestPanelContent role={user?.role || "admin"} />
+          ) : activeView === "my-leave" ? (
+            <AdminApplyLeave />
           ) : activeView === "leaves" && canRead("leaves") ? (
-            <AdminLeaveManagement />
+            <AdminLeaveManagement readOnly={!canWrite("leaves")} />
           ) : activeView === "directory" && canRead("directory") ? (
             <DirectoryPanel />
           ) : activeView === "dpr" && canRead("dpr") ? (
-            <AdminDPR />
+            <AdminDPR readOnly={!canWrite("dpr")} />
+          ) : activeView === "departments" && canRead("departments") ? (
+            <Departments />
+          ) : activeView === "workstockpro" || activeView === "sms_stock_in" || activeView === "sms_withdrawal" || activeView === "sms_master_list" || activeView === "sms_reports" ? (
+            <div style={{ padding: "24px", animation: "cpFadeIn 0.4s ease-out" }}>
+              <div style={{ display: "none" }}></div>
+              <iframe
+                src={wsUrl(
+                  activeView === "sms_master_list" ? "products" :
+                  activeView === "sms_withdrawal" ? "withdraw" :
+                  activeView === "sms_stock_in" ? "add-product" :
+                  activeView === "sms_reports" ? "my-withdrawals" : ""
+                )}
+                style={{ width: "100%", height: "82vh", border: "none", borderRadius: "12px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
+                title="WorkStockPro"
+                allow="same-origin"
+              />
+            </div>
+          ) : activeView === "control-panel" ? (
+            <ControlPanel />
           ) : activeView === "dashboard" ? (
             <>
+              {/* ── Stats row ── */}
               <div className="stdc-stats-row">
                 <div className="stdc-stat-card">
                   <div className="stdc-stat-tag stdc-stat-tag-green">Team</div>
@@ -425,17 +633,14 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* ── Attendance banner — only shown if user can read attendance ── */}
               {canRead("attendance") && (
                 <div className="stdc-attendance-banner">
                   <div className="stdc-banner-left">
                     <h2>Today's Attendance</h2>
                     <p>Mark and track attendance for all employees</p>
-                    {canWrite("attendance") ? (
+                    {canWrite("attendance") && (
                       <button className="stdc-post-attendance-btn" onClick={() => setShowBulk(true)}>
-                        <ClipboardCheck size={15} /> Post Attendance
-                      </button>
-                    ) : (
-                      <button className="stdc-post-attendance-btn" disabled style={{ opacity: 0.45, cursor: "not-allowed" }}>
                         <ClipboardCheck size={15} /> Post Attendance
                       </button>
                     )}
@@ -459,19 +664,25 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* ── Quick Actions ── */}
               <div className="stdc-section-header">
                 <div className="stdc-section-title">Quick Actions</div>
               </div>
 
               <div className="stdc-actions-grid">
-                <div className="stdc-action-card" onClick={() => setShowCreateUser(true)}>
-                  <div className="stdc-action-icon"><UserPlus size={20} /></div>
-                  <div>
-                    <div className="stdc-action-label">Enroll Member</div>
-                    <div className="stdc-action-desc">Add new member</div>
-                  </div>
-                </div>
 
+                {/* Enroll Member */}
+                {canRead("enroll") && (
+                  <div className="stdc-action-card" onClick={() => setShowCreateUser(true)}>
+                    <div className="stdc-action-icon"><UserPlus size={20} /></div>
+                    <div>
+                      <div className="stdc-action-label">Enroll Member</div>
+                      <div className="stdc-action-desc">Onboard new staff</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Attendance */}
                 {canRead("upload_attendance") && (
                   <div className="stdc-action-card" onClick={() => setShowUpload(true)}>
                     <div className="stdc-action-icon"><FileSpreadsheet size={20} /></div>
@@ -482,21 +693,27 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* Leave Management */}
                 {canRead("leaves") && (
-                  <div
-                    className="stdc-action-card"
-                    onClick={() => canWrite("leaves") ? setShowLeaveManagement(true) : setActiveView("leaves")}
-                  >
+                  <div className="stdc-action-card" onClick={() => setShowLeaveManagement(true)}>
                     <div className="stdc-action-icon"><ClipboardCheck size={20} /></div>
                     <div>
                       <div className="stdc-action-label">Leave Management</div>
-                      <div className="stdc-action-desc">
-                        {canWrite("leaves") ? "Approve / Track Leaves" : "View Leaves (read only)"}
-                      </div>
+                      <div className="stdc-action-desc">Approve / Track Leaves</div>
                     </div>
                   </div>
                 )}
 
+                {/* My Leave — always visible */}
+                <div className="stdc-action-card" onClick={() => setActiveView("my-leave")}>
+                  <div className="stdc-action-icon"><Plane size={20} /></div>
+                  <div>
+                    <div className="stdc-action-label">My Leave</div>
+                    <div className="stdc-action-desc">Apply or view your leaves</div>
+                  </div>
+                </div>
+
+                {/* Tasks */}
                 {canRead("tasks") && (
                   <div className="stdc-action-card" onClick={() => setShowTaskModal(true)}>
                     <div className="stdc-action-icon"><ClipboardList size={20} /></div>
@@ -507,7 +724,8 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {canRead("payslips") && (
+                {/* Certificate Requests — uses payslips write permission (same as ControlPanel) */}
+                {canWrite("payslips") && (
                   <div className="stdc-action-card" onClick={() => navigate("/payslip-approvals")}>
                     <div className="stdc-action-icon"><FileSpreadsheet size={20} /></div>
                     <div>
@@ -517,6 +735,18 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
+                {/* Departments */}
+                {canRead("departments") && (
+                  <div className="stdc-action-card" onClick={() => setActiveView("departments")}>
+                    <div className="stdc-action-icon"><LayoutDashboard size={20} /></div>
+                    <div>
+                      <div className="stdc-action-label">Departments</div>
+                      <div className="stdc-action-desc">Manage departments</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payroll */}
                 {canRead("payslips") && (
                   <div className="stdc-action-card" onClick={() => setShowPayslip(true)}>
                     <div className="stdc-action-icon"><Banknote size={20} /></div>
@@ -527,14 +757,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                <div className="stdc-action-card" onClick={() => navigate("/meeting-calendar")}>
-                  <div className="stdc-action-icon"><Calendar size={20} /></div>
-                  <div>
-                    <div className="stdc-action-label">Meetings</div>
-                    <div className="stdc-action-desc">Meeting Calendar</div>
-                  </div>
-                </div>
-
+                {/* Attendance Records */}
                 {canRead("attendance_records") && (
                   <div className="stdc-action-card" onClick={() => setShowAttRecords(true)}>
                     <div className="stdc-action-icon"><CalendarCheck size={20} /></div>
@@ -545,7 +768,8 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {canRead("attendance_reports") && (
+                {/* Reports */}
+                {canWrite("attendance_reports") && (
                   <div className="stdc-action-card" onClick={() => setShowDownloadModal(true)}>
                     <div className="stdc-action-icon"><FileSpreadsheet size={20} /></div>
                     <div>
@@ -555,14 +779,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                <div className="stdc-action-card" onClick={() => window.open('/stock', '_blank')}>
-                  <div className="stdc-action-icon"><Package size={20} /></div>
-                  <div>
-                    <div className="stdc-action-label">Workstock Pro</div>
-                    <div className="stdc-action-desc">Manage Inventory & Stock</div>
-                  </div>
-                </div>
-
+                {/* DPR Overview */}
                 {canRead("dpr") && (
                   <div className="stdc-action-card" onClick={() => setActiveView("dpr")}>
                     <div className="stdc-action-icon"><ClipboardList size={20} /></div>
@@ -572,12 +789,26 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Meetings */}
+                {canRead("meetings") && (
+                  <div className="stdc-action-card" onClick={() => setShowMeeting(true)}>
+                    <div className="stdc-action-icon"><Calendar size={20} /></div>
+                    <div>
+                      <div className="stdc-action-label">Meetings</div>
+                      <div className="stdc-action-desc">Meeting Calendar</div>
+                    </div>
+                  </div>
+                )}
+
+
+
               </div>
             </>
           ) : null}
 
-          
-          {(activeView === "dashboard" || activeView === "leaves" || activeView === "directory" || activeView === "request-panel" || activeView === "dpr") && (
+          {/* ── Bottom row: Bulletins / Requests / Notifications ── */}
+          {(activeView === "dashboard" || activeView === "control-panel" || activeView === "leaves" || activeView === "directory" || activeView === "request-panel" || activeView === "dpr" || activeView === "departments") && (
             <div className="stdc-bottom-row" style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
               <div className="stdc-bottom-card">
                 <div className="stdc-bottom-card-title">Bulletins</div>
@@ -604,12 +835,45 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="stdc-bottom-card" onClick={() => setActiveView("request-panel")} style={{ cursor: "pointer" }}>
-                <div className="stdc-bottom-card-title">Requests</div>
-                <div className="stdc-empty-text" style={{ fontSize: "12px", color: "#64748b" }}>
-                  Click here to view the Request Panel.
+              {canRead("request_panel") && (
+                <div className="stdc-bottom-card" onClick={() => setActiveView("request-panel")} style={{ cursor: "pointer" }}>
+                  <div className="stdc-bottom-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span>Incoming Requests</span>
+                    {pendingRequestCount > 0 && (
+                      <span style={{ background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 20, padding: "2px 8px" }}>
+                        {pendingRequestCount} pending
+                      </span>
+                    )}
+                  </div>
+                  {pendingRequests.length === 0 ? (
+                    <div className="stdc-empty-text" style={{ fontSize: "12px", color: "#94a3b8", marginTop: 8 }}>No requests yet.</div>
+                  ) : (
+                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                      {pendingRequests.filter(r => r.status === "pending").slice(0, 3).map((req, i) => (
+                        <div key={req.id || i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#fef9f0", borderRadius: 8, border: "1px solid #fde68a" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {req.name || req.certificate_name || "Request"}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#64748b" }}>
+                              {req.employee_name || "Employee"}{req.request_type ? ` · ${req.request_type}` : ""}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6, background: "#fef3c7", color: "#92400e", flexShrink: 0, marginLeft: 8 }}>Pending</span>
+                        </div>
+                      ))}
+                      {pendingRequestCount > 3 && (
+                        <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, textAlign: "center", paddingTop: 4 }}>
+                          +{pendingRequestCount - 3} more · click to view all
+                        </div>
+                      )}
+                      {pendingRequestCount === 0 && pendingRequests.length > 0 && (
+                        <div style={{ fontSize: 12, color: "#64748b" }}>All requests resolved. Click to view history.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div className="stdc-bottom-card">
                 <div className="stdc-bottom-card-title">Today's Notifications</div>
@@ -646,13 +910,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      
+      {/* ── Modals ── */}
 
       {showUpload && (
         <div className="stdc-overlay">
           <div className="stdc-modal-box" style={{ maxWidth: "520px" }}>
             <button className="stdc-modal-close-btn" onClick={() => setShowUpload(false)}>✕</button>
-            <AttendanceUpload />
+            <AttendanceUpload readOnly={!canWrite("upload_attendance")} />
           </div>
         </div>
       )}
@@ -661,7 +925,7 @@ export default function AdminDashboard() {
         <div className="stdc-overlay">
           <div className="stdc-modal-box" style={{ width: "95%", maxWidth: "1200px" }}>
             <button className="stdc-modal-close-btn" onClick={() => setShowLeaveManagement(false)}>✕</button>
-            <AdminLeaveManagement />
+            <AdminLeaveManagement readOnly={!canWrite("leaves")} />
           </div>
         </div>
       )}
@@ -670,7 +934,7 @@ export default function AdminDashboard() {
         <div className="stdc-overlay">
           <div className="stdc-modal-box">
             <button className="stdc-modal-close-btn" onClick={() => setShowBulk(false)}>✕</button>
-            <BulkAttendance />
+            <BulkAttendance readOnly={!canWrite("attendance")} />
           </div>
         </div>
       )}
@@ -686,9 +950,11 @@ export default function AdminDashboard() {
 
       {showTaskModal && (
         <div className="stdc-overlay">
-          <div className="stdc-modal-box">
+          <div className="stdc-modal-box" style={{ width: "95%", maxWidth: "1100px" }}>
             <button className="stdc-modal-close-btn" onClick={() => setShowTaskModal(false)}>✕</button>
-            <TaskManagement />
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 24px" }}>
+              <TaskManagement readOnly={!canWrite("tasks")} />
+            </div>
           </div>
         </div>
       )}
@@ -697,7 +963,7 @@ export default function AdminDashboard() {
         <div className="stdc-overlay">
           <div className="stdc-modal-box" style={{ maxWidth: "1000px" }}>
             <button className="stdc-modal-close-btn" onClick={() => setShowPayslip(false)}>✕</button>
-            <PayslipGeneration />
+            <PayslipGeneration readOnly={!canWrite("payslips")} />
           </div>
         </div>
       )}
@@ -713,6 +979,7 @@ export default function AdminDashboard() {
             <div style={{ background: "#fff", borderRadius: "12px", height: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
               <div className="create-user-modal-inner" style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
                 <CreateUser
+                  readOnly={!canWrite("enroll")}
                   onClose={() => setShowCreateUser(false)}
                   onSuccess={() => {
                     setShowCreateUser(false);
@@ -725,9 +992,17 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {showMeeting && (
+        <div className="stdc-overlay">
+          <div className="stdc-modal-box" style={{ width: "95%", maxWidth: "1200px", padding: 0 }}>
+            <MeetingCalendar onClose={() => setShowMeeting(false)} readOnly={!canWrite("meetings")} />
+          </div>
+        </div>
+      )}
+
       {showBulletinModal && (
         <div className="stdc-overlay">
-          <div className="stdc-modal-box" style={{ maxWidth: "480px" }}>
+          <div className="stdc-modal-box" style={{ maxWidth: "480px", padding: "28px" }}>
             <button className="stdc-modal-close-btn" onClick={() => setShowBulletinModal(false)}>✕</button>
             <div style={{ marginBottom: 20 }}>
               <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>Post Bulletin</h3>
@@ -805,10 +1080,9 @@ export default function AdminDashboard() {
               disabled={!fromDate || !toDate}
               onClick={async () => {
                 try {
-                  const token = localStorage.getItem("token");
-                  const res = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/attendance/export-excel?from=${fromDate}&to=${toDate}`,
-                    { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }
+                  const res = await api.get(
+                    `/attendance/export-excel?from=${fromDate}&to=${toDate}`,
+                    { responseType: "blob" }
                   );
                   const url = URL.createObjectURL(res.data);
                   const a = document.createElement("a");

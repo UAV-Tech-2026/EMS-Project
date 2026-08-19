@@ -7,7 +7,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ─── MULTER SETUP ────────────────────────────────────────────────────────
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = "uploads/shared";
@@ -22,18 +22,18 @@ const storage = multer.diskStorage({
   },
 });
 
-// ─── ALLOWED FILE TYPES ──────────────────────────────────────────────────
+
 const ALLOWED_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-  "application/vnd.ms-excel",                                           // .xls
-  "text/plain",                                                          // .txt
-  "application/msword",                                                  // .doc
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+  "application/vnd.ms-excel",                                          
+  "text/plain",                                                        
+  "application/msword",                                                  
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
 ];
 
 const upload = multer({
@@ -48,14 +48,14 @@ const upload = multer({
   },
 });
 
-// ─── SHARE DOCUMENT (file upload) ────────────────────────────────────────
+
 router.post("/upload", verifyToken, (req, res, next) => {
   upload.single("file")(req, res, (err) => {
     if (err instanceof multer.MulterError) {
-      // Multer-specific errors (file size, etc.)
+      
       return res.status(400).json({ msg: `Upload error: ${err.message}` });
     } else if (err) {
-      // fileFilter rejection or other errors
+      
       return res.status(400).json({ msg: err.message });
     }
     next();
@@ -86,7 +86,7 @@ router.post("/upload", verifyToken, (req, res, next) => {
   }
 });
 
-// ─── SHARE DRIVE LINK ────────────────────────────────────────────────────
+
 router.post("/share-link", verifyToken, async (req, res) => {
   try {
     const { document_name, drive_link, target_role, target_user_id, message } = req.body;
@@ -112,7 +112,7 @@ router.post("/share-link", verifyToken, async (req, res) => {
   }
 });
 
-// ─── GET DOCUMENTS SHARED WITH ME (by role) ──────────────────────────────
+
 router.get("/inbox", verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role;
@@ -131,7 +131,7 @@ router.get("/inbox", verifyToken, async (req, res) => {
          FROM shared_documents sd
          JOIN users u ON sd.shared_by = u.id
          WHERE sd.target_role = $1 
-            OR (sd.target_role = 'admins' AND ($1 = 'admin' OR $1 = 'admin_hr' OR $1 = 'hr_admin' OR $1 = 'production_admin'))
+            OR (sd.target_role = 'admins' AND $1 = 'admin')
             OR sd.target_role = 'all' 
             OR sd.target_user_id = $2
          ORDER BY sd.shared_at DESC`,
@@ -145,7 +145,7 @@ router.get("/inbox", verifyToken, async (req, res) => {
   }
 });
 
-// ─── GET DOCUMENTS I HAVE SHARED ─────────────────────────────────────────
+
 router.get("/sent", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -159,7 +159,7 @@ router.get("/sent", verifyToken, async (req, res) => {
   }
 });
 
-// ─── DOWNLOAD SHARED DOCUMENT ────────────────────────────────────────────
+
 router.get("/download/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -185,7 +185,7 @@ router.get("/download/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ─── GET RECENT SHARED DOCUMENTS COUNT (for dashboard badge) ─────────────
+
 router.get("/count", verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role;

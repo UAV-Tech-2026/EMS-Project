@@ -1,7 +1,4 @@
-/* ──────────────────────────────────────────────────────────────────────────
-   AdminDPR.css
-   Theme: Premium Light
-   ────────────────────────────────────────────────────────────────────────── */
+
 
 :root {
   --adpr-bg: #f8fafc;
@@ -221,7 +218,7 @@
     border-color: var(--adpr-accent);
 }
 
-/* Subtable */
+
 .adpr-subtable-wrap {
   background: #f8fafc; 
   border-top: 1px solid var(--adpr-border);

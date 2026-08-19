@@ -1,4 +1,4 @@
-/* ── AttendanceView.css ──────────────────────────────────────────────── */
+
 
 :root {
   --att-bg: #f1f5f9;
@@ -25,7 +25,7 @@
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* ── Header ──────────────────────────────────────────────────────────── */
+
 .attendance-view-header {
   display: flex;
   align-items: center;
@@ -42,7 +42,7 @@
   letter-spacing: -0.02em;
 }
 
-/* ── Filters ─────────────────────────────────────────────────────────── */
+
 .attendance-filters {
   background: var(--att-surface);
   border: 1px solid var(--att-border);
@@ -87,7 +87,7 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-/* ── Shared button style ─────────────────────────────────────────────── */
+
 .filter-btn {
   padding: 11px 24px;
   background: var(--att-accent);
@@ -116,7 +116,7 @@
   transform: translateY(0);
 }
 
-/* ── Table card ──────────────────────────────────────────────────────── */
+
 .attendance-table-card {
   background: var(--att-surface);
   border-radius: var(--att-radius);
@@ -125,7 +125,7 @@
   box-shadow: var(--att-shadow);
 }
 
-/* ── Table ───────────────────────────────────────────────────────────── */
+
 .attendance-table {
   width: 100%;
   border-collapse: collapse;
@@ -167,7 +167,7 @@
   font-weight: 500;
 }
 
-/* ── Status badges ───────────────────────────────────────────────────── */
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -216,7 +216,6 @@
   border-color: #ddd6fe;
 }
 
-/* ── Empty / loading state ───────────────────────────────────────────── */
 .no-data {
   padding: 64px;
   text-align: center;
@@ -225,7 +224,7 @@
   font-weight: 500;
 }
 
-/* ── Responsive ──────────────────────────────────────────────────────── */
+
 @media (max-width: 768px) {
   .attendance-view-container {
     padding: 24px 16px;

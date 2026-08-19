@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  auth-service:
+    build: .
+    container_name: auth-service
+    restart: always
+    ports:
+      - "3010:3010"
+    environment:
+      - PORT=3010
+      - DATABASE_URL=postgres://ems_db:123@172.31.2.91:5432/ems_dbs1
+      - JWT_SECRET=ems_2026
+    networks:
+      - ems-network
+
+networks:
+  ems-network:
+    external: true

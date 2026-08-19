@@ -1,18 +1,37 @@
-version: "3.9"
-
 services:
-  db:
-    image: postgres:16
-    container_name: ems-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_DB: ems_dbs1
+  ems-frontend:
+    build:
+      context: /home/ubuntu/frontend
+      args:
+        - VITE_API_URL
+        - VITE_WORKSTOCK_URL
+        - VITE_WORKSTOCK_API_URL
+        - VITE_LOGO_URL
+    container_name: ems-frontend
+    restart: always
     ports:
-      - "5432:5432"
-    volumes:
-      - ems_postgres:/var/lib/postgresql/data
+      - "80:3000"
+    env_file:
+      - /home/ubuntu/frontend/.env
+    networks:
+      - frontend-network
 
-volumes:          # 👈 this was missing
-  ems_postgres:
-    name: ems_postgres 
+  workstock-frontend:
+    build:
+      context: /home/ubuntu/workstock-pro/frontend
+      args:
+        - VITE_API_BASE_URL
+        - VITE_EMS_URL
+        - VITE_LOGO_URL
+    container_name: workstock-frontend
+    restart: always
+    ports:
+      - "3001:80"
+    env_file:
+      - /home/ubuntu/workstock-pro/frontend/.env
+    networks:
+      - frontend-network
+
+networks:
+  frontend-network:
+    driver: bridge

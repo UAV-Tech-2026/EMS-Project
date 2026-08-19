@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { api } from "../utils/api";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, ExternalLink, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+import "../styles/AttendanceUpload.css";
 
-export default function AttendanceUpload() {
-  const [file,       setFile]       = useState(null);
-  const [driveUrl,   setDriveUrl]   = useState("");
-  const [uploading,  setUploading]  = useState(false);
-  const [result,     setResult]     = useState(null); // { type: "success"|"error", msg }
-  const [tab,        setTab]        = useState("local"); // "local" | "drive"
+export default function AttendanceUpload({ readOnly }) {
+  const [file,      setFile]      = useState(null);
+  const [driveUrl,  setDriveUrl]  = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [result,    setResult]    = useState(null);
+  const [tab,       setTab]       = useState("local");
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -15,13 +17,13 @@ export default function AttendanceUpload() {
   };
 
   const handleLocalUpload = async () => {
+    if (readOnly) return;
     if (!file) { setResult({ type: "error", msg: "Please select an Excel file first." }); return; }
     const ext = file.name.split(".").pop().toLowerCase();
     if (!["xlsx", "xls"].includes(ext)) {
       setResult({ type: "error", msg: "Only .xlsx or .xls files are accepted." });
       return;
     }
-
     try {
       setUploading(true);
       setResult(null);
@@ -40,12 +42,12 @@ export default function AttendanceUpload() {
   };
 
   const handleDriveUpload = async () => {
+    if (readOnly) return;
     if (!driveUrl.trim()) { setResult({ type: "error", msg: "Please enter a Google Drive link." }); return; }
     if (!driveUrl.includes("drive.google.com")) {
       setResult({ type: "error", msg: "Please enter a valid Google Drive URL." });
       return;
     }
-
     try {
       setUploading(true);
       setResult(null);
@@ -59,163 +61,132 @@ export default function AttendanceUpload() {
     }
   };
 
+  const canUploadLocal = file && !readOnly;
+  const canUploadDrive = driveUrl.trim() && !readOnly;
+
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: "#f8fafc" }}>
+    <div className="au-root">
 
       {/* Title */}
-      <div style={{ marginBottom: "1.25rem" }}>
-        <h3 style={{ margin: "0 0 4px", fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>
-          Upload Attendance
-        </h3>
-        <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
-          Upload an Excel file locally or paste a Google Drive link
-        </p>
+      <div className="au-title-block">
+        <h3>Upload Attendance</h3>
+        <p>Upload an Excel file locally or paste a Google Drive link</p>
       </div>
 
       {/* Tab switcher */}
-      <div style={{ display: "flex", background: "#0f172a", border: "1px solid #334155",
-        borderRadius: "8px", overflow: "hidden", marginBottom: "1.25rem", width: "fit-content" }}>
+      <div className="au-tabs">
         {["local", "drive"].map(t => (
-          <button key={t} onClick={() => { setTab(t); setResult(null); }}
-            style={{
-              padding: "8px 20px", fontSize: "12px", fontWeight: 600,
-              background: tab === t ? "#1e293b" : "transparent",
-              color: tab === t ? "#10b981" : "#64748b",
-              border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              transition: "all 0.15s",
-            }}>
+          <button
+            key={t}
+            className={`au-tab-btn${tab === t ? " active" : ""}`}
+            onClick={() => { setTab(t); setResult(null); }}
+          >
             {t === "local" ? "📁 Local File" : "☁️ Google Drive"}
           </button>
         ))}
       </div>
 
-      {/* Local upload */}
+      {/* Local File tab */}
       {tab === "local" && (
         <div>
-          <label style={{
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", border: "2px dashed #334155",
-            borderRadius: "10px", padding: "2rem", cursor: "pointer",
-            background: file ? "#0c1e14" : "#0f172a",
-            borderColor: file ? "#10b981" : "#334155",
-            transition: "all 0.2s", marginBottom: "1rem",
-          }}>
-            <input type="file" accept=".xlsx,.xls" style={{ display: "none" }}
-              onChange={handleFileChange} />
-            <FileSpreadsheet size={32} color={file ? "#10b981" : "#334155"} />
-            <span style={{ marginTop: "10px", fontSize: "13px",
-              color: file ? "#10b981" : "#475569", fontWeight: 500 }}>
+          <label className={`au-dropzone${file ? " has-file" : ""}`}>
+            <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+            <FileSpreadsheet size={32} color={file ? "var(--au-green)" : "var(--au-border-drop)"} />
+            <span className="au-dropzone-label">
               {file ? file.name : "Click to select .xlsx / .xls file"}
             </span>
             {file && (
-              <span style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+              <span className="au-dropzone-size">
                 {(file.size / 1024).toFixed(1)} KB
               </span>
             )}
           </label>
 
-          <button onClick={handleLocalUpload} disabled={uploading || !file}
-            style={{
-              width: "100%", padding: "11px", background: file ? "#10b981" : "#1e293b",
-              color: file ? "#0f172a" : "#475569", border: "none", borderRadius: "8px",
-              fontSize: "13px", fontWeight: 700, cursor: file ? "pointer" : "not-allowed",
-              fontFamily: "'DM Sans', sans-serif", display: "flex",
-              alignItems: "center", justifyContent: "center", gap: "8px",
-              transition: "all 0.15s",
-            }}>
+          <button
+            onClick={handleLocalUpload}
+            disabled={uploading || !canUploadLocal}
+            className={`au-btn ${canUploadLocal ? "au-btn-green" : "au-btn-disabled"}`}
+          >
             <Upload size={15} />
-            {uploading ? "Uploading…" : "Upload to Database"}
+            {uploading ? "Uploading…" : readOnly ? "View Only" : "Upload to Database"}
           </button>
         </div>
       )}
 
-      {/* Google Drive */}
+      {/* Google Drive tab */}
       {tab === "drive" && (
         <div>
-          <div style={{ background: "#1e293b", border: "1px solid #334155",
-            borderRadius: "10px", padding: "14px", marginBottom: "1rem" }}>
-            <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#94a3b8", lineHeight: 1.6 }}>
+          <div className="au-drive-info">
+            <p>
               1. Open your attendance Excel file in Google Drive<br />
-              2. Click <strong style={{ color: "#f8fafc" }}>Share → Anyone with the link → Viewer</strong><br />
+              2. Click <strong>Share → Anyone with the link → Viewer</strong><br />
               3. Copy the link and paste it below
             </p>
-            <a href="https://drive.google.com" target="_blank" rel="noreferrer"
-              style={{ fontSize: "11px", color: "#3b82f6", display: "flex",
-                alignItems: "center", gap: "4px", textDecoration: "none" }}>
+            <a href="https://drive.google.com" target="_blank" rel="noreferrer">
               <ExternalLink size={11} /> Open Google Drive
             </a>
           </div>
 
           <input
             type="text"
+            className="au-input"
             placeholder="https://drive.google.com/file/d/..."
             value={driveUrl}
             onChange={e => { setDriveUrl(e.target.value); setResult(null); }}
-            style={{
-              width: "100%", padding: "10px 14px", background: "#0f172a",
-              border: "1px solid #334155", borderRadius: "8px", color: "#f8fafc",
-              fontSize: "13px", fontFamily: "'DM Sans', sans-serif",
-              outline: "none", marginBottom: "1rem", boxSizing: "border-box",
-            }}
           />
 
-          <button onClick={handleDriveUpload} disabled={uploading || !driveUrl.trim()}
-            style={{
-              width: "100%", padding: "11px",
-              background: driveUrl.trim() ? "#3b82f6" : "#1e293b",
-              color: driveUrl.trim() ? "#fff" : "#475569",
-              border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: 700,
-              cursor: driveUrl.trim() ? "pointer" : "not-allowed",
-              fontFamily: "'DM Sans', sans-serif", display: "flex",
-              alignItems: "center", justifyContent: "center", gap: "8px",
-              transition: "all 0.15s",
-            }}>
+          <button
+            onClick={handleDriveUpload}
+            disabled={uploading || !canUploadDrive}
+            className={`au-btn ${canUploadDrive ? "au-btn-blue" : "au-btn-disabled"}`}
+          >
             <Upload size={15} />
-            {uploading ? "Importing…" : "Import from Google Drive"}
+            {uploading ? "Importing…" : readOnly ? "View Only" : "Import from Google Drive"}
           </button>
         </div>
       )}
 
-      {/* Result message */}
+      {/* Result banner */}
       {result && (
-        <div style={{
-          marginTop: "1rem", padding: "12px 14px", borderRadius: "8px",
-          background: result.type === "success" ? "#0c1e14" : "#1a0a0a",
-          border: `1px solid ${result.type === "success" ? "#10b981" : "#ef4444"}`,
-          display: "flex", alignItems: "center", gap: "10px",
-        }}>
+        <div className={`au-result ${result.type}`}>
           {result.type === "success"
-            ? <CheckCircle size={16} color="#10b981" />
-            : <AlertCircle size={16} color="#ef4444" />}
-          <span style={{
-            fontSize: "13px", fontWeight: 500,
-            color: result.type === "success" ? "#10b981" : "#ef4444",
-          }}>
-            {result.msg}
-          </span>
+            ? <CheckCircle size={16} color="var(--au-green)" />
+            : <AlertCircle size={16} color="var(--au-error-border)" />}
+          <span>{result.msg}</span>
         </div>
       )}
 
       {/* Expected format */}
-      <div style={{ marginTop: "1.25rem", background: "#0f172a",
-        border: "1px solid #1e293b", borderRadius: "8px", padding: "12px 14px" }}>
-        <p style={{ margin: "0 0 8px", fontSize: "11px", fontWeight: 600,
-          color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          Expected Excel Format
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
-          gap: "4px", fontSize: "11px" }}>
-          {["Employee ID", "Name", "Date", "Status", "Check In / Out"].map(h => (
-            <div key={h} style={{ background: "#1a3a6b", color: "#93c5fd",
-              padding: "4px 6px", borderRadius: "4px", fontWeight: 600,
-              textAlign: "center" }}>{h}</div>
+      <div className="au-format">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <p className="au-format-label" style={{ margin: 0 }}>Expected Excel Format</p>
+          <button 
+            type="button"
+            className="au-btn au-btn-blue" 
+            style={{ padding: "4px 8px", fontSize: "11px", width: "auto", margin: 0 }}
+            onClick={() => {
+              const ws = XLSX.utils.aoa_to_sheet([
+                ["Employee ID", "Name", "Date", "Status", "Check In", "Check Out"],
+                ["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00", "18:00"]
+              ]);
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, "Template");
+              XLSX.writeFile(wb, "Attendance_Template.xlsx");
+            }}
+          >
+            <Download size={14} /> Download Template
+          </button>
+        </div>
+        <div className="au-format-grid">
+          {["Employee ID", "Name", "Date", "Status", "Check In", "Check Out"].map(h => (
+            <div key={h} className="au-format-cell header" style={{ padding: "4px 2px" }}>{h}</div>
           ))}
-          {["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00 / 18:00"].map(v => (
-            <div key={v} style={{ background: "#1e293b", color: "#94a3b8",
-              padding: "4px 6px", borderRadius: "4px", textAlign: "center" }}>{v}</div>
+          {["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00", "18:00"].map(v => (
+            <div key={v} className="au-format-cell data">{v}</div>
           ))}
         </div>
       </div>
+
     </div>
   );
 }

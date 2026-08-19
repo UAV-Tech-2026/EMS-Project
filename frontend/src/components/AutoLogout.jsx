@@ -1,59 +1,54 @@
-import { useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 
-const AUTO_LOGOUT_TIME = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+
+
+import { useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+
+const AUTO_LOGOUT_TIME = 10 * 60 * 1000;
 
 const AutoLogout = ({ children }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const timerRef = useRef(null);
 
   const logout = useCallback(() => {
-    console.log("Inactivity detected. Logging out...");
-    localStorage.clear();
-    // Use window.location.href to ensure a clean state, 
-    // or navigate if you prefer SPA behavior.
-    // navigate("/login", { replace: true });
-    window.location.href = "/login";
-  }, []);
+    sessionStorage.clear();
+    localStorage.removeItem("token_backup");
+    localStorage.removeItem("user_backup");
+    navigate("/login", { replace: true, state: { reason: "inactivity" } });
+  }, [navigate]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    
-    // Only set timer if user is logged in
-    if (localStorage.getItem("token")) {
+    if (sessionStorage.getItem("token")) {
       timerRef.current = setTimeout(logout, AUTO_LOGOUT_TIME);
     }
   }, [logout]);
 
   useEffect(() => {
-    const events = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click"
-    ];
-
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
     const handleActivity = () => resetTimer();
-
-    // Set initial timer
     resetTimer();
+    events.forEach(e => window.addEventListener(e, handleActivity));
 
-    // Add event listeners
-    events.forEach((event) => {
-      window.addEventListener(event, handleActivity);
-    });
+    
+    const handlePageShow = (e) => {
+      if (e.persisted) {
+        sessionStorage.clear();
+        localStorage.removeItem("token_backup");
+        localStorage.removeItem("user_backup");
+        window.location.replace("/login");
+      }
+    };
 
-    // Cleanup
+    window.addEventListener("pageshow", handlePageShow);
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      events.forEach((event) => {
-        window.removeEventListener(event, handleActivity);
-      });
+      events.forEach(e => window.removeEventListener(e, handleActivity));
+      window.removeEventListener("pageshow", handlePageShow);
     };
-  }, [resetTimer, location.pathname]); // Reset on route change as well
+  }, [resetTimer]);
 
   return children;
 };

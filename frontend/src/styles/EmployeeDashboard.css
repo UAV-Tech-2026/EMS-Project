@@ -1,4 +1,3 @@
-
 :root {
   --emp-sidebar-bg: #0f172a;
   --emp-sidebar-w: 210px;
@@ -15,7 +14,7 @@
   --emp-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.10);
 }
 
-/* ── Shell ───────────────────────────────── */
+
 .emp-shell {
   display: flex;
   height: 100vh;
@@ -25,7 +24,7 @@
   color: var(--emp-text);
 }
 
-/* ── Sidebar ─────────────────────────────── */
+
 .emp-sidebar {
   width: var(--emp-sidebar-w);
   min-width: var(--emp-sidebar-w);
@@ -49,10 +48,13 @@
 }
 
 .emp-logo-img {
-  width: 36px;
-  height: 36px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
-  mix-blend-mode: multiply;
+  border-radius: 10px;
+  background: #fff;
+  padding: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 .emp-logo-text {
@@ -69,7 +71,7 @@
   margin-top: 1px;
 }
 
-/* ── Nav ─────────────────────────────────── */
+
 .emp-nav {
   flex: 1;
   padding: 14px 10px;
@@ -136,7 +138,7 @@
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
 }
 
-/* ── Main ────────────────────────────────── */
+
 .emp-main {
   flex: 1;
   display: flex;
@@ -144,7 +146,7 @@
   overflow: hidden;
 }
 
-/* ── Topbar ──────────────────────────────── */
+
 .emp-topbar {
   height: var(--emp-topbar-h);
   background: var(--emp-surface);
@@ -186,31 +188,33 @@
 .emp-avatar-pill {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #f8fafc;
+  gap: 10px;
+  background: #fff;
   border: 1px solid var(--emp-border);
-  border-radius: 20px;
-  padding: 4px 12px 4px 4px;
+  border-radius: 10px;
+  padding: 6px 14px 6px 6px;
   cursor: pointer;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  box-shadow: var(--emp-shadow);
 }
 
 .emp-avatar-pill:hover {
   box-shadow: var(--emp-shadow-md);
+  border-color: var(--emp-accent);
 }
 
 .emp-avatar-img,
 .emp-avatar-initials {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   object-fit: cover;
 }
 
 .emp-avatar-initials {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -220,18 +224,18 @@
 .emp-avatar-name {
   font-size: 11px;
   font-weight: 700;
-  color: var(--emp-muted);
+  color: var(--emp-text);
   letter-spacing: 0.04em;
 }
 
-/* ── Scrollable Content ──────────────────── */
+
 .emp-content {
   flex: 1;
   overflow-y: auto;
   padding: 22px 24px 32px;
 }
 
-/* ── Stat Cards ──────────────────────────── */
+
 .emp-stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -339,7 +343,7 @@
   text-transform: uppercase;
 }
 
-/* ── EOD Banner ──────────────────────────── */
+
 .emp-eod-banner {
   background: linear-gradient(120deg, #1e3a8a 0%, #1d4ed8 55%, #2563eb 100%);
   border-radius: var(--emp-radius);
@@ -407,7 +411,7 @@
   margin-top: 3px;
 }
 
-/* ── Section Header ──────────────────────── */
+
 .emp-section-header {
   display: flex;
   align-items: center;
@@ -447,7 +451,7 @@
 
 
 
-/* ── Quick Action Grid ───────────────────── */
+
 .emp-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -512,6 +516,11 @@
   color: #16a34a;
 }
 
+.emp-action-indigo .emp-action-icon {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
 .emp-action-name {
   font-size: 13px;
   font-weight: 700;
@@ -525,10 +534,10 @@
   margin-top: 2px;
 }
 
-/* ── Bottom Row ──────────────────────────── */
+
 .emp-bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 5fr 3fr;
   gap: 14px;
 }
 
@@ -547,11 +556,14 @@
   margin-bottom: 12px;
 }
 
-/* ── Activity List ───────────────────────── */
+
 .emp-activity-list {
   display: flex;
   flex-direction: column;
   gap: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .emp-activity-item {
@@ -587,7 +599,7 @@
   margin-top: 2px;
 }
 
-/* ── Empty State ─────────────────────────── */
+
 .emp-empty-state {
   text-align: center;
   color: var(--emp-faint);
@@ -595,7 +607,7 @@
   padding: 18px 0;
 }
 
-/* ── Task Table ──────────────────────────── */
+
 .emp-task-table {
   width: 100%;
   border-collapse: collapse;
@@ -640,7 +652,7 @@
   font-weight: 600;
 }
 
-/* ── Notifications Bell ──────────────────── */
+
 .emp-notif-wrapper {
   position: relative;
 }
@@ -810,7 +822,18 @@
   margin-top: 3px;
 }
 
-/* ── Responsive ──────────────────────────── */
+
+/* ── DPR action card: keep consistent height with siblings ── */
+.emp-action-card {
+  min-height: 66px;
+  align-items: center;
+}
+
+/* Prevent the grid from stretching rows when DPR card has stacked buttons */
+.emp-actions-grid {
+  align-items: start;
+}
+
 @media (max-width: 1100px) {
   .emp-stats-row {
     grid-template-columns: repeat(2, 1fr);

@@ -1,11 +1,11 @@
-/* ── DirectoryPanel.css ────────────────────────────────────────────── */
+
 
 .dp-wrap {
   padding: 0;
   font-family: inherit;
 }
 
-/* Loading / Error */
+
 .dp-loading,
 .dp-error {
   text-align: center;
@@ -15,7 +15,7 @@
 }
 .dp-error { color: #dc2626; }
 
-/* ── Summary cards ── */
+
 .dp-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -144,7 +144,7 @@
 .dp-badge-emp { background: #bfdbfe; color: #1d4ed8; }
 .dp-badge-int { background: #bbf7d0; color: #15803d; }
 
-/* ── Table ── */
+
 .dp-table-wrap {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -186,7 +186,7 @@
 .dp-td-id  { font-family: monospace; font-size: 0.78rem; color: #6b7280; }
 .dp-td-dept { color: #6b7280; }
 
-/* Name cell */
+
 .dp-name-cell {
   display: flex;
   align-items: center;
@@ -209,7 +209,7 @@
 
 .dp-name { font-weight: 600; color: #111827; }
 
-/* Role pill */
+
 .dp-pill {
   display: inline-block;
   font-size: 0.72rem;
@@ -220,7 +220,7 @@
 .dp-pill-emp { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .dp-pill-int { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
 
-/* Status */
+
 .dp-status {
   font-size: 0.75rem;
   font-weight: 600;
@@ -228,7 +228,7 @@
 .dp-status-active   { color: #15803d; }
 .dp-status-inactive { color: #9ca3af; }
 
-/* Footer */
+
 .dp-foot {
   text-align: right;
   padding: 8px 14px;
@@ -238,7 +238,7 @@
   border-top: 1px solid #e5e7eb;
 }
 
-/* Empty state */
+
 .dp-empty {
   text-align: center;
   padding: 2.5rem 1rem;
@@ -246,7 +246,7 @@
   font-size: 0.85rem;
 }
 
-/* ── Responsive ── */
+
 @media (max-width: 600px) {
   .dp-summary { grid-template-columns: 1fr 1fr; }
   .dp-metric:first-child { grid-column: 1 / -1; }

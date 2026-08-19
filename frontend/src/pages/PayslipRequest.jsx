@@ -182,7 +182,7 @@ export default function PayslipRequest() {
     <div style={S.page}>
       <div style={S.container}>
 
-        {/* ── Header ── */}
+       
         <div style={S.header}>
           <div style={{ display: "flex", alignItems: "center" }}>
             <div style={S.logoBox}>
@@ -206,7 +206,7 @@ export default function PayslipRequest() {
           </div>
         </div>
 
-        {/* ── Request Form ── */}
+        
         <div style={S.formSection}>
           <h3 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#1e293b", marginBottom: 18, marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 6, height: 20, background: "linear-gradient(180deg,#4f46e5,#7c3aed)", borderRadius: 3, display: "inline-block" }} />
@@ -259,7 +259,7 @@ export default function PayslipRequest() {
           </form>
         </div>
 
-        {/* ── Requests Table ── */}
+        
         <div style={S.tableSection}>
           <h3 style={{ fontSize: "0.9rem", fontWeight: 800, color: "#1e293b", marginBottom: 18, marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ width: 6, height: 20, background: "linear-gradient(180deg,#10b981,#059669)", borderRadius: 3, display: "inline-block" }} />
@@ -324,13 +324,12 @@ export default function PayslipRequest() {
         </div>
       </div>
 
-      {/* ── Back to Dashboard ── */}
+      
       <div style={{ maxWidth: 940, margin: "24px auto 0", display: "flex", justifyContent: "flex-end" }}>
         <button
           onClick={() => {
-            const role = JSON.parse(localStorage.getItem("user"))?.role;
+            const role = JSON.parse(sessionStorage.getItem("user"))?.role;
             if (role === "super_admin") navigate("/super-admin-dashboard");
-            else if (role === "admin_hr") navigate("/admin-dashboard");
             else if (role === "admin") navigate("/admin-dashboard");
             else navigate("/employee-dashboard");
           }}

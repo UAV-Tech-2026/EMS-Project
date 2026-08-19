@@ -4,7 +4,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// GET all notifications for the logged-in user
+
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -22,7 +22,7 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// MARK all notifications as read for the logged-in user
+
 router.post("/mark-read", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -37,7 +37,7 @@ router.post("/mark-read", verifyToken, async (req, res) => {
   }
 });
 
-// Helper function to create a notification (internal use)
+
 export const createNotification = async (userId, message, type = "info") => {
   try {
     await pool.query(

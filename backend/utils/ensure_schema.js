@@ -2,12 +2,12 @@ import pool from "../db.js";
 import bcrypt from "bcryptjs";
 
 export const ensureSchema = async () => {
-  console.log("🛠 Checking database schema consistency...");
+  console.log("Checking database schema consistency...");
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-  
+
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -22,6 +22,7 @@ export const ensureSchema = async () => {
         role VARCHAR(50) DEFAULT 'employee',
         totp_secret VARCHAR(255),
         totp_secret_temp VARCHAR(255),
+        qr_delivered BOOLEAN DEFAULT false,
         profile_pic TEXT,
         department VARCHAR(100),
         created_at TIMESTAMP DEFAULT NOW()
@@ -106,6 +107,22 @@ export const ensureSchema = async () => {
         days_taken VARCHAR(50),
         link TEXT,
         assignment_date DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS reimbursements (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        expense_date DATE NOT NULL,
+        expense_type VARCHAR(100),
+        amount NUMERIC DEFAULT 0,
+        description TEXT,
+        receipt_path TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        approved_by INTEGER REFERENCES users(id),
+        approved_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
@@ -246,7 +263,7 @@ export const ensureSchema = async () => {
       CREATE TABLE IF NOT EXISTS payroll_history (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        month VARCHAR(7) NOT NULL, -- e.g. '2026-03'
+        month VARCHAR(7) NOT NULL,
         from_date DATE,
         to_date DATE,
         basic NUMERIC DEFAULT 0,
@@ -283,30 +300,121 @@ export const ensureSchema = async () => {
       )
     `);
 
-    
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS departments (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        role_name VARCHAR(100) UNIQUE NOT NULL,
+        default_features JSONB NOT NULL
+      )
+    `);
+
+    const roleCount = await client.query("SELECT COUNT(*) FROM roles");
+    if (parseInt(roleCount.rows[0].count) === 0) {
+      const hrFeatures = ["leaves", "directory", "enroll", "attendance", "upload_attendance", "attendance_records", "attendance_reports", "bulletins", "departments"];
+      const prodFeatures = ["attendance", "upload_attendance", "attendance_records", "tasks", "bulletins", "dpr"];
+      const adminFeatures = ["attendance", "tasks", "bulletins", "dpr"];
+      const superAdminFeatures = ["all"];
+
+      await client.query(`
+        INSERT INTO roles (role_name, default_features) VALUES
+          ('HR', $1),
+          ('Production', $2),
+          ('admin', $3),
+          ('super_admin', $4),
+          ('employee', '[]'),
+          ('intern', '[]')
+      `, [JSON.stringify(hrFeatures), JSON.stringify(prodFeatures), JSON.stringify(adminFeatures), JSON.stringify(superAdminFeatures)]);
+      console.log("✓ Default roles seeded");
+    }
+
+
+    const deptCount = await client.query("SELECT COUNT(*) FROM departments");
+    if (parseInt(deptCount.rows[0].count) === 0) {
+      await client.query(`
+        INSERT INTO departments (name) VALUES
+          ('PRD-Product Research Department'),
+          ('PED-Product Engineering Department'),
+          ('PDD-Software'), ('PDD-I&TT'), ('PDD-FT&T'), ('PDD-PTI'),
+          ('PMT'), ('BMD'), ('QA'), ('HR'), ('Operations')
+        ON CONFLICT (name) DO NOTHING
+      `);
+      console.log("✓ Default departments seeded");
+    }
+
 
     const adminCheck = await client.query("SELECT * FROM users WHERE role = 'super_admin'");
     if (adminCheck.rows.length === 0) {
       const hash = await bcrypt.hash("super123", 10);
-      await client.query(`
+      const superAdminRes = await client.query(`
         INSERT INTO users (username, password, fullname, name, email, role, phone)
         VALUES ('superadmin', $1, 'Super Administrator', 'Super Administrator', 'superadmin@uavtech.ai', 'super_admin', '9876543210')
+        RETURNING id
       `, [hash]);
-      console.log("✓ Super Admin seeded: superadmin / super123");
+      const superAdminId = superAdminRes.rows[0].id;
+
+      // The /login route joins users -> employees on employee_uav_id, so the
+      // seeded super admin needs a matching employees row or login will always
+      // fail with "Invalid credentials" even with the correct password.
+      await client.query(`
+        INSERT INTO employees (user_id, employee_uav_id, fullname, department)
+        VALUES ($1, 'UTPLS001', 'Super Administrator', 'HR')
+        ON CONFLICT (employee_uav_id) DO NOTHING
+      `, [superAdminId]);
+
+      console.log("✓ Super Admin seeded: UTPLS001 / super123");
+    } else {
+      
+      const missingEmployeeRow = await client.query(`
+        SELECT u.id FROM users u
+        LEFT JOIN employees e ON e.user_id = u.id
+        WHERE u.role = 'super_admin' AND e.id IS NULL
+        LIMIT 1
+      `);
+      if (missingEmployeeRow.rows.length > 0) {
+        const superAdminId = missingEmployeeRow.rows[0].id;
+        await client.query(`
+          INSERT INTO employees (user_id, employee_uav_id, fullname, department)
+          VALUES ($1, 'UTPLS001', 'Super Administrator', 'HR')
+          ON CONFLICT (employee_uav_id) DO NOTHING
+        `, [superAdminId]);
+        console.log("✓ Backfilled missing employees row for existing Super Admin (UTPLS001)");
+      }
     }
 
-    
+
+    await client.query(`
+      UPDATE users 
+      SET department = CASE 
+          WHEN role IN ('admin_hr', 'hr_admin') THEN 'HR'
+          WHEN role = 'production_admin' THEN 'Production'
+          ELSE department
+        END,
+        role = 'admin'
+      WHERE role IN ('admin_hr', 'hr_admin', 'production_admin')
+    `);
+    console.log("✓ Specific admin roles migrated to 'admin' with departments");
+
+
     await client.query(`
       UPDATE employees e
       SET employee_uav_id = 
         CASE 
-          WHEN u.role IN ('employee', 'intern')
-            THEN 'UAVE' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
-          WHEN u.role IN ('admin', 'admin_hr', 'hr_admin', 'production_admin')
-            THEN 'UAVA' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
-          WHEN u.role = 'super_admin'
-            THEN 'UAVS' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
-          ELSE e.employee_uav_id
+          WHEN u.role = 'super_admin' THEN 'UTPLS' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
+          WHEN u.role = 'admin'       THEN 'UTPLA' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
+          WHEN u.role = 'intern'      THEN 'UTPLI' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
+          ELSE                             'UTPLE' || LPAD(regexp_replace(e.employee_uav_id, '[^0-9]', '', 'g'), 3, '0')
         END
       FROM users u
       WHERE e.user_id = u.id
@@ -314,10 +422,17 @@ export const ensureSchema = async () => {
     `);
     console.log("✓ Employee IDs verified and corrected");
 
-   
 
+
+    // users
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile VARCHAR(15)`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS qr_delivered BOOLEAN DEFAULT false`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100)`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active'`);
+    // ↓ Ensures TOTP temp secret column always exists (required for enrollment QR flow)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret_temp VARCHAR(255)`);
+
+    // employees
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS department VARCHAR(100)`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS account_number VARCHAR(20)`);
@@ -325,20 +440,78 @@ export const ensureSchema = async () => {
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS adhar_path TEXT`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS address_path TEXT`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS total_ml INTEGER DEFAULT 12`);
-    
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS assigned_admin_id INTEGER REFERENCES users(id)`);
+
+    // attendance
     await client.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS hours_worked VARCHAR(20)`);
     await client.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER REFERENCES users(id)`);
     await client.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS ot_hours NUMERIC DEFAULT 0`);
-    
+
+    // leaves
     await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS applied_at TIMESTAMP DEFAULT NOW()`);
     await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS certificate_path TEXT`);
     await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS employee_uav_id VARCHAR(50)`);
     await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS name VARCHAR(100)`);
+    await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_by_name VARCHAR(100)`);
+    await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_by_role VARCHAR(50)`);
+    await client.query(`ALTER TABLE leaves ADD COLUMN IF NOT EXISTS target_approver_role VARCHAR(30) DEFAULT 'dept_admin'`);
 
+
+    await client.query(`
+      UPDATE leaves l
+      SET target_approver_role = 'super_or_hr_admin'
+      FROM users u
+      WHERE l.user_id = u.id
+        AND (u.role = 'super_admin' OR (u.role = 'admin' AND u.department = 'HR'))
+        AND l.target_approver_role IS DISTINCT FROM 'super_or_hr_admin'
+    `);
+
+
+    await client.query(`
+      UPDATE leaves l
+      SET approved_by_name = u.fullname,
+          approved_by_role = u.role
+      FROM users u
+      WHERE l.approved_by = u.id
+        AND l.approved_by_name IS NULL
+    `);
+    console.log("✓ Leave dual-scenario columns ensured");
+
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS task_comments (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
+        author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        comment TEXT NOT NULL,
+        tagged_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        target_admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        handoff_task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS target_admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+
+    // tasks — base extra columns
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE`);
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT`);
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS target_date VARCHAR(50)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS document_code VARCHAR(100)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS output_format_type VARCHAR(200)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS costing NUMERIC DEFAULT 0`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS man_hours NUMERIC DEFAULT 0`);
 
+    // tasks — recurring-task columns (from add_recurring_columns.js, integrated here so
+    //          they are created automatically on every server start, even after a DB reset)
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurring_frequency VARCHAR(20)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurring_end_date DATE`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurring_template_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS last_generated_date DATE`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category VARCHAR(100)`);
+
+    // payroll
     await client.query(`ALTER TABLE payroll_history ADD COLUMN IF NOT EXISTS from_date DATE`);
     await client.query(`ALTER TABLE payroll_history ADD COLUMN IF NOT EXISTS to_date DATE`);
     await client.query(`ALTER TABLE payroll_history ADD COLUMN IF NOT EXISTS basic NUMERIC DEFAULT 0`);
@@ -349,15 +522,22 @@ export const ensureSchema = async () => {
     await client.query(`ALTER TABLE payroll_history ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved'`);
     await client.query(`ALTER TABLE payroll_history ADD COLUMN IF NOT EXISTS approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
 
+    // general_requests
     await client.query(`ALTER TABLE general_requests ADD COLUMN IF NOT EXISTS target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
     await client.query(`ALTER TABLE general_requests ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'`);
+    await client.query(`ALTER TABLE general_requests ADD COLUMN IF NOT EXISTS request_type VARCHAR(50)`);
+
+    // dpr_entries — admin comment & admin assignment
+    await client.query(`ALTER TABLE dpr_entries ADD COLUMN IF NOT EXISTS admin_comment TEXT`);
+    await client.query(`ALTER TABLE dpr_entries ADD COLUMN IF NOT EXISTS assigned_admin_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+
+    // shared_documents
     await client.query(`ALTER TABLE shared_documents ADD COLUMN IF NOT EXISTS target_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+
+    // meetings
     await client.query(`ALTER TABLE meetings ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`);
-   await client.query(`ALTER TABLE general_requests ADD COLUMN IF NOT EXISTS request_type VARCHAR(50)`);
-    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS document_code VARCHAR(100)`);
-    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS output_format_type VARCHAR(200)`);
-    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS costing NUMERIC DEFAULT 0`);
-    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS man_hours NUMERIC DEFAULT 0`);
+    await client.query(`ALTER TABLE meetings ADD COLUMN IF NOT EXISTS target_users JSONB DEFAULT '[]'::jsonb`);
+
 
     const colCheckSl = await client.query(`
       SELECT column_name FROM information_schema.columns 
@@ -367,24 +547,15 @@ export const ensureSchema = async () => {
       await client.query(`ALTER TABLE employees RENAME COLUMN total_sl TO total_ml`);
     }
 
-   
-    const taskColCheck = await client.query(`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name='tasks' AND column_name='man_hours'
-    `);
-    if (taskColCheck.rows.length > 0) {
-      await client.query(`ALTER TABLE tasks RENAME COLUMN man_hours TO target_date`);
-    }
 
-   
     await client.query(`UPDATE users SET profile_pic = NULL WHERE role != 'super_admin'`);
     console.log("✓ Restricted Profile Photo Policy enforced");
 
     await client.query("COMMIT");
-    console.log("✅ Database schema is healthy and up-to-date.");
+    console.log(" Database schema is healthy and up-to-date.");
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("❌ Critical: Database schema Repair failed:", {
+    console.error(" Critical: Database schema Repair failed:", {
       message: err.message,
       detail: err.detail
     });
@@ -392,3 +563,5 @@ export const ensureSchema = async () => {
     client.release();
   }
 };
+
+export default ensureSchema;

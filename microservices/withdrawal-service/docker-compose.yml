@@ -1,0 +1,18 @@
+﻿version: "3.9"
+services:
+  withdrawal-service:
+    build: .
+    container_name: withdrawal-service
+    restart: always
+    ports:
+      - "3011:3011"
+    environment:
+      - PORT=3011
+      - DATABASE_URL=postgres://postgres:data7@172.31.14.42:5432/workstock_pro
+      - JWT_SECRET=ems_2026
+    networks:
+      - ems-network
+
+networks:
+  ems-network:
+    external: true

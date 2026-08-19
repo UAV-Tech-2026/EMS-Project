@@ -7,7 +7,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ─── MULTER SETUP ────────────────────────────────────────────────────────
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = "uploads/documents";
@@ -24,10 +24,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, 
 });
 
-// ─── LIST MY DOCUMENTS ───────────────────────────────────────────────────
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -41,7 +40,7 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// ─── UPLOAD DOCUMENT ─────────────────────────────────────────────────────
+
 router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
@@ -68,7 +67,7 @@ router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
   }
 });
 
-// ─── SAVE DRIVE LINK ─────────────────────────────────────────────────────
+
 router.post("/save-link", verifyToken, async (req, res) => {
   try {
     const { document_name, drive_link } = req.body;
@@ -94,7 +93,7 @@ router.post("/save-link", verifyToken, async (req, res) => {
   }
 });
 
-// ─── DOWNLOAD DOCUMENT ───────────────────────────────────────────────────
+
 router.get("/download/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,7 +108,7 @@ router.get("/download/:id", verifyToken, async (req, res) => {
 
     const doc = result.rows[0];
 
-    // Optional: Check if user has permission to download (if not admin/super_admin)
+   
     if (req.user.role !== "super_admin" && req.user.role !== "admin" && doc.user_id !== req.user.id) {
       return res.status(403).json({ msg: "Permission denied" });
     }
@@ -126,7 +125,7 @@ router.get("/download/:id", verifyToken, async (req, res) => {
   }
 });
 
-// ─── DELETE DOCUMENT ─────────────────────────────────────────────────────
+
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -141,15 +140,15 @@ router.delete("/:id", verifyToken, async (req, res) => {
 
     const doc = checkResult.rows[0];
 
-    // Only owner or admin can delete
+    
     if (req.user.role !== "super_admin" && req.user.role !== "admin" && doc.user_id !== req.user.id) {
       return res.status(403).json({ msg: "Permission denied" });
     }
 
-    // Delete record from DB
+    
     await pool.query("DELETE FROM documents WHERE id = $1", [id]);
 
-    // Delete file from disk
+   
     const absolutePath = path.resolve(doc.file_path);
     if (fs.existsSync(absolutePath)) {
       fs.unlinkSync(absolutePath);

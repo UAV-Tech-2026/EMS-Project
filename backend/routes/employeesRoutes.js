@@ -3,6 +3,7 @@ import multer from "multer";
 import pool from "../db.js";
 import bcrypt from "bcryptjs";
 import { verifyToken, isAdminOrSuper, isSuperAdmin } from "../middleware/authMiddleware.js";
+import { generateUavId } from "./authRoutes.js";
 
 const router = express.Router();
 
@@ -18,36 +19,30 @@ const upload = multer({ storage });
 router.get("/stats", verifyToken, async (req, res) => {
   try {
     const role = req.user.role?.toLowerCase();
-    if (role !== "super_admin" && role !== "admin" && role !== "admin_hr") {
+    const ALLOWED_ADMINS = ["super_admin", "admin"];
+    const isAdminType = role && role.includes("admin");
+    if (!isAdminType) {
       return res.status(403).json({ msg: "Access denied" });
     }
 
     const today = new Date().toISOString().split("T")[0];
+    
     let deptFilter = "";
-    let deptParam = [];
-
-    if (role !== "super_admin") {
-      const deptRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
-      const dept = deptRes.rows[0]?.department;
-      if (dept) {
-        deptFilter = `AND u.department = '${dept}'`; // safe — dept comes from DB not user input
-        deptParam = [dept];
-      }
-    }
+    let pendingRequestsQuery = `
+      (SELECT COUNT(*) FROM leaves WHERE status = 'pending') +
+      (SELECT COUNT(*) FROM payslip_requests WHERE status = 'pending') +
+      (SELECT COUNT(*) FROM general_requests WHERE status = 'pending')
+    `;
 
     const statsRes = await pool.query(`
       SELECT
         (SELECT COUNT(*) FROM users u WHERE u.role = 'employee' ${deptFilter.replace("u.", "")}) AS total_employees,
         (SELECT COUNT(*) FROM users u WHERE u.role = 'intern' ${deptFilter.replace("u.", "")}) AS total_interns,
-        (SELECT COUNT(*) FROM users u WHERE u.role IN ('admin','admin_hr') ${deptFilter.replace("u.", "")}) AS total_admins,
+        (SELECT COUNT(*) FROM users u WHERE u.role = 'admin' ${deptFilter.replace("u.", "")}) AS total_admins,
         (SELECT COUNT(*) FROM tasks) AS total_tasks,
         (SELECT COUNT(*) FROM attendance a JOIN users u ON a.user_id = u.id
          WHERE a.attendance_date = $1 AND a.status = 'Present' ${deptFilter}) AS present_today,
-        (
-          (SELECT COUNT(*) FROM leaves WHERE status = 'pending') +
-          (SELECT COUNT(*) FROM payslip_requests WHERE status = 'pending') +
-          (SELECT COUNT(*) FROM general_requests WHERE status = 'pending')
-        ) AS pending_requests
+        (${pendingRequestsQuery}) AS pending_requests
     `, [today]);
 
     const data = statsRes.rows[0];
@@ -78,15 +73,42 @@ router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     await client.query("BEGIN");
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    
+    // Drop unique constraints on users email/username if present
+    try {
+      await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key");
+      await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key");
+    } catch (e) {}
+
+    let uavIdToUse = employee_uav_id;
+    if (!uavIdToUse || !uavIdToUse.trim()) {
+      uavIdToUse = await generateUavId(role || 'employee');
+    } else {
+      uavIdToUse = uavIdToUse.trim().toUpperCase();
+      const idCheck = await client.query(
+        "SELECT id FROM employees WHERE employee_uav_id = $1",
+        [uavIdToUse]
+      );
+      if (idCheck.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          msg: `Employee ID "${uavIdToUse}" is already taken. Please choose a different one.`,
+        });
+      }
+    }
+
+    const effectiveUsername = `${(username || email).trim().toLowerCase()}_${uavIdToUse.toLowerCase()}`;
     const userRes = await client.query(
-      "INSERT INTO users (username, password, fullname, email, role) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [username, hashedPassword, fullname, email, role || 'employee']
+      "INSERT INTO users (username, password, fullname, email, role, status) VALUES ($1, $2, $3, $4, $5, 'Active') RETURNING id",
+      [effectiveUsername, hashedPassword, fullname, email.trim(), role || 'employee']
     );
+    const userId = userRes.rows[0].id;
     await client.query(
       `INSERT INTO employees 
-        (user_id, employee_uav_id, fullname, designation, adhar_path, address_path) 
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userRes.rows[0].id, employee_uav_id, fullname, designation, aadhar_proof || null, address_proof || null]
+        (user_id, employee_uav_id, fullname, designation, adhar_path, address_path, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
+      [userId, uavIdToUse, fullname, designation, aadhar_proof || null, address_proof || null]
     );
     await client.query("COMMIT");
     res.status(201).json({ msg: "Employee enrolled successfully" });
@@ -99,19 +121,25 @@ router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
 });
 
 
-// ✅ Fixed: using attendance_date instead of date
+
 router.get("/attendance-today", verifyToken, async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
-
-    const result = await pool.query(`
+    const role = req.user.role?.toLowerCase();
+    
+    let query = `
       SELECT
         COUNT(*) FILTER (WHERE a.status = 'Present') AS present_today
       FROM users u
       LEFT JOIN attendance a
         ON a.user_id = u.id AND a.attendance_date = $1
-      WHERE u.role IN ('employee', 'intern', 'admin', 'admin_hr', 'super_admin')
-    `, [today]);
+      WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
+    `;
+    const params = [today];
+    
+    
+
+    const result = await pool.query(query, params);
 
     res.json({
       presentToday: parseInt(result.rows[0].present_today) || 0,
@@ -140,48 +168,30 @@ router.get("/recent", verifyToken, async (req, res) => {
 
 router.get("/list", verifyToken, async (req, res) => {
   try {
+    const roleMatch = req.user.role?.toLowerCase();
     let query = `
-      SELECT
-        t.id, t.title, t.target_date, t.start_date,
-        t.due_date, t.end_date, t.status, t.days_taken,
-        t.link, t.assignment_date, t.parent_id, t.description,
-        t.assigned_to,
-        assigned_emp.fullname  AS assigned_to_name,
-        emp_details.employee_uav_id AS assigned_to_uav_id,
-        reviewed_emp.fullname  AS reviewed_by,
-        depends_emp.fullname   AS depends_on_name,
-        (SELECT COUNT(*) FROM tasks st WHERE st.parent_id = t.id)::int AS subtask_count
-      FROM tasks t
-      LEFT JOIN users assigned_emp ON t.assigned_to = assigned_emp.id
-      LEFT JOIN employees emp_details ON t.assigned_to = emp_details.user_id
-      LEFT JOIN users reviewed_emp ON t.reviewed_by = reviewed_emp.id
-      LEFT JOIN users depends_emp  ON t.depends_on  = depends_emp.id
+      SELECT 
+        u.id, u.username, u.fullname, u.role, u.email,
+        COALESCE(e.phone, u.phone) AS phone,
+        e.department,
+        e.employee_uav_id, e.designation, e.created_at
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
     `;
     const params = [];
-    const roleMatch = req.user.role?.toLowerCase();
 
     if (roleMatch === "employee" || roleMatch === "intern") {
       params.push(req.user.id);
-      query += ` WHERE t.assigned_to = $${params.length}`;
-    } else if (roleMatch !== "super_admin") {
-      // scoped admin — fetch their department from users table (consistent with attendanceRoutes)
-      const adminRes = await pool.query(
-        "SELECT department FROM users WHERE id = $1", [req.user.id]
-      );
-      const dept = adminRes.rows[0]?.department;
-      if (dept) {
-        params.push(dept);
-        // emp_details is already LEFT JOINed — reuse it, promote to filter
-        query += ` WHERE emp_details.department = $${params.length}`;
-      }
+      query += ` WHERE u.id = $${params.length}`;
     }
+    
 
-    query += " ORDER BY t.id ASC";
+    query += " ORDER BY u.fullname ASC";
 
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
-    console.error("LIST ERROR:", err.message);
+    console.error("EMPLOYEE LIST ERROR:", err.message);
     res.status(500).json({ error: "Fetch failed" });
   }
 });
@@ -206,13 +216,22 @@ router.get("/my-profile", verifyToken, async (req, res) => {
   }
 });
 
-// Update basic profile info
+
 router.put("/update-profile", verifyToken, async (req, res) => {
   const { fullname, phone } = req.body;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     
+   
+    const userRes = await client.query("SELECT phone FROM users WHERE id = $1", [req.user.id]);
+    const currentPhone = userRes.rows[0]?.phone;
+    
+    let phoneChanged = false;
+    if (phone && phone !== currentPhone) {
+      phoneChanged = true;
+    }
+
     await client.query(
       "UPDATE users SET fullname = $1, phone = $2 WHERE id = $3",
       [fullname, phone, req.user.id]
@@ -222,6 +241,14 @@ router.put("/update-profile", verifyToken, async (req, res) => {
       "UPDATE employees SET fullname = $1, phone = $2 WHERE user_id = $3",
       [fullname, phone, req.user.id]
     );
+
+    if (phoneChanged) {
+     
+      await client.query(
+        "UPDATE users SET totp_secret = NULL, totp_secret_temp = NULL WHERE id = $1",
+        [req.user.id]
+      );
+    }
 
     await client.query("COMMIT");
     res.json({ msg: "Profile updated successfully" });
@@ -234,7 +261,7 @@ router.put("/update-profile", verifyToken, async (req, res) => {
   }
 });
 
-// Upload profile picture (SUPER ADMIN ONLY)
+
 router.post("/upload-profile-pic", verifyToken, isSuperAdmin, upload.single("profile_pic"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ msg: "No image uploaded" });
@@ -269,6 +296,24 @@ router.get("/my-activity", verifyToken, async (req, res) => {
   }
 });
 
+
+router.get("/admin-list", verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.fullname, u.username, u.role, u.department
+      FROM users u
+      WHERE u.role IN ('super_admin', 'admin')
+      ORDER BY
+        CASE u.role WHEN 'super_admin' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
+        u.fullname ASC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("ADMIN LIST ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 router.get("/all-assignable", verifyToken, async (req, res) => {
   try {
     let query = `
@@ -277,24 +322,17 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
         e.employee_uav_id 
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
-      WHERE u.role IN ('employee', 'intern', 'admin', 'admin_hr', 'super_admin')
+      WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
     `;
     const params = [];
 
-    if (req.user.role !== 'super_admin') {
-      const creatorRes = await pool.query("SELECT department FROM users WHERE id=$1", [req.user.id]);
-      if (creatorRes.rows[0]?.department) {
-        query += ` AND (u.department = $1 OR u.role = 'super_admin')`;
-        params.push(creatorRes.rows[0].department);
-      }
-    }
+    
 
     query += `
       ORDER BY
         CASE u.role
           WHEN 'super_admin' THEN 1
           WHEN 'admin'       THEN 2
-          WHEN 'admin_hr'    THEN 3
           WHEN 'employee'    THEN 4
           WHEN 'intern'      THEN 5
         END,
@@ -305,6 +343,61 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("ALL ASSIGNABLE ERROR:", err.message);
     res.status(500).json({ msg: err.message });
+  }
+});
+
+router.patch("/status/:id", verifyToken, isAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body; 
+  
+  if (!status || !['active', 'inactive'].includes(status.toLowerCase())) {
+    return res.status(400).json({ msg: "Invalid status value" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    
+    const userStatus = status.toLowerCase() === 'active' ? 'Active' : 'Inactive';
+    await client.query("UPDATE users SET status = $1 WHERE id = $2", [userStatus, id]);
+
+    const empStatus = status.toLowerCase();
+    await client.query("UPDATE employees SET status = $1 WHERE user_id = $2", [empStatus, id]);
+
+    await client.query("COMMIT");
+    res.json({ msg: `Status updated to ${status}` });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("STATUS UPDATE ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
+  } finally {
+    client.release();
+  }
+});
+
+router.patch("/reset-password/:id", verifyToken, isAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  const { new_password } = req.body;
+
+  if (!new_password || new_password.length < 6) {
+    return res.status(400).json({ msg: "Password must be at least 6 characters" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    const result = await pool.query(
+      "UPDATE users SET password = $1 WHERE id = $2 RETURNING id",
+      [hashedPassword, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    res.json({ msg: "Password updated successfully" });
+  } catch (err) {
+    console.error("RESET PASSWORD ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
   }
 });
 

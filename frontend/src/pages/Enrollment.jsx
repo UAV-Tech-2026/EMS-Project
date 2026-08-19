@@ -9,7 +9,7 @@ export default function AdminEnrollment() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "", father_name: "", email: "", alt_email: "",
-    phone: "", password: "", designation: "", role: "",
+    phone: "+91", password: "", designation: "", role: "",
   });
 
   const [experiences, setExperiences] = useState([{ organization: "", role: "", from: "", to: "" }]);
@@ -33,9 +33,9 @@ export default function AdminEnrollment() {
   };
 
   const validateForm = () => {
-    const phoneRegex = /^\+91-[0-9]{10}$/;
+    const phoneRegex = /^\+91-?[0-9]{10}$/;
     if (!phoneRegex.test(form.phone)) {
-      setError("Phone must be in format: +91-XXXXXXXXXX");
+      setError("Phone must be in format: +91XXXXXXXXXX");
       return false;
     }
 
@@ -75,7 +75,7 @@ export default function AdminEnrollment() {
 
       await axios.post(`${API_URL}/employees/enroll`, payload, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${sessionStorage.getItem("token")}`,
         },
       });
 
@@ -105,8 +105,9 @@ export default function AdminEnrollment() {
 
             <input
               name="phone"
-              placeholder="+91-XXXXXXXXXX"
-              title="Example: +91-9876543210"
+              value={form.phone}
+              placeholder="+91XXXXXXXXXX"
+              title="Example: +919876543210"
               onChange={handleChange}
               required
             />

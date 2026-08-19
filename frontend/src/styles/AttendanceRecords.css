@@ -33,7 +33,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Header ── */
+
 .ar-header {
   margin-bottom: 24px;
 }
@@ -53,7 +53,7 @@
   margin: 4px 0 0 0;
 }
 
-/* ── Stats Grid ── */
+
 .ar-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -388,7 +388,7 @@
   color: #94a3b8;
 }
 
-/* ── States ── */
+
 .ar-loading-state, .ar-empty-state {
   text-align: center;
   padding: 60px 20px;

@@ -1,120 +1,88 @@
-import { useState } from "react";
-import { authApi } from "../utils/api";
+import { useState, useEffect } from "react";
+import { authApi, api } from "../utils/api";
 import "../styles/CreateUser.css";
 import { useNavigate, useOutletContext } from "react-router-dom";
 
-// Role options per creator
-const ROLE_OPTIONS = {
-  super_admin: [
-    { value: "admin", label: "Admin" },
-    { value: "employee", label: "Employee" },
-    { value: "intern", label: "Intern" },
-  ],
-  admin: [
-    { value: "employee", label: "Employee" },
-    { value: "intern", label: "Intern" },
-  ],
+
+const inp = {
+  width: "100%", padding: "10px 14px",
+  border: "1px solid #e2e8f0", borderRadius: 8,
+  fontSize: 14, fontFamily: "DM Sans, sans-serif",
+  outline: "none", boxSizing: "border-box",
+  background: "#fff", color: "#1e293b",
+};
+const lbl = {
+  fontSize: 12, fontWeight: 700, color: "#64748b",
+  textTransform: "uppercase", letterSpacing: "0.04em",
+  marginBottom: 4, display: "block",
+};
+const fld = { display: "flex", flexDirection: "column", gap: 4 };
+const sectionTitle = {
+  fontWeight: 800, fontSize: 12, color: "#475569",
+  textTransform: "uppercase", letterSpacing: "0.07em",
+  marginBottom: 2, marginTop: 8,
 };
 
-const ROLE_FEATURES = {
-  admin: [
-    "Full Admin Dashboard Access",
-    "Employee & Role Management",
-    "Payroll & Salary Approvals",
-    "Company Reports & Settings"
-  ],
-  hr_admin: [
-    "HR Dashboard Access",
-    "Employee Onboarding",
-    "Leave & Attendance Review",
-    "Payroll Processing"
-  ],
-  production_admin: [
-    "Production Dashboard Access",
-    "Task & DPR Oversight",
-    "Team Management",
-    "Attendance Tracking"
-  ],
-  employee: [
-    "Employee Dashboard",
-    "Mark Daily Attendance & DPR",
-    "Request Leaves",
-    "View Payslips"
-  ],
-  intern: [
-    "Intern Dashboard",
-    "Mark Daily Attendance & DPR",
-    "Request Leaves"
-  ]
-};
-
-
-export default function CreateUser({ onClose, onSuccess }) {
+// ─────────────────────────────────────────────────────────────────────────────
+export default function CreateUser({ onClose, onSuccess, readOnly }) {
   const navigate = useNavigate();
   const context = useOutletContext() || {};
-  const user = context.user || JSON.parse(localStorage.getItem("user") || "{}");
-  const allowedRoles = ROLE_OPTIONS[user?.role] || [];
+  const user = context.user || JSON.parse(sessionStorage.getItem("user") || "{}");
+  const [allowedRoles, setAllowedRoles] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+
+
+  // ── Form meta ────────────────────────────────────────────────────────────────
+  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState(() => {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem("user") || "{}");
+      if (cached?.role === "super_admin") return "";
+      const d = cached?.department || "";
+      return d ? d.split(",")[0].trim() : "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    if (user?.role && user?.role !== "super_admin") {
+      const d = user?.department || "";
+      setSelectedDepartment(d ? d.split(",")[0].trim() : "");
+    }
+  }, [user]);
+
+  // ── Errors ───────────────────────────────────────────────────────────────────
+  const [emailError, setEmailError] = useState("");
+  const [panError, setPanError] = useState("");
+
 
   const [experiences, setExperiences] = useState([
     { organization: "", role: "", from: "", to: "" },
   ]);
 
+
   const [salary, setSalary] = useState({
-    basic_salary: "",
-    hra: "",
-    epf_amount: "",
-    pt_amount: "",
+    basic_salary: "", hra: "", epf_amount: "", pt_amount: "",
   });
 
-  const [emailError, setEmailError] = useState("");
-  const [panError, setPanError] = useState("");
-  const [qrCodeData, setQrCodeData] = useState(null);
-  const [selectedRole, setSelectedRole] = useState("");
-  const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [departments, setDepartments] = useState([
-    "PRD-Product Research Department", "PED-Product Engineering Department", "PDD-Software", "PDD-I&TT", "PDD-FT&T",
-    "PDD-PTI", "PMT", "BMD", "HR", "Operations"
-  ]);
-  const [showAddDept, setShowAddDept] = useState(false);
-  const [newDeptName, setNewDeptName] = useState("");
- 
 
-  const addExperience = () => setExperiences([
-    ...experiences,
-    { organization: "", role: "", from: "", to: "" }
-  ]);
+  const [deptAdmins, setDeptAdmins] = useState([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [selectedAdminId, setSelectedAdminId] = useState("");
 
-  const removeExperience = (index) =>
-    setExperiences(experiences.filter((_, i) => i !== index));
 
-  const handleExperienceChange = (index, field, value) => {
-    const updated = [...experiences];
-    updated[index][field] = value;
-    setExperiences(updated);
-  };
+  const [qrCode, setQrCode] = useState("");
+  const [showQr, setShowQr] = useState(false);
+  const [qrScanned, setQrScanned] = useState(false);
+  const [createdInfo, setCreatedInfo] = useState({ username: "", employee_uav_id: "" });
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSalaryChange = (field, value) =>
-    setSalary(prev => ({ ...prev, [field]: value }));
 
-  const handleEmailChange = (e) => {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@uavtech\.ai$/;
-    setEmailError(
-      e.target.value && !emailRegex.test(e.target.value)
-        ? "Official email must end with @uavtech.ai"
-        : ""
-    );
-  };
 
-  const handlePanChange = (e) => {
-    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-    const val = e.target.value.toUpperCase();
-    e.target.value = val;
-    setPanError(
-      val && !panRegex.test(val)
-        ? "Invalid PAN format. Expected: AAAAA9999A"
-        : ""
-    );
-  };
+  const isAdminRole = selectedRole === "admin";
+  const isEmployeeRole = ["employee", "intern"].includes(selectedRole);
 
   const basic = Number(salary.basic_salary) || 0;
   const hra = Number(salary.hra) || 0;
@@ -124,295 +92,691 @@ export default function CreateUser({ onClose, onSuccess }) {
   const net = gross - epf - pt;
   const fmt = n => n > 0 ? "₹" + n.toLocaleString("en-IN") : "—";
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (emailError) return alert("Please fix the email before submitting");
-    if (panError) return alert("Please fix the PAN number before submitting");
 
+  // Fetch roles and departments dynamically from API
+  useEffect(() => {
+    api.get("/meta/roles-for-caller")
+      .then(res => setAllowedRoles(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {
+        setAllowedRoles([
+          { value: "admin", label: "Admin" },
+          { value: "employee", label: "Employee" },
+          { value: "intern", label: "Intern" },
+        ]);
+      });
+
+    api.get("/meta/departments")
+      .then(res => {
+        const raw = Array.isArray(res.data) ? res.data : [];
+        // Deduplicate — keep unique names (case-insensitive), prefer the longer/full name
+        const seen = new Map();
+        raw.forEach(d => {
+          const name = typeof d === "object" ? d.name : d;
+          const key = name.trim().toLowerCase();
+          if (!seen.has(key) || name.length > seen.get(key).length) {
+            seen.set(key, name);
+          }
+        });
+        setDepartments([...seen.values()]);
+      })
+      .catch(() => setDepartments([
+        "Product Research Department (PRD)", "Product Engineering Department (PED)",
+        "Product Development Department - Software", "Product Development Department - I&TT",
+        "Product Development Department - FT&T", "Product Development Department - PTI",
+        "Project Management Team (PMT)", "Business Management Department (BMD)",
+        "Quality Assurance (QA)", "Human Resources (HR)", "Operations",
+      ]));
+  }, [user?.role]);
+
+  useEffect(() => {
+    setSelectedAdminId("");
+    setDeptAdmins([]);
+    if (!selectedDepartment || isAdminRole) return;
+
+    setAdminsLoading(true);
+    api.get("/employees/all-assignable")
+      .then(res => {
+        const admins = (res.data || []).filter(
+          u => u.role === "admin" && (u.department || "").includes(selectedDepartment)
+        );
+        setDeptAdmins(admins);
+      })
+      .catch(() => setDeptAdmins([]))
+      .finally(() => setAdminsLoading(false));
+  }, [selectedDepartment, selectedRole]);
+
+  const handleEmailChange = e => {
+    const ok = /^[a-zA-Z0-9._%+-]+@uavtech\.ai$/.test(e.target.value);
+    setEmailError(e.target.value && !ok ? "Must end with @uavtech.ai" : "");
+  };
+  const handlePanChange = e => {
+    const val = e.target.value.toUpperCase();
+    e.target.value = val;
+    setPanError(val && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(val) ? "Invalid PAN — expected AAAAA9999A" : "");
+  };
+
+
+  // ── Experience helpers ────────────────────────────────────────────────────────
+  const addExp = () => setExperiences([...experiences, { organization: "", role: "", from: "", to: "" }]);
+  const removeExp = i => setExperiences(experiences.filter((_, idx) => idx !== i));
+  const changeExp = (i, f, v) => { const a = [...experiences]; a[i][f] = v; setExperiences(a); };
+
+  // ── After QR dismissed ────────────────────────────────────────────────────────
+  const afterQr = () => {
+    setShowQr(false); setQrCode("");
+    if (onSuccess) { onSuccess(); return; }
+    let p = "/employee-dashboard";
+    if (user?.role === "super_admin") p = "/super-admin-dashboard";
+    else if (user?.role === "admin") p = "/admin-dashboard";
+    navigate(p);
+  };
+
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (readOnly) return;
+    if (emailError) return alert("Fix email first");
+    if (panError) return alert("Fix PAN number first");
+
+    const g = n => e.target[n]?.value || "";
     const payload = {
-      fullname: e.target.fullname?.value || "",
-      phone: e.target.phone?.value || "",
-      email: e.target.email?.value || "",
-      altEmail: e.target.altEmail?.value || "",
-      designation: e.target.designation?.value || "",
-      password: e.target.password?.value || "",
-      role: e.target.role?.value || "",
+      fullname: g("fullname").trim(),
+      phone: g("phone").trim(),
+      email: g("email").trim(),
+      altEmail: g("altEmail").trim(),
+      designation: g("designation").trim(),
+      password: g("password"),
+      role: g("role"),
       department: selectedDepartment,
+      employee_uav_id: g("employee_uav_id").trim().toUpperCase(),
+      assigned_admin: selectedAdminId || null,
       experiences: JSON.stringify(experiences),
       basic_salary: salary.basic_salary || 0,
       hra: salary.hra || 0,
       epf_amount: salary.epf_amount || 0,
       pt_amount: salary.pt_amount || 0,
-      adhar: e.target.adhar?.value || "",
-      addressProof: e.target.addressProof?.value || "",
-      account_number: e.target.account_number?.value || "",
-      pan_number: e.target.pan_number?.value ? e.target.pan_number.value.toUpperCase() : "",
+      adhar: g("adhar"),
+      addressProof: g("addressProof"),
+      police_certificate: g("police_certificate"),
+      medical_certificate: g("medical_certificate"),
+      account_number: g("account_number"),
+      pan_number: g("pan_number").toUpperCase(),
     };
 
     try {
       const res = await authApi.post("/create-user", payload);
-      alert("User Created Successfully!");
-
-      if (res.data?.qrCode) {
-        setQrCodeData(res.data.qrCode);
-        return;
-      }
-
-      if (onSuccess) {
-        onSuccess();
+      if (res.data.qrCode) {
+        setCreatedInfo({
+          username: res.data.username || payload.email,
+          employee_uav_id: res.data.employee_uav_id || payload.employee_uav_id,
+        });
+        setQrCode(res.data.qrCode);
+        setShowQr(true);
       } else {
-        let path = "/employee-dashboard";
-        if (user?.role === "super_admin") path = "/super-admin-dashboard";
-        else if (user?.role === "admin_hr") path = "/admin-dashboard";
-        else if (user?.role === "admin") path = "/admin-dashboard";
-        navigate(path);
+        alert("User Created Successfully!");
+        afterQr();
       }
     } catch (err) {
-      const msg = err.response?.data?.msg || "Error creating user";
-      alert(`Error: ${msg}`);
+      alert(`Error: ${err.response?.data?.msg || "Failed to create user"}`);
     }
   };
 
-  const handleFinishAfterQR = () => {
-    if (onSuccess) {
-      onSuccess();
-    } else {
-      let path = "/employee-dashboard";
-      if (user?.role === "super_admin") path = "/super-admin-dashboard";
-      else if (user?.role === "admin_hr") path = "/admin-dashboard";
-      else if (user?.role === "admin") path = "/admin-dashboard";
-      navigate(path);
-    }
+  const handleBack = () => {
+    if (onClose) { onClose(); return; }
+    let p = "/employee-dashboard";
+    if (user?.role === "super_admin") p = "/super-admin-dashboard";
+    else if (user?.role === "admin") p = "/admin-dashboard";
+    navigate(p);
   };
+
 
   return (
     <div className="create-user-wrapper">
-      {qrCodeData && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.6)", zIndex: 9999,
-          display: "flex", justifyContent: "center", alignItems: "center"
-        }}>
-          <div style={{
-            background: "#fff", padding: "30px", borderRadius: "12px",
-            textAlign: "center", maxWidth: "400px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)"
-          }}>
-            <h2 style={{ marginBottom: "15px", color: "#1e293b", fontSize: "1.2rem" }}>Share with Employee</h2>
-            <p style={{ color: "#64748b", fontSize: "0.95rem", marginBottom: "20px" }}>
-              Please have the employee scan this QR code immediately in their Google Authenticator app.
-              They will need it for their first login.
-            </p>
-            <img src={qrCodeData} alt="Google Authenticator QR Code" style={{ width: "220px", height: "220px", border: "1px solid #e2e8f0", padding: "10px", borderRadius: "8px" }} />
-            <div style={{ marginTop: "24px" }}>
-              <button
-                onClick={handleFinishAfterQR}
-                style={{
-                  background: "#1e293b", color: "#fff", padding: "10px 20px",
-                  borderRadius: "6px", border: "none", cursor: "pointer", fontWeight: "600"
-                }}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      <div className="create-top-nav" style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "24px",
-        paddingBottom: "16px",
-        borderBottom: "1px solid #e2e8f0"
+      {/* ── Top bar ── */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid #e2e8f0"
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <img
-            src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
-            alt="Logo"
-            style={{ height: "32px", mixBlendMode: 'multiply' }}
-            onError={e => e.target.style.display = "none"}
-          />
-        </div>
-        <div className="title-section" style={{ margin: 0 }}>
-          <h1 style={{ margin: 0, fontSize: "1.2rem" }}>
-            Create {selectedRole === "admin" ? "Admin" : selectedRole === "intern" ? "Intern" : "Employee"}
-          </h1>
-        </div>
+        <img src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"} alt="Logo"
+          style={{ height: 32, mixBlendMode: "multiply" }}
+          onError={e => e.target.style.display = "none"} />
+        <h1 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>
+          {isAdminRole ? "Enroll Admin" : selectedRole === "intern" ? "Enroll Intern" : "Enroll Employee"}
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="create-form">
-        <div className={`form-columns ${selectedRole === 'admin' ? 'admin-mode' : ''}`}>
-          <div className="left-column">
-            <input name="fullname" placeholder="Full Name" required />
-            <input name="phone" placeholder="+91-XXXXXXXXXX"
-              pattern="\+91-[0-9]{10}" required />
-            <input name="email" placeholder="Official Email (@uavtech.ai)"
-              onChange={handleEmailChange} required />
-            {emailError && <div className="error-msg">{emailError}</div>}
-            <input name="altEmail" type="email" placeholder="Alternate Email" />
 
-            <input name="designation" placeholder="Designation" required />
 
-           {/* Role dropdown — only show for admin creation */}
-{user?.role === "super_admin" && (
-  <select name="role" required value={selectedRole} onChange={e => setSelectedRole(e.target.value)}>
-    <option value="">Select Role</option>
-    {allowedRoles.map(opt => (
-      <option key={opt.value} value={opt.value}>{opt.label}</option>
-    ))}
-  </select>
-)}
-
-{/* For non-super admins: role is auto-set, show department first */}
-{user?.role !== "super_admin" && (
-  <>
-    <select
-      name="department"
-      required
-      value={selectedDepartment}
-      onChange={e => setSelectedDepartment(e.target.value)}
-    >
-      <option value="">Select Department</option>
-      {departments.map(dept => (
-        <option key={dept} value={dept}>{dept}</option>
-      ))}
-    </select>
-
-    <select name="role" required value={selectedRole} onChange={e => setSelectedRole(e.target.value)}
-      style={{ marginTop: 12 }}>
-      <option value="">Select Role</option>
-      <option value="employee">Employee</option>
-      <option value="intern">Intern</option>
-    </select>
-  </>
-)}
-
-{/* Department for super_admin creating an admin */}
-{user?.role === "super_admin" && selectedRole && ["admin","hr_admin","production_admin"].includes(selectedRole) && (
-  <select name="department" required value={selectedDepartment}
-    onChange={e => setSelectedDepartment(e.target.value)} style={{ marginTop: 15 }}>
-    <option value="">Select Department</option>
-    {departments.map(dept => (
-      <option key={dept} value={dept}>{dept}</option>
-    ))}
-  </select>
-)}
-
-            <input name="password" type="password" placeholder="Password" required style={{ marginTop: "15px" }} />
+        <div style={{
+          background: "linear-gradient(135deg,#f0f9ff,#e0f2fe)",
+          border: "1px solid #bae6fd", borderRadius: 12,
+          padding: "16px 20px", marginBottom: 24,
+          display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end",
+        }}>
+          {/* Role */}
+          <div style={{ ...fld, flex: 1, minWidth: 160 }}>
+            <label style={lbl}>Role *</label>
+            <select name="role" required value={selectedRole}
+              onChange={e => { setSelectedRole(e.target.value); setSelectedDepartment(""); }}
+              style={inp}>
+              <option value="">— Select Role —</option>
+              {allowedRoles.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
 
-          {/* ── RIGHT COLUMN — Hidden for Admins ── */}
-          {!["admin", "hr_admin", "production_admin"].includes(selectedRole) && (
-            <div className="right-column">
-              <h3>Experience</h3>
-              {experiences.map((exp, index) => (
-                <div key={index} className="experience-card">
-                  <input placeholder="Organization" value={exp.organization}
-                    onChange={e => handleExperienceChange(index, "organization", e.target.value)} />
-                  <input placeholder="Role" value={exp.role}
-                    onChange={e => handleExperienceChange(index, "role", e.target.value)} />
-                  <input type="date" value={exp.from}
-                    onChange={e => handleExperienceChange(index, "from", e.target.value)} />
-                  <input type="date" value={exp.to}
-                    onChange={e => handleExperienceChange(index, "to", e.target.value)} />
-                  {experiences.length > 1 && (
-                    <button type="button" className="remove-btn"
-                      onClick={() => removeExperience(index)}>X</button>
-                  )}
-                </div>
-              ))}
-              <button type="button" className="add-btn" onClick={addExperience}>
-                + Add Experience
-              </button>
-
-              <h3>Salary Breakdown</h3>
-              <div className="salary-fixed-grid">
-                {[
-                  { key: "basic_salary", label: "Basic Salary", placeholder: "e.g. 20000" },
-                  { key: "hra", label: "HRA", placeholder: "e.g. 8000" },
-                  { key: "epf_amount", label: "EPF Amount", placeholder: "e.g. 1800" },
-                  { key: "pt_amount", label: "Prof. Tax (PT)", placeholder: "e.g. 200" },
-                ].map(({ key, label, placeholder }) => (
-                  <div key={key} className="salary-field">
-                    <label>{label}</label>
-                    <div className="salary-input-wrap">
-                      <span>₹</span>
-                      <input type="number" min="0" placeholder={placeholder}
-                        value={salary[key]}
-                        onChange={e => handleSalaryChange(key, e.target.value)} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {gross > 0 && (
-                <div className="salary-preview">
-                  <div className="sp-item"><span>Gross</span><strong className="sp-earn">{fmt(gross)}</strong></div>
-                  <div className="sp-sep">−</div>
-                  <div className="sp-item"><span>EPF + PT</span><strong className="sp-deduct">{fmt(epf + pt)}</strong></div>
-                  <div className="sp-sep">=</div>
-                  <div className="sp-item"><span>Net</span><strong className="sp-net">{fmt(net)}</strong></div>
+          {/* Department */}
+          {selectedRole && (
+            <div style={{ ...fld, flex: 1, minWidth: 200 }}>
+              <label style={lbl}>Department *</label>
+              {(user?.role === "super_admin" || isAdminRole) ? (
+                <select
+                  name="department"
+                  required
+                  value={selectedDepartment}
+                  onChange={e => setSelectedDepartment(e.target.value)}
+                  style={inp}
+                >
+                  <option value="">— Select Department —</option>
+                  {departments.map(d => {
+                    const val = typeof d === "object" ? d.name : d;
+                    return (
+                      <option key={val} value={val}>
+                        {val}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <div style={{
+                  ...inp, background: "#f1f5f9", color: "#64748b",
+                  display: "flex", alignItems: "center", justifyContent: "space-between"
+                }}>
+                  <span>{selectedDepartment || "—"}</span>
+                  <span style={{
+                    fontSize: 10, background: "#e2e8f0",
+                    padding: "2px 8px", borderRadius: 20
+                  }}>Auto</span>
                 </div>
               )}
-
-              <label className="doc-label">Valid Proof (Drive Link)</label>
-              <input type="url" name="adhar" placeholder="Paste Google Drive link here" className="text-input-field" />
-              <label className="doc-label">Address Proof (Drive Link)</label>
-              <input type="url" name="addressProof" placeholder="Paste Google Drive link here" className="text-input-field" />
-
-              <h3>Banking &amp; Tax Details</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div>
-                  <label className="doc-label">Bank Account Number</label>
-                  <input
-                    name="account_number"
-                    placeholder="e.g. 1234567890"
-                    maxLength={20}
-                    pattern="[0-9]{9,18}"
-                    title="Enter a valid 9–18 digit account number"
-                    className="text-input-field"
-                  />
-                </div>
-                <div>
-                  <label className="doc-label">PAN Number</label>
-                  <input
-                    name="pan_number"
-                    placeholder="e.g. ABCDE1234F"
-                    maxLength={10}
-                    onChange={handlePanChange}
-                    style={{ textTransform: "uppercase" }}
-                    className="text-input-field"
-                  />
-                  {panError && <div className="error-msg">{panError}</div>}
-                </div>
-              </div>
             </div>
           )}
         </div>
 
-        <div className="form-buttons">
-          <button type="submit" className="submit-btn">Create User</button>
-          <button
-            type="button"
-            className="back-btn"
-            onClick={() => {
-              if (onClose) {
-                onClose();
-              } else {
-                let path = "/employee-dashboard";
-                if (user?.role === "super_admin") path = "/super-admin-dashboard";
-                else if (user?.role === "admin_hr") path = "/admin-dashboard";
-                else if (user?.role === "admin") path = "/admin-dashboard";
-                navigate(path);
-              }
-            }}
-          >
-            Back to Dashboard
-          </button>
-        </div>
+        {selectedRole && (
+          <>
 
+            {isAdminRole && (
+              <div style={{
+                display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16,
+                background: "#fff", border: "1px solid #e2e8f0",
+                borderRadius: 12, padding: 24,
+              }}>
+                <div style={fld}>
+                  <label style={lbl}>Full Name *</label>
+                  <input name="fullname" placeholder="e.g. Ravi Kumar" required style={inp} />
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Phone *</label>
+                  <input name="phone" placeholder="+91-XXXXXXXXXX"
+                    pattern="\+91-[0-9]{10}" required style={inp} />
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Official Email *</label>
+                  <input name="email" placeholder="name@uavtech.ai"
+                    onChange={handleEmailChange} required style={inp} />
+                  {emailError && <span style={{ color: "#ef4444", fontSize: 11 }}>{emailError}</span>}
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Alternate Email</label>
+                  <input name="altEmail" type="email" placeholder="personal@gmail.com" style={inp} />
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Designation *</label>
+                  <input name="designation" placeholder="e.g. HR Manager" required style={inp} />
+                </div>
+                <div style={{ ...fld, position: "relative" }}>
+                  <label style={lbl}>Employee ID</label>
+                  <div style={{ ...inp, background: "#f1f5f9", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e2e8f0" }}>
+                    <span>Auto-generated by system</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#64748b", background: "#e2e8f0", padding: "2px 6px", borderRadius: 4 }}>AUTO</span>
+                  </div>
+                </div>
+                <div style={fld}>
+                  <label style={lbl}>Password *</label>
+                  <div style={{ position: "relative" }}>
+                    <input name="password" type={showPassword ? "text" : "password"}
+                      placeholder="Min 6 characters" required style={{ ...inp, paddingRight: "30px" }} />
+                    <span onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: "#64748b" }}>
+                      {showPassword ? "🙈" : "👁️"}
+                    </span>
+                  </div>
+                </div>
+                <div />
+              </div>
+            )}
+
+
+            {isEmployeeRole && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+
+                {/* ── LEFT col ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  <div style={sectionTitle}>Personal & Account</div>
+
+                  <div style={fld}>
+                    <label style={lbl}>Full Name *</label>
+                    <input name="fullname" placeholder="e.g. Priya Sharma" required style={inp} />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Phone *</label>
+                    <input name="phone" placeholder="+91-XXXXXXXXXX"
+                      pattern="\+91-[0-9]{10}" required style={inp} />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Official Email *</label>
+                    <input name="email" placeholder="name@uavtech.ai"
+                      onChange={handleEmailChange} required style={inp} />
+                    {emailError && <span style={{ color: "#ef4444", fontSize: 11 }}>{emailError}</span>}
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Alternate Email</label>
+                    <input name="altEmail" type="email" placeholder="personal@gmail.com" style={inp} />
+                  </div>
+                  <div style={fld}>
+                    <label style={lbl}>Designation *</label>
+                    <input name="designation" placeholder="e.g. Software Engineer" required style={inp} />
+                  </div>
+
+                  <div style={{ ...fld, position: "relative" }}>
+                    <label style={lbl}>Employee ID</label>
+                    <div style={{ ...inp, background: "#f1f5f9", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e2e8f0" }}>
+                      <span>Auto-generated by system</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#64748b", background: "#e2e8f0", padding: "2px 6px", borderRadius: 4 }}>AUTO</span>
+                    </div>
+                  </div>
+
+                  <div style={fld}>
+                    <label style={lbl}>Password *</label>
+                    <div style={{ position: "relative" }}>
+                      <input name="password" type={showPassword ? "text" : "password"}
+                        placeholder="Min 6 characters" required style={{ ...inp, paddingRight: "30px" }} />
+                      <span onClick={() => setShowPassword(!showPassword)}
+                        style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: "#64748b" }}>
+                        {showPassword ? "🙈" : "👁️"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── Assign to Admin (dynamic) ── */}
+                  <div style={{
+                    background: selectedDepartment ? "#f0fdf4" : "#f8fafc",
+                    border: `1px solid ${selectedDepartment ? "#bbf7d0" : "#e2e8f0"}`,
+                    borderRadius: 10, padding: "14px 16px",
+                  }}>
+                    <label style={{ ...lbl, color: selectedDepartment ? "#166534" : "#94a3b8" }}>
+                      👤 Assign to Admin
+                    </label>
+
+                    {!selectedDepartment ? (
+                      <div style={{
+                        ...inp, background: "#f1f5f9", color: "#94a3b8",
+                        cursor: "not-allowed", fontSize: 13, border: "1px solid #e2e8f0"
+                      }}>
+                        Select a department first
+                      </div>
+                    ) : adminsLoading ? (
+                      <div style={{ ...inp, color: "#64748b", fontSize: 13 }}>
+                        Loading admins…
+                      </div>
+                    ) : deptAdmins.length === 0 ? (
+                      <div style={{
+                        ...inp, background: "#fef9c3", color: "#92400e",
+                        fontSize: 12, border: "1px solid #fde68a"
+                      }}>
+                        ⚠️ No admins found for this department
+                      </div>
+                    ) : (
+                      <select value={selectedAdminId}
+                        onChange={e => setSelectedAdminId(e.target.value)}
+                        style={{ ...inp, borderColor: "#bbf7d0" }}>
+                        <option value="">— No specific admin —</option>
+                        {deptAdmins.map(a => (
+                          <option key={a.id} value={a.id}>
+                            {a.fullname} ({a.employee_uav_id || a.role})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b" }}>
+                      Optional — links this employee to a specific admin in the department.
+                    </p>
+                  </div>
+
+                  <div style={sectionTitle}>Documents</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={fld}>
+                      <label style={lbl}>Valid Proof (Drive Link)</label>
+                      <input type="url" name="adhar"
+                        placeholder="Paste Google Drive link" style={inp} />
+                    </div>
+                    <div style={fld}>
+                      <label style={lbl}>Address Proof (Drive Link)</label>
+                      <input type="url" name="addressProof"
+                        placeholder="Paste Google Drive link" style={inp} />
+                    </div>
+                    <div style={fld}>
+                      <label style={lbl}>Police Cert (Drive Link)</label>
+                      <input type="url" name="police_certificate"
+                        placeholder="Paste Google Drive link" style={inp} />
+                    </div>
+                    <div style={fld}>
+                      <label style={lbl}>Medical Cert (Drive Link)</label>
+                      <input type="url" name="medical_certificate"
+                        placeholder="Paste Google Drive link" style={inp} />
+                    </div>
+                  </div>
+
+                  <div style={sectionTitle}>Banking & Tax</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={fld}>
+                      <label style={lbl}>Account Number</label>
+                      <input name="account_number" placeholder="9–18 digits"
+                        maxLength={20} pattern="[0-9]{9,18}" style={inp} />
+                    </div>
+                    <div style={fld}>
+                      <label style={lbl}>PAN Number</label>
+                      <input name="pan_number" placeholder="ABCDE1234F"
+                        maxLength={10} onChange={handlePanChange}
+                        style={{ ...inp, textTransform: "uppercase" }} />
+                      {panError && <span style={{ color: "#ef4444", fontSize: 11 }}>{panError}</span>}
+                    </div>
+                  </div>
+                </div>
+
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  <div style={sectionTitle}>Work Experience</div>
+
+                  {experiences.map((exp, i) => (
+                    <div key={i} style={{
+                      background: "#f8fafc", border: "1px solid #e2e8f0",
+                      borderRadius: 10, padding: 14, position: "relative",
+                    }}>
+                      {experiences.length > 1 && (
+                        <button type="button" onClick={() => removeExp(i)}
+                          style={{
+                            position: "absolute", top: 8, right: 8,
+                            background: "#fee2e2", border: "none", borderRadius: "50%",
+                            width: 22, height: 22, cursor: "pointer",
+                            fontSize: 11, color: "#ef4444", fontWeight: 700,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>✕</button>
+                      )}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div style={fld}>
+                          <label style={lbl}>Organisation</label>
+                          <input placeholder="Company name" value={exp.organization}
+                            onChange={e => changeExp(i, "organization", e.target.value)} style={inp} />
+                        </div>
+                        <div style={fld}>
+                          <label style={lbl}>Role</label>
+                          <input placeholder="Position held" value={exp.role}
+                            onChange={e => changeExp(i, "role", e.target.value)} style={inp} />
+                        </div>
+                        <div style={fld}>
+                          <label style={lbl}>From</label>
+                          <input type="date" value={exp.from}
+                            onChange={e => changeExp(i, "from", e.target.value)} style={inp} />
+                        </div>
+                        <div style={fld}>
+                          <label style={lbl}>To</label>
+                          <input type="date" value={exp.to}
+                            onChange={e => changeExp(i, "to", e.target.value)} style={inp} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button type="button" onClick={addExp} style={{
+                    padding: "8px 16px", border: "1.5px dashed #cbd5e1",
+                    borderRadius: 8, background: "transparent", color: "#3b82f6",
+                    fontWeight: 700, fontSize: 13, cursor: "pointer",
+                    fontFamily: "DM Sans, sans-serif",
+                  }}>+ Add Experience</button>
+
+                  <div style={sectionTitle}>Salary Breakdown</div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    {[
+                      { key: "basic_salary", label: "Basic Salary", ph: "e.g. 20000" },
+                      { key: "hra", label: "HRA", ph: "e.g. 8000" },
+                      { key: "epf_amount", label: "EPF Amount", ph: "e.g. 1800" },
+                      { key: "pt_amount", label: "Prof. Tax", ph: "e.g. 200" },
+                    ].map(({ key, label, ph }) => (
+                      <div key={key} style={fld}>
+                        <label style={lbl}>{label}</label>
+                        <div style={{
+                          display: "flex", alignItems: "center",
+                          border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden"
+                        }}>
+                          <span style={{
+                            padding: "10px 12px", background: "#f1f5f9",
+                            color: "#64748b", fontWeight: 700, fontSize: 14,
+                            borderRight: "1px solid #e2e8f0"
+                          }}>₹</span>
+                          <input type="number" min="0" placeholder={ph}
+                            value={salary[key]}
+                            onChange={e => setSalary(p => ({ ...p, [key]: e.target.value }))}
+                            style={{ ...inp, border: "none", borderRadius: 0, flex: 1 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {gross > 0 && (
+                    <div style={{
+                      background: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
+                      border: "1px solid #bbf7d0", borderRadius: 10,
+                      padding: "12px 16px", display: "flex",
+                      alignItems: "center", gap: 12, flexWrap: "wrap",
+                    }}>
+                      {[
+                        { label: "Gross", val: fmt(gross), color: "#166534" },
+                        { label: "EPF + PT", val: fmt(epf + pt), color: "#dc2626", sep: "−" },
+                        { label: "Net Pay", val: fmt(net), color: "#0369a1", sep: "=" },
+                      ].map(({ label, val, color, sep }) => (
+                        <div key={label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {sep && <span style={{ color: "#94a3b8", fontWeight: 700 }}>{sep}</span>}
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 10, color, fontWeight: 700, textTransform: "uppercase" }}>{label}</div>
+                            <div style={{ fontSize: 16, fontWeight: 800, color }}>{val}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+
+            <div style={{ display: "flex", gap: 12, marginTop: 28, justifyContent: "flex-end" }}>
+              <button type="button" onClick={handleBack} style={{
+                padding: "11px 24px", background: "#fff",
+                border: "1px solid #e2e8f0", borderRadius: 10,
+                fontFamily: "DM Sans,sans-serif", fontWeight: 700,
+                fontSize: 14, cursor: "pointer", color: "#475569",
+              }}>← Back</button>
+
+              <button type="submit" disabled={readOnly} style={{
+                padding: "11px 32px",
+                background: readOnly ? "#e2e8f0" : "linear-gradient(135deg,#10b981,#059669)",
+                color: readOnly ? "#94a3b8" : "#fff",
+                border: "none", borderRadius: 10,
+                fontFamily: "DM Sans,sans-serif", fontWeight: 700,
+                fontSize: 14, cursor: readOnly ? "not-allowed" : "pointer",
+                boxShadow: readOnly ? "none" : "0 4px 12px rgba(16,185,129,0.3)",
+              }}>
+                {readOnly ? "Read Only Mode" : "✓ Create User"}
+              </button>
+            </div>
+          </>
+        )}
       </form>
+
+
+      {showQr && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
+          display: "flex", alignItems: "flex-start", justifyContent: "center",
+          zIndex: 9999, backdropFilter: "blur(4px)",
+          overflowY: "auto", padding: "20px 0"
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: 20, padding: "36px 32px",
+            maxWidth: 440, width: "90%", textAlign: "center",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.25)",
+            margin: "auto"
+          }}>
+
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: "linear-gradient(135deg,#10b981,#059669)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px", fontSize: 26
+            }}>🔐</div>
+
+            <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: "#1e293b" }}>
+              Setup Google Authenticator
+            </h2>
+            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 12px" }}>
+              Account created successfully ✓
+            </p>
+
+            {/* ── Credential Card ── */}
+            <div style={{
+              background: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
+              border: "1.5px solid #86efac", borderRadius: 12,
+              padding: "12px 16px", marginBottom: 18, textAlign: "left",
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: "#166534",
+                textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8
+              }}>
+                🎫 Login Credentials
+              </div>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center", marginBottom: 6
+              }}>
+                <span style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Employee ID</span>
+                <span style={{
+                  fontFamily: "monospace", fontWeight: 800, fontSize: 15,
+                  color: "#065f46", background: "#bbf7d0",
+                  padding: "3px 10px", borderRadius: 6, letterSpacing: "0.05em"
+                }}>{createdInfo.employee_uav_id}</span>
+              </div>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>Username</span>
+                <span style={{
+                  fontFamily: "monospace", fontSize: 12,
+                  color: "#1e293b", background: "#f1f5f9",
+                  padding: "3px 10px", borderRadius: 6
+                }}>{createdInfo.username}</span>
+              </div>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#166534" }}>
+                👆 Share the <strong>Employee ID</strong> — this is their login credential.
+              </p>
+            </div>
+
+            <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 20px" }}>
+              Ask them to scan this QR with <strong>Google Authenticator</strong>.
+            </p>
+
+            <div style={{
+              display: "inline-block", padding: 14, background: "#fff",
+              border: "2px solid #e2e8f0", borderRadius: 16,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)", marginBottom: 20
+            }}>
+              <img src={qrCode} alt="QR Code"
+                style={{ width: 190, height: 190, display: "block" }} />
+            </div>
+
+            <div style={{
+              background: "#f8fafc", border: "1px solid #e2e8f0",
+              borderRadius: 10, padding: "12px 16px", marginBottom: 16, textAlign: "left"
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: "#64748b",
+                textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8
+              }}>
+                Employee steps:
+              </div>
+              {[
+                "Open Google Authenticator on your phone",
+                'Tap "+" → "Scan a QR code"',
+                "Point camera at the QR code above",
+                "A 6-digit code will appear — use it at login",
+              ].map((s, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 12, color: "#475569" }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
+                    background: "#10b981", color: "#fff", display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 700
+                  }}>{i + 1}</span>
+                  {s}
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              background: "#fef9c3", border: "1px solid #fde68a",
+              borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400e",
+              marginBottom: 20, textAlign: "left", display: "flex", gap: 8
+            }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+              <span>QR shown <strong>only once</strong>. Ensure employee scans before closing.</span>
+            </div>
+
+            <label style={{
+              display: "flex", alignItems: "center", gap: 10,
+              cursor: "pointer", marginBottom: 16, fontSize: 13,
+              fontWeight: 600, color: "#1e293b", justifyContent: "center"
+            }}>
+              <input type="checkbox" checked={qrScanned}
+                onChange={e => setQrScanned(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "#10b981", cursor: "pointer" }} />
+              Employee has scanned the QR code ✓
+            </label>
+
+            <button onClick={afterQr} disabled={!qrScanned} style={{
+              width: "100%", padding: 13,
+              background: qrScanned ? "linear-gradient(135deg,#10b981,#059669)" : "#e2e8f0",
+              color: qrScanned ? "#fff" : "#94a3b8",
+              border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700,
+              cursor: qrScanned ? "pointer" : "not-allowed", transition: "all 0.2s",
+            }}>
+              {qrScanned ? "✅ Done — Close & Continue" : "Check the box to confirm"}
+            </button>
+
+            <button onClick={afterQr} style={{
+              marginTop: 10, background: "none", border: "none",
+              fontSize: 12, color: "#94a3b8", cursor: "pointer", textDecoration: "underline"
+            }}>
+              Skip (employee will scan on first login)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

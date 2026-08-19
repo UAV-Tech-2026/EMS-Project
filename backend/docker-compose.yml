@@ -7,11 +7,43 @@ services:
       - "5000:5000"
     environment:
       - PORT=5000
-      - DB_USER=postgres
-      - DB_PASSWORD=data7
+      - DB_USER=ems_db
+      - DB_PASSWORD=123
       - DB_NAME=ems_dbs1
-      - DATABASE_URL=postgres://postgres:data7@172.31.14.42:5432/ems_dbs1
+      - DATABASE_URL=postgres://ems_db:123@172.31.2.91:5432/ems_dbs1
       - JWT_SECRET=ems_2026
+    networks:
+      - ems_backend_net
 
 volumes:
   postgres_data:
+
+networks:
+  ems_backend_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.20.0.0/16
+
+
+
+
+
+
+# services:
+#   backend:
+#     build: .
+#     container_name: ems-backend
+#     restart: always
+#     ports:
+#       - "5000:5000"
+#     environment:
+#       - PORT=5000
+#       - DB_USER=ems_db         # <-- Updated
+#       - DB_PASSWORD=123        # <-- Updated
+#       - DB_NAME=ems_dbs1
+#       - DATABASE_URL=postgres://ems_db:123@172.31.2.91:5432/ems_dbs1  # <-- Updated
+#       - JWT_SECRET=ems_2026
+
+# volumes:
+#   postgres_data:/aws

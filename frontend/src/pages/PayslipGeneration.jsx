@@ -25,7 +25,7 @@ function numberToWords(num) {
   return "Rupees " + inWords(Math.floor(num)) + " Only";
 }
 
-// ── Table cell styles ──
+
 const tdL = {
   border: "1px solid #ccc", padding: "5px 8px",
   fontWeight: "bold", background: "#f5f5f5", width: "22%"
@@ -45,7 +45,11 @@ const thDeduct = {
   textAlign: "center", fontWeight: "bold"
 };
 
-export default function PayslipGeneration() {
+export default function PayslipGeneration({ readOnly: propReadOnly }) {
+  const userRole = JSON.parse(sessionStorage.getItem("user"))?.role?.toLowerCase();
+  const isSuperAdmin = userRole === "super_admin";
+
+  const readOnly = propReadOnly ?? false;
   const navigate = useNavigate();
   const today = new Date();
 
@@ -69,8 +73,7 @@ export default function PayslipGeneration() {
   const [history, setHistory] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
 
-  const userRole = JSON.parse(localStorage.getItem("user"))?.role?.toLowerCase();
-  const isSuperAdmin = userRole === "super_admin";
+
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i);
 
@@ -109,7 +112,7 @@ export default function PayslipGeneration() {
   };
 
   const handleApprove = async () => {
-    if (!payslip || !isSuperAdmin) return;
+    if (!payslip || !isSuperAdmin || readOnly) return;
     setSaving(true);
     try {
       await api.post("/payslip/approve", {
@@ -127,6 +130,7 @@ export default function PayslipGeneration() {
   };
 
   const handleSaveSalary = async () => {
+    if (readOnly) return;
     setSaving(true);
     try {
       await api.put(`/payslip/salary/${selectedEmp}`, editSalary);
@@ -148,9 +152,8 @@ export default function PayslipGeneration() {
   };
 
   const handleBackToDashboard = () => {
-    const role = JSON.parse(localStorage.getItem("user"))?.role;
+    const role = JSON.parse(sessionStorage.getItem("user"))?.role;
     if (role === "super_admin") navigate("/super-admin-dashboard");
-    else if (role === "admin_hr") navigate("/admin-dashboard");
     else if (role === "admin") navigate("/admin-dashboard");
     else navigate("/employee-dashboard");
   };
@@ -200,7 +203,7 @@ export default function PayslipGeneration() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
+      
       <div className="ps-tabs-header">
         <button
           className={`ps-tab-btn ${activeTab === "generate" ? "active" : ""}`}
@@ -218,11 +221,11 @@ export default function PayslipGeneration() {
 
       {activeTab === "generate" ? (
         <>
-          {/* ── Controls Card ── */}
+          
           <div className="ps-controls-card">
             <div className="ps-controls-row">
 
-              {/* Employee */}
+              
               <div className="ps-control-field">
                 <label>Employee</label>
                 <select value={selectedEmp} onChange={e => {
@@ -238,7 +241,7 @@ export default function PayslipGeneration() {
                 </select>
               </div>
 
-              {/* Month picker */}
+              
               <div className="ps-control-field">
                 <label>Month</label>
                 <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setPayslip(null); }}>
@@ -246,7 +249,7 @@ export default function PayslipGeneration() {
                 </select>
               </div>
 
-              {/* Year picker */}
+              
               <div className="ps-control-field">
                 <label>Year</label>
                 <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setPayslip(null); }}>
@@ -257,13 +260,13 @@ export default function PayslipGeneration() {
               <button
                 className="generate-btn"
                 onClick={handleGenerate}
-                disabled={loading || !selectedEmp}
+                disabled={loading || !selectedEmp || readOnly}
               >
-                {loading ? " Loading…" : "⚡ Generate"}
+                {loading ? " Loading…" : readOnly ? "View Only" : "⚡ Generate"}
               </button>
             </div>
 
-            {/* Quick month shortcuts */}
+            
             <div className="ps-shortcuts">
               {[0, 1, 2].map(offset => {
                 const d = new Date();
@@ -285,7 +288,7 @@ export default function PayslipGeneration() {
             {error && <div className="ps-error">⚠️ {error}</div>}
           </div>
 
-          {/* ── Salary Settings Card ── */}
+          
           {selectedEmployee && !payslip && !loading && (
             <div className="salary-settings-card">
               <div className="ss-header">
@@ -299,7 +302,7 @@ export default function PayslipGeneration() {
                     </div>
                   </div>
                 </div>
-                {isSuperAdmin && (
+                {isSuperAdmin && !readOnly && (
                   !editMode ? (
                     <button className="edit-salary-btn" onClick={() => {
                       setEditSalary({
@@ -363,11 +366,11 @@ export default function PayslipGeneration() {
             </div>
           )}
 
-          {/* ── Payslip Result ── */}
+          
           {payslip && (
             <div className="payslip-result">
 
-              {/* Cumulative YTD Stats */}
+              
               <div className="cumulative-stats-grid" style={{
                 display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
                 gap: "15px", marginBottom: "20px"
@@ -392,7 +395,7 @@ export default function PayslipGeneration() {
                 </div>
               </div>
 
-              {/* Current Month Highlights */}
+              
               <div className="result-summary-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" }}>
                 <div className="result-card net-card" style={{ padding: "20px", background: "#f8fafc", borderRadius: "10px", borderLeft: "5px solid #4f46e5" }}>
                   <span style={{ color: "#64748b", fontSize: "13px" }}>Current Month Net Take Home</span>
@@ -405,7 +408,7 @@ export default function PayslipGeneration() {
                 </div>
               </div>
 
-              {/* Detailed Monthly Breakdown */}
+              
               <div className="breakdown-card" style={{ display: "flex", gap: "20px", background: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                 <div className="breakdown-col" style={{ flex: 1 }}>
                   <div className="bc-header earn-h" style={{ fontWeight: "bold", borderBottom: "2px solid #059669", marginBottom: "10px", paddingBottom: "5px" }}>Earnings</div>
@@ -431,14 +434,14 @@ export default function PayslipGeneration() {
                 </div>
               </div>
 
-              {/* Actions */}
+              
               <div className="result-actions" style={{ marginTop: "25px", display: "flex", gap: "10px" }}>
                 {isSuperAdmin && !payslip.is_approved && (
                   <button
                     className="approve-btn"
                     onClick={handleApprove}
-                    disabled={saving}
-                    style={{ background: "#059669", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}
+                    disabled={saving || readOnly}
+                    style={{ background: readOnly ? "#94a3b8" : "#059669", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "6px", fontWeight: "bold", cursor: readOnly ? "not-allowed" : "pointer" }}
                   >
                     {saving ? " Approving..." : "✅ Approve & Lock"}
                   </button>
@@ -467,7 +470,7 @@ export default function PayslipGeneration() {
           )}
         </>
       ) : (
-        /* ── Payroll History Table ── */
+        
         <div className="payroll-history-view">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <h3 style={{ margin: 0 }}>Approved Payroll History (Jan - Dec)</h3>
@@ -516,7 +519,7 @@ export default function PayslipGeneration() {
         </div>
       )}
 
-      {/* ── Payslip Print Preview Modal ── */}
+      
       {showPreview && payslip && (
         <div className="modal-overlay" onClick={() => setShowPreview(false)}>
           <div className="payslip-print-wrapper" onClick={e => e.stopPropagation()}>
@@ -526,14 +529,14 @@ export default function PayslipGeneration() {
               <button className="print-action-btn" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
             </div>
 
-            {/* Payslip Document */}
+            
             <div className="payslip-doc" id="payslip-doc" style={{
               fontFamily: "Arial, sans-serif", fontSize: "12px",
               width: "750px", margin: "0 auto", background: "#fff",
               padding: "30px", border: "1px solid #ccc"
             }}>
 
-              {/* Header */}
+              
               <div style={{ textAlign: "center", marginBottom: "16px" }}>
                 <img
                   src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
@@ -549,7 +552,7 @@ export default function PayslipGeneration() {
                 <div style={{ fontSize: "12px" }}>Month: {monthLabel()}</div>
               </div>
 
-              {/* Employee Info Table */}
+              
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px" }}>
                 <tbody>
                   <tr>
@@ -587,7 +590,7 @@ export default function PayslipGeneration() {
                 </tbody>
               </table>
 
-              {/* Earnings & Deductions Table */}
+              
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px" }}>
                 <thead>
                   <tr>
@@ -618,7 +621,7 @@ export default function PayslipGeneration() {
                     <td style={tdL}></td><td style={tdAmt}></td>
                     <td style={tdL}></td><td style={tdAmt}></td>
                   </tr>
-                  {/* Totals row */}
+                  
                   <tr style={{ background: "#d9d9d9", fontWeight: "bold" }}>
                     <td style={tdL}>Gross</td>
                     <td style={tdAmt}>
@@ -630,7 +633,7 @@ export default function PayslipGeneration() {
                 </tbody>
               </table>
 
-              {/* Net Pay */}
+            
               <div style={{ marginBottom: "6px" }}>
                 <strong>Net Pay: </strong>
                 {Number(payslip.salary.net_salary).toLocaleString("en-IN")}
@@ -640,7 +643,7 @@ export default function PayslipGeneration() {
                 {numberToWords(Math.round(payslip.salary.net_salary))}
               </div>
 
-              {/* YTD Summary */}
+              
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "20px", fontSize: "11px" }}>
                 <thead>
                   <tr>
@@ -669,7 +672,7 @@ export default function PayslipGeneration() {
                 </tbody>
               </table>
 
-              {/* Footer / Signatures */}
+              
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ borderTop: "1px solid #000", width: "160px", marginBottom: "4px" }}></div>

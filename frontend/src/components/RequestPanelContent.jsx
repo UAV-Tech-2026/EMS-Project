@@ -1,4 +1,12 @@
+
+
+
+
+
+
+
 import React, { useState, useEffect, useRef } from "react";
+import ControlPanel from "../pages/ControlPanel";
 import { api } from "../utils/api";
 import axios from "axios";
 import {
@@ -6,8 +14,24 @@ import {
   FileText, User, CheckCircle,
   XCircle, Clock8, ThumbsUp, ThumbsDown,
   Upload, FilePlus, X, File, Download, Link2, ExternalLink,
-  Inbox, CreditCard, MessageSquare, RefreshCw
+  Inbox, CreditCard, MessageSquare, RefreshCw,
+  Shield,
+  ShoppingCart, HelpCircle, IndianRupee
 } from "lucide-react";
+
+const DEPARTMENTS = [
+  "PRD-Product Research Department", "PED-Product Engineering Department",
+  "PDD-Software", "PDD-I&TT", "PDD-FT&T", "PDD-PTI",
+  "PMT", "BMD", "QA", "HR", "Operations"
+];
+
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel", "text/plain", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const ALLOWED_LABEL = "Images, PDF, Excel, Word, Text";
 
 const S = {
   wrapper: {
@@ -16,17 +40,17 @@ const S = {
   },
   tabBar: {
     display: "flex",
-    gap: 8,
+    gap: 0,
     marginBottom: 24,
-    background: "#f1f5f9",
-    borderRadius: 12,
-    padding: 4,
+    borderBottom: "2px solid #e2e8f0",
   },
   tab: (active) => ({
     flex: 1,
     padding: "10px 16px",
-    borderRadius: 10,
+    borderRadius: 0,
     border: "none",
+    borderBottom: active ? "2px solid #4f46e5" : "2px solid transparent",
+    marginBottom: "-2px",
     cursor: "pointer",
     fontWeight: 700,
     fontSize: "0.82rem",
@@ -35,9 +59,9 @@ const S = {
     justifyContent: "center",
     gap: 6,
     transition: "all 0.2s",
-    background: active ? "#fff" : "transparent",
+    background: "transparent",
     color: active ? "#4f46e5" : "#64748b",
-    boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+    boxShadow: "none",
   }),
   badge: (color) => ({
     padding: "2px 7px",
@@ -145,8 +169,9 @@ const S = {
 };
 
 export default function RequestPanelContent({ role }) {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("new_request");
   const [adminRequests, setAdminRequests] = useState([]);
+  const [reimbursements, setReimbursements] = useState([]);
   const [payslipRequests, setPayslipRequests] = useState([]);
   const [sharedDocs, setSharedDocs] = useState([]);
   const [sentDocs, setSentDocs] = useState([]);
@@ -156,8 +181,8 @@ export default function RequestPanelContent({ role }) {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [hoveredRow, setHoveredRow] = useState(null);
 
-  const userObj = JSON.parse(localStorage.getItem("user")) || {};
-  const isAdmin = role === "admin" || role === "super_admin" || role === "admin_hr";
+  const userObj = JSON.parse(sessionStorage.getItem("user")) || {};
+  const isAdmin = role === "admin" || role === "super_admin";
   const isSuperAdmin = role === "super_admin";
 
   const [shareMode, setShareMode] = useState("file");
@@ -168,24 +193,28 @@ export default function RequestPanelContent({ role }) {
   const [targetRole, setTargetRole] = useState(role === "employee" ? "super_admin" : "employee");
   const [dragOver, setDragOver] = useState(false);
   const [users, setUsers] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
   const [targetUserId, setTargetUserId] = useState("");
   const fileInputRef = useRef();
 
   const [reqType, setReqType] = useState("manpower");
   const [requestForm, setRequestForm] = useState({
-    // manpower
     role: "", jd: "", experience: "", skills: "", deadline: "",
-    // procurement
     product_name: "", cost: "", vendor: "", procurement_deadline: "",
     from_department: "", to_department: "Operations", qty: "",
-    // other
     certificate_name: "", description: "",
-    // shared
     target_role: "super_admin", target_user_id: ""
   });
 
-  // Payslip action modal
-  const [psModal, setPsModal] = useState(null); // { req, action }
+  const [reimbForm, setReimbForm] = useState({
+    expense_date: new Date().toISOString().split("T")[0],
+    expense_type: "Travel",
+    amount: "",
+    description: ""
+  });
+  const [reimbFile, setReimbFile] = useState(null);
+
+  const [psModal, setPsModal] = useState(null);
   const [psRejectReason, setPsRejectReason] = useState("");
   const [psUrl, setPsUrl] = useState("");
   const [psSaving, setPsSaving] = useState(false);
@@ -193,17 +222,33 @@ export default function RequestPanelContent({ role }) {
   useEffect(() => {
     fetchSharedDocs();
     fetchSentDocs();
+    fetchAdminUsers();
     if (isAdmin) {
       fetchAdminRequests();
       fetchUsers();
     }
     if (isSuperAdmin) fetchPayslipRequests();
+    fetchReimbursements();
   }, [role]);
 
   const fetchUsers = async () => {
     try {
       const res = await api.get("/employees/all-assignable");
       setUsers(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchAdminUsers = async () => {
+    try {
+      const res = await api.get("/employees/admin-list");
+      const admins = (res.data || []).filter(u =>
+        u.role === "super_admin" || u.role === "admin"
+      );
+      setAdminUsers(admins);
+      const defaultAdmin = admins.find(u => u.role === "super_admin") || admins[0];
+      if (defaultAdmin) {
+        setRequestForm(prev => ({ ...prev, target_user_id: String(defaultAdmin.id), target_role: defaultAdmin.role }));
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -233,7 +278,7 @@ export default function RequestPanelContent({ role }) {
   const fetchPayslipRequests = async () => {
     setPayslipLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/payslip-requests/all`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -241,6 +286,14 @@ export default function RequestPanelContent({ role }) {
       setPayslipRequests(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
     finally { setPayslipLoading(false); }
+  };
+
+  const fetchReimbursements = async () => {
+    try {
+      const endpoint = isAdmin ? "/reimbursements/all" : "/reimbursements/my";
+      const res = await api.get(endpoint);
+      setReimbursements(res.data);
+    } catch (err) { console.error(err); }
   };
 
   const handleShareFile = async () => {
@@ -268,12 +321,12 @@ export default function RequestPanelContent({ role }) {
     setSubmitting(true);
     setMsg({ type: "", text: "" });
     try {
-      await api.post("/shared-docs/share-link", { 
-        document_name: docName, 
-        drive_link: driveLink, 
-        target_role: targetRole, 
+      await api.post("/shared-docs/share-link", {
+        document_name: docName,
+        drive_link: driveLink,
+        target_role: targetRole,
         target_user_id: targetUserId || null,
-        message: shareMessage 
+        message: shareMessage
       });
       setMsg({ type: "success", text: "✓ Link shared successfully!" });
       setDriveLink(""); setDocName(""); setShareMessage("");
@@ -292,6 +345,35 @@ export default function RequestPanelContent({ role }) {
     } catch (err) {
       setMsg({ type: "error", text: err.response?.data?.msg || "Failed to submit request." });
     } finally { setSubmitting(false); }
+  };
+
+  const handleReimbursementSubmit = async (e) => {
+    e.preventDefault();
+    if (!reimbForm.amount || !reimbForm.expense_date) return;
+    setSubmitting(true);
+    const formData = new FormData();
+    formData.append("expense_date", reimbForm.expense_date);
+    formData.append("expense_type", reimbForm.expense_type);
+    formData.append("amount", reimbForm.amount);
+    formData.append("description", reimbForm.description);
+    if (reimbFile) formData.append("receipt", reimbFile);
+    try {
+      await api.post("/reimbursements/submit", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      setMsg({ type: "success", text: "✓ Reimbursement request submitted!" });
+      setReimbForm({ expense_date: new Date().toISOString().split("T")[0], expense_type: "Travel", amount: "", description: "" });
+      setReimbFile(null);
+      fetchReimbursements();
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to submit reimbursement." });
+    } finally { setSubmitting(false); }
+  };
+
+  const handleReimburseStatus = async (id, status) => {
+    try {
+      await api.patch(`/reimbursements/status/${id}`, { status });
+      fetchReimbursements();
+      setMsg({ type: "success", text: `Request ${status} successfully!` });
+    } catch (err) { alert("Failed to update status"); }
   };
 
   const handleDownload = async (doc) => {
@@ -319,7 +401,7 @@ export default function RequestPanelContent({ role }) {
     if (action === "reject" && !psRejectReason.trim()) { alert("Please provide a rejection reason."); return; }
     setPsSaving(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.patch(
         `${import.meta.env.VITE_API_URL}/payslip-requests/${req.id}`,
         { status: action === "approve" ? "approved" : "rejected", rejection_reason: action === "reject" ? psRejectReason : null, payslip_url: action === "approve" ? psUrl : null },
@@ -335,6 +417,11 @@ export default function RequestPanelContent({ role }) {
 
   const handleFileSelect = (file) => {
     if (!file) return;
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setMsg({ type: "error", text: `❌ File type not allowed. Accepted: ${ALLOWED_LABEL}` });
+      return;
+    }
+    setMsg({ type: "", text: "" });
     setSelectedFile(file);
     setDocName(file.name.replace(/\.[^.]+$/, ""));
   };
@@ -357,25 +444,31 @@ export default function RequestPanelContent({ role }) {
   const pendingPayslips = payslipRequests.filter(r => r.status === "pending").length;
 
   const tabs = [
-    { id: "general", label: "General", icon: <MessageSquare size={14} />, count: pendingGeneral, color: "amber" },
-    ...(isSuperAdmin ? [{ id: "payslips", label: "Payslips", icon: <CreditCard size={14} />, count: pendingPayslips, color: "purple" }] : []),
-    { id: "inbox", label: "Inbox / Share", icon: <Inbox size={14} />, count: sharedDocs.length, color: "blue" },
+    { id: "new_request", label: "New Request", count: 0, color: "amber" },
+    ...(isAdmin ? [{ id: "incoming", label: "Incoming Requests", count: pendingGeneral, color: "amber" }] : []),
+    { id: "reimbursements", label: "Reimbursements", count: reimbursements.filter(r => r.status === "pending").length, color: "purple" },
+    { id: "inbox", label: "Inbox / Share", count: sharedDocs.length, color: "blue" },
   ];
 
   return (
     <div style={S.wrapper}>
 
-      {/* ── Tabs ── */}
+      {/* ── Tab Bar ── */}
       <div style={S.tabBar}>
-        {tabs.map(t => (
-          <button key={t.id} style={S.tab(activeTab === t.id)} onClick={() => setActiveTab(t.id)}>
-            {t.icon} {t.label}
-            {t.count > 0 && <span style={S.badge(t.color)}>{t.count}</span>}
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={S.tab(activeTab === tab.id)}
+          >
+            {tab.label}
+            {tab.count > 0 && (
+              <span style={S.badge(tab.color)}>{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* ── Feedback msg ── */}
       {msg.text && (
         <div style={{
           marginBottom: 16, padding: "12px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
@@ -389,215 +482,347 @@ export default function RequestPanelContent({ role }) {
         </div>
       )}
 
-      {/* ── GENERAL REQUESTS TAB ── */}
-      {activeTab === "general" && (
+      {/* ── NEW REQUEST TAB ── */}
+      {activeTab === "new_request" && (
         <div>
-          {isAdmin && (
-            <div style={S.card}>
-              <div style={S.sectionHeader}>
-                <span>📥 Incoming General Requests ({adminRequests.length})</span>
-                <button onClick={fetchAdminRequests} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "5px 12px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600 }}>
-                  <RefreshCw size={12} /> Refresh
-                </button>
-              </div>
-              <div style={{ maxHeight: 420, overflowY: "auto" }}>
-                {adminRequests.length === 0 ? (
-                  <div style={S.emptyState}>
-                    <span style={{ fontSize: 32 }}>📭</span>
-                    No incoming requests at this time.
-                  </div>
-                ) : (
-                  adminRequests.map((req) => {
-                    let parsed = {};
-                    try { parsed = JSON.parse(req.description); } catch {}
-                    const typeLabel = req.request_type === "manpower" ? "👥 Man Power" : req.request_type === "procurement" ? "📦 Procurement" : "📄 Other";
-                    return (
-                      <div key={req.id} style={S.reqRow(hoveredRow === req.id)} onMouseEnter={() => setHoveredRow(req.id)} onMouseLeave={() => setHoveredRow(null)}>
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, #4f46e5, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <FileText size={16} color="#fff" />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <strong style={{ fontSize: 14, color: "#1e293b" }}>{req.name}</strong>
-                              <span style={{ fontSize: 10, fontWeight: 700, background: "#eef2ff", color: "#4338ca", padding: "2px 7px", borderRadius: 20 }}>{typeLabel}</span>
-                            </div>
-                            {getStatusBadge(req.status)}
-                          </div>
-                          {req.request_type === "manpower" && (
-                            <div style={{ fontSize: 12, color: "#475569", display: "flex", flexWrap: "wrap", gap: "4px 16px", marginBottom: 4 }}>
-                              {parsed.jd && <span>📋 JD: {parsed.jd}</span>}
-                              {parsed.experience && <span>⏳ Exp: {parsed.experience} yrs</span>}
-                              {parsed.skills && <span>🛠 Skills: {parsed.skills}</span>}
-                              {parsed.deadline && <span>🗓 Deadline: {parsed.deadline}</span>}
-                            </div>
-                          )}
-                          {req.request_type === "procurement" && (
-                            <div style={{ fontSize: 12, color: "#475569", display: "flex", flexWrap: "wrap", gap: "4px 16px", marginBottom: 4 }}>
-                              {parsed.cost && <span>💰 Cost: ₹{parsed.cost}</span>}
-                              {parsed.vendor && <span>🏭 Vendor: {parsed.vendor}</span>}
-                              {parsed.qty && <span>📦 Qty: {parsed.qty}</span>}
-                              {parsed.from_department && <span>From: {parsed.from_department}</span>}
-                              {parsed.to_department && <span>To: {parsed.to_department}</span>}
-                              {parsed.deadline && <span>🗓 Deadline: {parsed.deadline}</span>}
-                            </div>
-                          )}
-                          {req.request_type === "other" && (
-                            <div style={{ fontSize: 12, color: "#475569", marginBottom: 4 }}>
-                              {parsed.description && <span>{parsed.description}</span>}
-                            </div>
-                          )}
-                          <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#94a3b8" }}>
-                            <span style={{ display: "flex", alignItems: "center", gap: 3 }}><User size={10} /> {req.employee_name}</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {new Date(req.created_at).toLocaleDateString("en-GB")}</span>
-                          </div>
-                        </div>
-                        {req.status === "pending" && (
-                          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                            <button onClick={() => handleStatusChange(req.id, "approved")} style={S.actionBtn("green")}>✓ Approve</button>
-                            <button onClick={() => handleStatusChange(req.id, "rejected")} style={S.actionBtn("red")}>✗ Reject</button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Employee / Admin: submit a new structured request */}
           <div style={S.shareCard}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "#1e293b", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-              <FilePlus size={18} color="#4f46e5" /> New Request
-            </div>
+            
 
-            {/* Type selector */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-              {[{id:"manpower",label:"👥 Man Power"},{id:"procurement",label:"📦 Procurement"},{id:"other",label:"📄 Other"}].map(t => (
+            <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+              {[
+                { id: "manpower",      label: "Man Power" },
+                { id: "procurement",   label: "Procurement" },
+                { id: "reimbursement", label: " Reimbursement" },
+                { id: "other",         label: "Other" }
+              ].map(t => (
                 <button key={t.id} onClick={() => setReqType(t.id)}
-                  style={{ flex:1, padding:"8px 6px", borderRadius:8, border: reqType===t.id ? "2px solid #4f46e5" : "1px solid #e2e8f0", background: reqType===t.id ? "#eef2ff" : "#f8fafc", color: reqType===t.id ? "#4338ca" : "#64748b", fontWeight:700, fontSize:12, cursor:"pointer" }}>
-                  {t.label}
+                  style={{
+                    flex: 1, padding: "10px 12px", borderRadius: 10,
+                    border: reqType === t.id ? "2px solid #4f46e5" : "1px solid #e2e8f0",
+                    background: reqType === t.id ? "#f5f3ff" : "#f8fafc",
+                    color: reqType === t.id ? "#4f46e5" : "#64748b",
+                    fontWeight: 700, fontSize: "13px", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    transition: "all 0.2s"
+                  }}>
+                  {t.icon} {t.label}
                 </button>
               ))}
             </div>
 
-            {/* Man Power fields */}
+            {/* Manpower Form */}
             {reqType === "manpower" && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 {[["role","Role *","text"],["jd","Job Description","text"],["experience","Experience (Years)","number"],["skills","Skill Set Required","text"],["deadline","Deadline","date"]].map(([k,lbl,tp]) => (
-                  <div key={k} style={k==="jd" || k==="skills" ? { gridColumn:"span 2" } : {}}>
-                    <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", marginBottom:4 }}>{lbl}</label>
-                    <input type={tp} value={requestForm[k]} onChange={e => setRequestForm({...requestForm,[k]:e.target.value})}
-                      style={{ width:"100%", padding:"9px 10px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, boxSizing:"border-box" }} />
+                  <div key={k} style={k === "jd" || k === "skills" ? { gridColumn: "span 2" } : {}}>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>{lbl}</label>
+                    <input type={tp} value={requestForm[k]} onChange={e => setRequestForm({...requestForm, [k]: e.target.value})}
+                      style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Procurement fields */}
+            {/* Procurement Form */}
             {reqType === "procurement" && (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-                {[["product_name","Product Name *","text"],["cost","Cost (₹)","number"],["vendor","Vendor","text"],["qty","Qty *","number"],["from_department","From Department","text"],["to_department","To Department","text"],["procurement_deadline","Deadline","date"]].map(([k,lbl,tp]) => (
-                  <div key={k}>
-                    <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", marginBottom:4 }}>{lbl}</label>
-                    <input type={tp} value={requestForm[k]} onChange={e => setRequestForm({...requestForm,[k]:e.target.value})}
-                      style={{ width:"100%", padding:"9px 10px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, boxSizing:"border-box" }} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Other (Certificate) fields */}
-            {reqType === "other" && (
-              <div style={{ marginBottom:12 }}>
-                <div style={{ marginBottom:10 }}>
-                  <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", marginBottom:4 }}>Certificate Name *</label>
-                  <input type="text" value={requestForm.certificate_name} onChange={e => setRequestForm({...requestForm, certificate_name:e.target.value})}
-                    style={{ width:"100%", padding:"9px 10px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, boxSizing:"border-box" }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div style={{ gridColumn: "span 2" }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Product Name *</label>
+                  <input type="text" value={requestForm.product_name} onChange={e => setRequestForm({...requestForm, product_name: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", marginBottom:4 }}>Description</label>
-                  <textarea value={requestForm.description} onChange={e => setRequestForm({...requestForm, description:e.target.value})} rows={3}
-                    style={{ width:"100%", padding:"9px 10px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13, resize:"vertical", boxSizing:"border-box" }} />
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Cost (₹)</label>
+                  <input type="number" value={requestForm.cost} onChange={e => setRequestForm({...requestForm, cost: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Qty *</label>
+                  <input type="number" value={requestForm.qty} onChange={e => setRequestForm({...requestForm, qty: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Vendor</label>
+                  <input type="text" value={requestForm.vendor} onChange={e => setRequestForm({...requestForm, vendor: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Deadline</label>
+                  <input type="date" value={requestForm.procurement_deadline} onChange={e => setRequestForm({...requestForm, procurement_deadline: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>From Department</label>
+                  <select value={requestForm.from_department} onChange={e => setRequestForm({...requestForm, from_department: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }}>
+                    <option value="">Select Department</option>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>To Department</label>
+                  <select value={requestForm.to_department} onChange={e => setRequestForm({...requestForm, to_department: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }}>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
                 </div>
               </div>
             )}
 
-            {/* Send to */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ display:"block", fontSize:11, fontWeight:700, color:"#64748b", textTransform:"uppercase", marginBottom:4 }}>Send Request To</label>
-              <select value={requestForm.target_role} onChange={e => setRequestForm({...requestForm, target_role:e.target.value})}
-                style={{ width:"100%", padding:"9px 10px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:13 }}>
-                <option value="super_admin">Super Admin</option>
-                <option value="admin">Admin</option>
-                <option value="admin_hr">HR Admin</option>
+            {/* Reimbursement Form */}
+            {reqType === "reimbursement" && (
+              <form onSubmit={handleReimbursementSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Expense Date *</label>
+                  <input type="date" value={reimbForm.expense_date} onChange={e => setReimbForm({...reimbForm, expense_date: e.target.value})} required
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Expense Type *</label>
+                  <select value={reimbForm.expense_type} onChange={e => setReimbForm({...reimbForm, expense_type: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}>
+                    <option value="Travel">Travel</option>
+                    <option value="Food">Food / Meals</option>
+                    <option value="Office Supplies">Office Supplies</option>
+                    <option value="Client Meeting">Client Meeting</option>
+                    <option value="Medical">Medical</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Amount (₹) *</label>
+                  <input type="number" value={reimbForm.amount} onChange={e => setReimbForm({...reimbForm, amount: e.target.value})} required placeholder="0.00"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Receipt / Invoice</label>
+                  <input type="file" onChange={e => setReimbFile(e.target.files[0])} accept="image/*,.pdf"
+                    style={{ width: "100%", fontSize: 11 }} />
+                </div>
+                <div style={{ gridColumn: "span 2" }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Description / Remarks</label>
+                  <textarea value={reimbForm.description} onChange={e => setReimbForm({...reimbForm, description: e.target.value})} rows={2}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical" }} />
+                </div>
+                <div style={{ gridColumn: "span 2" }}>
+                  <button type="submit" disabled={submitting}
+                    style={{ width: "100%", padding: 12, background: "linear-gradient(135deg,#6366f1,#4f46e5)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", opacity: submitting ? 0.7 : 1 }}>
+                    {submitting ? "Submitting..." : "Submit Reimbursement"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Other Form */}
+            {reqType === "other" && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Certificate Name *</label>
+                  <input type="text" value={requestForm.certificate_name} onChange={e => setRequestForm({...requestForm, certificate_name: e.target.value})}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Description</label>
+                  <textarea value={requestForm.description} onChange={e => setRequestForm({...requestForm, description: e.target.value})} rows={3}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+                </div>
+              </div>
+            )}
+
+            {/* Target Admin Selector */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: 4 }}>Target Admin</label>
+              <select
+                value={requestForm.target_user_id || requestForm.target_role}
+                onChange={e => {
+                  const val = e.target.value;
+                  const u = adminUsers.find(u => String(u.id) === val);
+                  if (u) {
+                    setRequestForm({...requestForm, target_user_id: String(u.id), target_role: u.role});
+                  } else {
+                    setRequestForm({...requestForm, target_user_id: "", target_role: val});
+                  }
+                }}
+                style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
+              >
+                {adminUsers.length === 0 && (
+                  <option value="super_admin">Super Admin (Default)</option>
+                )}
+                {adminUsers.filter(u => u.role === "super_admin").length > 0 && (
+                  <optgroup label="Super Admin">
+                    {adminUsers.filter(u => u.role === "super_admin").map(u => (
+                      <option key={u.id} value={String(u.id)}>{u.fullname || u.username}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {adminUsers.filter(u => u.role === "admin").length > 0 && (
+                  <optgroup label="Department Admins">
+                    {adminUsers.filter(u => u.role === "admin").map(u => (
+                      <option key={u.id} value={String(u.id)}>
+                        {u.fullname || u.username}{u.department ? ` — ${u.department}` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 
-            <button onClick={handleGeneralRequest} disabled={submitting}
-              style={{ width:"100%", padding:12, background:"linear-gradient(135deg,#10b981,#059669)", color:"#fff", border:"none", borderRadius:8, fontWeight:700, cursor:"pointer", opacity:submitting?0.7:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <Send size={15} /> {submitting ? "Submitting..." : "Submit Request"}
-            </button>
+            {reqType !== "reimbursement" && (
+              <button onClick={handleGeneralRequest} disabled={submitting}
+                style={{ width: "100%", padding: 12, background: "linear-gradient(135deg,#10b981,#059669)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", opacity: submitting ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Send size={15} /> {submitting ? "Submitting..." : "Submit Request"}
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* ── PAYSLIP REQUESTS TAB (Super Admin only) ── */}
-      {activeTab === "payslips" && isSuperAdmin && (
+      {/* ── INCOMING REQUESTS TAB ── */}
+      {activeTab === "incoming" && isAdmin && (
         <div style={S.card}>
-          <div style={{ ...S.sectionHeader, background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)" }}>
-            <span>💳 Payslip Requests ({payslipRequests.length})</span>
-            <button onClick={fetchPayslipRequests} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "5px 12px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600 }}>
-              <RefreshCw size={12} /> Refresh
+          <div style={S.sectionHeader}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <MessageSquare size={16} /> Incoming Requests
+              {pendingGeneral > 0 && (
+                <span style={{ background: "#fef3c7", color: "#92400e", padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 800 }}>
+                  {pendingGeneral} pending
+                </span>
+              )}
+            </span>
+            <button onClick={fetchAdminRequests} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer" }}>
+              <RefreshCw size={14} />
             </button>
           </div>
 
-          {payslipLoading ? (
-            <div style={S.emptyState}><span style={{ fontSize: 32 }}>⏳</span> Loading payslip requests…</div>
-          ) : payslipRequests.length === 0 ? (
-            <div style={S.emptyState}><span style={{ fontSize: 32 }}>✅</span> No payslip requests found.</div>
+          {adminRequests.length === 0 ? (
+            <div style={S.emptyState}>
+              <MessageSquare size={28} strokeWidth={1.2} />
+              <div>No requests received yet.</div>
+            </div>
           ) : (
-            <>
-              <div style={S.payslipTh}>
-                <span>Requested By</span>
-                <span>Employee</span>
-                <span>Month</span>
-                <span>Status</span>
-                <span>Action</span>
-              </div>
-              <div style={{ maxHeight: 450, overflowY: "auto" }}>
-                {payslipRequests.map((r, i) => (
-                  <div key={r.id} style={{
-                    ...S.payslipRow,
-                    background: i % 2 === 0 ? "#fff" : "#fafafa",
-                  }}>
-                    <span style={{ fontWeight: 700, color: "#1e293b" }}>{r.admin_name}</span>
-                    <span style={{ color: "#475569" }}>{r.employee_name}</span>
-                    <span style={{ color: "#64748b", fontWeight: 600 }}>{r.month}</span>
-                    <span>{getStatusBadge(r.status)}</span>
-                    <div>
-                      {r.status === "pending" ? (
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button style={{ ...S.actionBtn("green"), padding: "5px 10px" }} onClick={() => { setPsModal({ req: r, action: "approve" }); setPsUrl(""); setPsRejectReason(""); }}>✓</button>
-                          <button style={{ ...S.actionBtn("red"), padding: "5px 10px" }} onClick={() => { setPsModal({ req: r, action: "reject" }); setPsUrl(""); setPsRejectReason(""); }}>✗</button>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 700 }}>DONE</span>
-                      )}
-                    </div>
+            adminRequests.map((req) => (
+              <div
+                key={req.id}
+                style={S.reqRow(hoveredRow === req.id)}
+                onMouseEnter={() => setHoveredRow(req.id)}
+                onMouseLeave={() => setHoveredRow(null)}
+              >
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: req.request_type === "manpower" ? "#ede9fe"
+                    : req.request_type === "procurement" ? "#dbeafe"
+                    : req.request_type === "reimbursement" ? "#dcfce7"
+                    : "#f1f5f9",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: req.request_type === "manpower" ? "#7c3aed"
+                    : req.request_type === "procurement" ? "#2563eb"
+                    : req.request_type === "reimbursement" ? "#059669"
+                    : "#64748b",
+                }}>
+                  {req.request_type === "manpower" ? <User size={16} />
+                    : req.request_type === "procurement" ? <FileText size={16} />
+                    : req.request_type === "reimbursement" ? <CreditCard size={16} />
+                    : <HelpCircle size={16} />}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>
+                      {req.certificate_name || req.role || req.product_name || req.expense_type || "Request"}
+                    </span>
+                    <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, textTransform: "uppercase", background: "#f1f5f9", color: "#64748b" }}>
+                      {req.request_type || "other"}
+                    </span>
+                    {getStatusBadge(req.status)}
                   </div>
-                ))}
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                    {req.description || req.jd || req.vendor || "—"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <span>From: <strong style={{ color: "#475569" }}>{req.employee_name || req.submitted_by || "Employee"}</strong></span>
+                    {req.created_at && (
+                      <span>{new Date(req.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                    )}
+                    {req.deadline && <span>Due: {new Date(req.deadline).toLocaleDateString()}</span>}
+                    {req.cost && <span>Cost: ₹{req.cost}</span>}
+                    {req.amount && <span>Amount: ₹{req.amount}</span>}
+                  </div>
+                </div>
+
+                {req.status === "pending" && (
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => handleStatusChange(req.id, "approved")} style={S.actionBtn("green")}>
+                      <ThumbsUp size={11} style={{ marginRight: 4 }} /> Approve
+                    </button>
+                    <button onClick={() => handleStatusChange(req.id, "rejected")} style={S.actionBtn("red")}>
+                      <ThumbsDown size={11} style={{ marginRight: 4 }} /> Reject
+                    </button>
+                  </div>
+                )}
               </div>
-            </>
+            ))
           )}
+        </div>
+      )}
+
+      {/* ── REIMBURSEMENTS TAB ── */}
+      {activeTab === "reimbursements" && (
+        <div style={S.card}>
+          <div style={S.sectionHeader}>
+            <span>{isAdmin ? "Reimbursement Management" : "My Reimbursement Requests"}</span>
+            <button onClick={fetchReimbursements} style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer" }}><RefreshCw size={14} /></button>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            {reimbursements.length === 0 ? (
+              <div style={S.emptyState}>No reimbursement requests found.</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead style={{ background: "#f8fafc", textAlign: "left" }}>
+                  <tr>
+                    <th style={{ padding: "12px 22px", color: "#64748b" }}>Date</th>
+                    {isAdmin && <th style={{ padding: "12px 22px", color: "#64748b" }}>Employee</th>}
+                    <th style={{ padding: "12px 22px", color: "#64748b" }}>Type</th>
+                    <th style={{ padding: "12px 22px", color: "#64748b" }}>Amount</th>
+                    <th style={{ padding: "12px 22px", color: "#64748b" }}>Status</th>
+                    <th style={{ padding: "12px 22px", color: "#64748b" }}>Receipt</th>
+                    {isAdmin && <th style={{ padding: "12px 22px", color: "#64748b" }}>Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reimbursements.map(r => (
+                    <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "14px 22px" }}>{new Date(r.expense_date).toLocaleDateString()}</td>
+                      {isAdmin && <td style={{ padding: "14px 22px" }}><strong>{r.employee_name}</strong><br /><small>{r.employee_uav_id}</small></td>}
+                      <td style={{ padding: "14px 22px" }}>{r.expense_type}</td>
+                      <td style={{ padding: "14px 22px", fontWeight: 700 }}>₹{r.amount}</td>
+                      <td style={{ padding: "14px 22px" }}>{getStatusBadge(r.status)}</td>
+                      <td style={{ padding: "14px 22px" }}>
+                        {r.receipt_path ? (
+                          <a href={`${import.meta.env.VITE_API_URL}${r.receipt_path}`} target="_blank" rel="noreferrer" style={{ color: "#4f46e5" }}><ExternalLink size={14} /></a>
+                        ) : "None"}
+                      </td>
+                      {isAdmin && (
+                        <td style={{ padding: "14px 22px", display: "flex", gap: 6 }}>
+                          {r.status === "pending" && (
+                            <>
+                              <button onClick={() => handleReimburseStatus(r.id, "approved")} style={S.actionBtn("green")}>Approve</button>
+                              <button onClick={() => handleReimburseStatus(r.id, "rejected")} style={S.actionBtn("red")}>Reject</button>
+                            </>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
 
       {/* ── INBOX / SHARE TAB ── */}
       {activeTab === "inbox" && (
         <div style={S.gridTwo}>
-          {/* Share Form */}
           <div style={S.shareCard}>
             <div style={{ fontWeight: 800, fontSize: 16, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
               <Upload size={18} color="#4f46e5" /> {role === "employee" ? "Send to Super Admin" : "Share with Employee/Team"}
@@ -617,8 +842,8 @@ export default function RequestPanelContent({ role }) {
             )}
             <input type="text" placeholder="Document Name..." value={docName} onChange={(e) => setDocName(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 12, fontSize: 13 }} />
             {isAdmin && (
-              <select 
-                value={targetUserId ? `user:${targetUserId}` : targetRole} 
+              <select
+                value={targetUserId ? `user:${targetUserId}` : targetRole}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val.startsWith("user:")) {
@@ -628,19 +853,16 @@ export default function RequestPanelContent({ role }) {
                     setTargetUserId("");
                     setTargetRole(val);
                   }
-                }} 
+                }}
                 style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 12, fontSize: 13 }}
               >
                 <optgroup label="Role Groups">
                   <option value="all">Everyone (All Roles)</option>
-                  <option value="admins">All Administrators (Standard + HR)</option>
-                  <option value="employee">Share with Employees</option>
-                  <option value="admin_hr">Share with HR Admin</option>
-                  <option value="production_admin">Share with Production Admin</option>
-                  <option value="intern">Share with Interns</option>
-                  <option value="admin">Standard Admins Only</option>
+                  <option value="admins">All Administrators</option>
+                  {role !== "employee" && <option value="employee">Share with Employees</option>}
+                  {role !== "admin" && <option value="admin">Share with Admin</option>}
+                  {role !== "super_admin" && <option value="super_admin">Super Admin</option>}
                 </optgroup>
-
                 {users.filter(u => u.role === "admin" && u.id !== userObj.id).length > 0 && (
                   <optgroup label="Individual: Standard Admins">
                     {users.filter(u => u.role === "admin" && u.id !== userObj.id).map(u => (
@@ -648,15 +870,6 @@ export default function RequestPanelContent({ role }) {
                     ))}
                   </optgroup>
                 )}
-
-                {users.filter(u => u.role === "admin_hr" && u.id !== userObj.id).length > 0 && (
-                  <optgroup label="Individual: HR Admins">
-                    {users.filter(u => u.role === "admin_hr" && u.id !== userObj.id).map(u => (
-                      <option key={u.id} value={`user:${u.id}`}>{u.fullname || u.username} ({u.username})</option>
-                    ))}
-                  </optgroup>
-                )}
-
                 {users.filter(u => u.role === "employee" && u.id !== userObj.id).length > 0 && (
                   <optgroup label="Individual: Employees">
                     {users.filter(u => u.role === "employee" && u.id !== userObj.id).map(u => (
@@ -664,7 +877,6 @@ export default function RequestPanelContent({ role }) {
                     ))}
                   </optgroup>
                 )}
-
                 {users.filter(u => u.role === "intern" && u.id !== userObj.id).length > 0 && (
                   <optgroup label="Individual: Interns">
                     {users.filter(u => u.role === "intern" && u.id !== userObj.id).map(u => (
@@ -672,7 +884,6 @@ export default function RequestPanelContent({ role }) {
                     ))}
                   </optgroup>
                 )}
-
                 {users.filter(u => u.role === "super_admin" && u.id !== userObj.id).length > 0 && (
                   <optgroup label="Individual: Super Admins">
                     {users.filter(u => u.role === "super_admin" && u.id !== userObj.id).map(u => (
@@ -688,7 +899,6 @@ export default function RequestPanelContent({ role }) {
             </button>
           </div>
 
-          {/* Inbox */}
           <div style={S.shareCard}>
             <div style={{ fontWeight: 800, fontSize: 16, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
               <Inbox size={18} color="#4f46e5" /> {role === "employee" ? "From Administration" : "Inbox"}
@@ -710,7 +920,7 @@ export default function RequestPanelContent({ role }) {
         </div>
       )}
 
-      {/* ── Payslip Action Modal ── */}
+      {/* ── PAYSLIP MODAL ── */}
       {psModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)" }}>
           <div style={{ background: "#fff", borderRadius: 20, width: 460, padding: 36, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.2)", border: "1px solid #e2e8f0" }}>
@@ -740,7 +950,8 @@ export default function RequestPanelContent({ role }) {
               </div>
             )}
             <div style={{ display: "flex", gap: 14, justifyContent: "flex-end", marginTop: 32 }}>
-              <button style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: "0.9rem", cursor: "pointer", color: "#64748b", fontWeight: 700 }} onClick={() => { setPsModal(null); setPsRejectReason(""); setPsUrl(""); }}>Cancel</button>
+              <button style={{ background: "#f1f5f9", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: "0.9rem", cursor: "pointer", color: "#64748b", fontWeight: 700 }}
+                onClick={() => { setPsModal(null); setPsRejectReason(""); setPsUrl(""); }}>Cancel</button>
               <button
                 style={{ background: psModal.action === "approve" ? "#059669" : "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "12px 28px", fontSize: "0.9rem", fontWeight: 800, cursor: "pointer", opacity: psSaving ? 0.6 : 1, boxShadow: psModal.action === "approve" ? "0 4px 14px rgba(5,150,105,0.3)" : "0 4px 14px rgba(220,38,38,0.3)" }}
                 onClick={handlePayslipAction} disabled={psSaving}>

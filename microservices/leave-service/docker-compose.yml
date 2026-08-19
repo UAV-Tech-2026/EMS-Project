@@ -1,0 +1,18 @@
+﻿version: "3.9"
+services:
+  leave-service:
+    build: .
+    container_name: leave-service
+    restart: always
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - DATABASE_URL=postgres://postgres:data7@172.31.14.42:5432/ems_dbs1
+      - JWT_SECRET=ems_2026
+    networks:
+      - ems-network
+
+networks:
+  ems-network:
+    external: true

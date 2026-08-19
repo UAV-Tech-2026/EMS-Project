@@ -37,7 +37,7 @@
   pointer-events: none;
 }
 
-/* ── Outer glow ring ── */
+
 .emslogin__card-wrap {
   position: relative;
   border-radius: 26px;
@@ -82,19 +82,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 90px;
+  height: 90px;
   background: #fff;
-  border-radius: 14px;
-  margin-bottom: 14px;
+  border-radius: 18px;
+  margin-bottom: 20px;
   border: 1.5px solid rgba(31, 78, 121, 0.12);
   box-shadow: 0 4px 12px rgba(31,78,121,0.10);
   mix-blend-mode: normal;
 }
 
 .emslogin__logo img {
-  width: 40px;
-  height: 40px;
+  width: 70px;
+  height: 70px;
   object-fit: contain;
 }
 
@@ -111,7 +111,7 @@
   color: var(--lg-muted);
 }
 
-/* thin divider under header */
+
 .emslogin__header::after {
   content: '';
   display: block;

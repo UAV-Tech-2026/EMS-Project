@@ -4,7 +4,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Public (token only) — any logged-in user fetches their own permissions
+
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -19,13 +19,12 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// ✅ Get list of all administrators (Super Admin, Admin, HR Admin) for request forms
+
 router.get("/admins", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, fullname, username, role 
-       FROM users 
-       WHERE role IN ('super_admin', 'admin', 'admin_hr')
+       FROM users        WHERE role IN ('super_admin', 'admin')
        ORDER BY fullname ASC`
     );
     res.json(result.rows);
@@ -35,10 +34,11 @@ router.get("/admins", verifyToken, async (req, res) => {
   }
 });
 
-// ✅ Middleware: all routes below require a valid token + administrative role
+
 const adminOnly = (req, res, next) => {
   const role = (req.user?.role || "").toLowerCase();
-  if (role !== "super_admin" && role !== "admin" && role !== "admin_hr") {
+  const ALLOWED_ADMINS = ["super_admin", "admin"];
+  if (!ALLOWED_ADMINS.includes(role)) {
     return res.status(403).json({ msg: "Forbidden: Administrative access required" });
   }
   next();
@@ -47,20 +47,20 @@ const adminOnly = (req, res, next) => {
 router.use(verifyToken);
 router.use(adminOnly);
 
-// GET /api/permissions/list
-// Lists only users with role = 'admin' (ControlPanel manages feature permissions for Admins only)
+
 router.get("/list", async (req, res) => {
   try {
     const query = `
-      SELECT u.id, u.username, u.fullname, u.role,
+      SELECT u.id, u.username, u.fullname, u.role, u.department, e.employee_uav_id,
              COALESCE(json_agg(json_build_object(
                'feature_name', p.feature_name,
                'can_read',     p.can_read,
                'can_write',    p.can_write
              )) FILTER (WHERE p.feature_name IS NOT NULL), '[]') AS permissions
       FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
       LEFT JOIN user_permissions p ON u.id = p.user_id
-      GROUP BY u.id
+      GROUP BY u.id, e.employee_uav_id
       ORDER BY u.fullname
     `;
     const result = await pool.query(query);
@@ -71,7 +71,7 @@ router.get("/list", async (req, res) => {
   }
 });
 
-// GET /api/permissions/list-employees — list employees & interns
+
 router.get("/list-employees", async (req, res) => {
   try {
     const query = `
@@ -96,7 +96,7 @@ router.get("/list-employees", async (req, res) => {
   }
 });
 
-// POST /api/permissions/update — update permissions for any non-super_admin user
+
 router.post("/update", async (req, res) => {
   const { user_id, permissions } = req.body;
 
@@ -125,15 +125,17 @@ router.post("/update", async (req, res) => {
     for (const p of permissions) {
       if (!p.feature_name) continue;
 
-      // If write is granted, read must also be true
-      const safeRead = p.can_read || p.can_write;
+      // Trust the frontend's explicit values. Write without Read is invalid but
+      // the UI already enforces Read=true when Write is ON.
+      const canRead  = Boolean(p.can_read);
+      const canWrite = Boolean(p.can_write);
 
       await client.query(`
         INSERT INTO user_permissions (user_id, feature_name, can_read, can_write)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (user_id, feature_name)
         DO UPDATE SET can_read = EXCLUDED.can_read, can_write = EXCLUDED.can_write
-      `, [user_id, p.feature_name, safeRead, p.can_write]);
+      `, [user_id, p.feature_name, canRead, canWrite]);
     }
 
     await client.query("COMMIT");

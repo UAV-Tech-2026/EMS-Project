@@ -14,7 +14,7 @@ async function fixSchema() {
   try {
     console.log("Checking shared_documents table...");
     
-    // Check if column exists
+    
     const checkRes = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 

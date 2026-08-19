@@ -1,0 +1,18 @@
+﻿version: "3.9"
+services:
+  request-service:
+    build: .
+    container_name: request-service
+    restart: always
+    ports:
+      - "3008:3008"
+    environment:
+      - PORT=3008
+      - DATABASE_URL=postgres://postgres:data7@172.31.14.42:5432/ems_dbs1
+      - JWT_SECRET=ems_2026
+    networks:
+      - ems-network
+
+networks:
+  ems-network:
+    external: true

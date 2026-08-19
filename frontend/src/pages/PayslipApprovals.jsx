@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-/* ─── Scoped dark-mode styles (no DPR.css dependency) ─── */
+
 const S = {
   page: {
     background: "#f1f5f9",
@@ -20,7 +20,7 @@ const S = {
     border: "1px solid #e2e8f0",
   },
 
-  /* ── Title bar ── */
+ 
   titleBar: {
     display: "flex",
     alignItems: "center",
@@ -44,7 +44,7 @@ const S = {
     transition: "all 0.2s",
   },
 
-  /* ── Stat row ── */
+
   statGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(3,1fr)",
@@ -73,7 +73,7 @@ const S = {
     lineHeight: 1,
   }),
 
-  /* ── Filter bar ── */
+  
   filterBar: {
     display: "flex",
     alignItems: "center",
@@ -102,7 +102,7 @@ const S = {
     transition: "all 0.2s",
   }),
 
-  /* ── Table ── */
+  
   tableWrap: { overflowX: "auto" },
   table: { width: "100%", borderCollapse: "collapse" },
   thead: { background: "#f8fafc" },
@@ -133,7 +133,7 @@ const S = {
   strongName: { fontWeight: 700, color: "#1e293b" },
   rowBase: { transition: "background 0.2s" },
 
-  /* ── Status badge ── */
+
   badge: (bg, color) => ({
     background: bg,
     color,
@@ -146,7 +146,7 @@ const S = {
     display: "inline-block",
   }),
 
-  /* ── Action buttons ── */
+  
   approveBtn: {
     background: "#10b981",
     color: "#fff",
@@ -174,10 +174,9 @@ const S = {
   processedTag: { fontSize: "0.75rem", color: "#94a3b8", fontWeight: 700, letterSpacing: "0.05em" },
   viewLink: { color: "#3b82f6", fontWeight: 700, textDecoration: "none" },
 
-  /* ── Empty / loading ── */
   emptyMsg: { padding: 64, textAlign: "center", color: "#94a3b8", fontSize: "1rem" },
 
-  /* ── Modal overlay ── */
+
   overlay: {
     position: "fixed", inset: 0,
     background: "rgba(15, 23, 42, 0.4)",
@@ -250,7 +249,7 @@ export default function PayslipApprovals() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       const params = filterStatus ? `?status=${filterStatus}` : "";
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL}/payslip-requests/all${params}`,
@@ -272,7 +271,7 @@ export default function PayslipApprovals() {
     }
     setSaving(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       await axios.patch(
         `${import.meta.env.VITE_API_URL}/payslip-requests/${req.id}`,
         {
@@ -363,7 +362,7 @@ export default function PayslipApprovals() {
           ))}
         </div>
 
-        {/* ── Table ── */}
+        
         {loading ? (
           <div style={S.emptyMsg}>Loading requests…</div>
         ) : requests.length === 0 ? (
@@ -444,9 +443,8 @@ export default function PayslipApprovals() {
         <div style={{ padding: "24px 32px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "flex-end", background: "#f8fafc" }}>
           <button
             onClick={() => {
-              const user = JSON.parse(localStorage.getItem("user") || "{}");
+              const user = JSON.parse(sessionStorage.getItem("user") || "{}");
               if (user.role === "super_admin") navigate("/super-admin-dashboard");
-              else if (user.role === "admin_hr") navigate("/admin-hr-dashboard");
               else navigate("/admin-dashboard");
             }}
             style={{
@@ -469,7 +467,7 @@ export default function PayslipApprovals() {
         </div>
       </div>
 
-      {/* ── Action Modal ── */}
+      
       {actionModal && (
         <div style={S.overlay}>
           <div style={S.modal}>

@@ -26,16 +26,14 @@ export default function EmployeeRequestForm() {
     description: "",
     target_role: "super_admin",
     target_user_id: "",
-    format: "pdf"
+    format: "pdf",
+    request_type: "other"
   });
 
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/permissions/admins`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get("/permissions/admins");
         setAdmins(res.data);
       } catch (err) {
         console.error("Error fetching admins:", err);
@@ -53,7 +51,7 @@ export default function EmployeeRequestForm() {
     try {
       const [inboxRes, historyRes] = await Promise.all([
         api.get("/shared-docs/inbox"),
-        api.get("/requests/my")
+        api.get("/general-requests/my")
       ]);
       setInbox(inboxRes.data);
       setHistory(historyRes.data);
@@ -72,12 +70,16 @@ export default function EmployeeRequestForm() {
     setMsg({ type: "", text: "" });
 
     try {
-      await api.post("/requests", form);
+      const payload = {
+        ...form,
+        certificate_name: form.name
+      };
+      await api.post("/general-requests", payload);
       setMsg({ type: "success", text: "✓ Your request has been submitted successfully!" });
-      setForm({ name: "", description: "", target_role: "super_admin", format: "pdf" });
+      setForm({ name: "", description: "", target_role: "super_admin", format: "pdf", request_type: "other" });
 
       // Refresh history
-      const historyRes = await api.get("/requests/my");
+      const historyRes = await api.get("/general-requests/my");
       setHistory(historyRes.data);
 
       setTimeout(() => setMsg({ type: "", text: "" }), 5000);
@@ -118,7 +120,7 @@ export default function EmployeeRequestForm() {
       )}
 
       <div className="emp-req-grid">
-        {/* ── LEFT: REQUEST FORM ── */}
+       
         <div className="emp-req-card main-form">
           <div className="emp-card-header">
             <FilePlus size={18} />
@@ -167,15 +169,14 @@ export default function EmployeeRequestForm() {
                     }
                   }}
                 >
-                  <option value="super_admin">Super Admin (Default)</option>
-                  <option value="admin">Admin (Default)</option>
-                  <option value="admin_hr">HR Admin (Default)</option>
+                  <option value="hr_admin">HR Admin</option>
+                  <option value="super_admin">Super Admin</option>
 
                   {admins.length > 0 && (
                     <optgroup label="Specific Administrators">
                       {admins.map(a => (
                         <option key={a.id} value={a.id}>
-                          {a.fullname || a.username} ({a.role === 'admin_hr' ? 'HR' : a.role === 'super_admin' ? 'Super' : 'Admin'})
+                          {a.fullname || a.username} ({a.role === 'super_admin' ? 'Super' : 'Admin'})
                         </option>
                       ))}
                     </optgroup>
@@ -203,10 +204,10 @@ export default function EmployeeRequestForm() {
           </form>
         </div>
 
-        {/* ── RIGHT: INBOX & HISTORY ── */}
+        
         <div className="emp-req-right-col">
 
-          {/* Inbox for shared documents */}
+          
           <div className="emp-req-card inbox-card">
             <div className="emp-card-header">
               <Inbox size={18} />
@@ -235,7 +236,7 @@ export default function EmployeeRequestForm() {
             </div>
           </div>
 
-          {/* Request History */}
+         
           <div className="emp-req-card history-card">
             <div className="emp-card-header">
               <Clock size={18} />

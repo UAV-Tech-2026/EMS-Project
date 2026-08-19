@@ -123,7 +123,7 @@ export default function AttendanceRecords() {
             <input
               className="ar-search-input"
               type="text"
-              placeholder="Search by name or UAV ID..."
+              placeholder="Search by name or UTPL ID..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />

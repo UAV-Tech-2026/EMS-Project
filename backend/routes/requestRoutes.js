@@ -4,25 +4,23 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ─── POST /api/general-requests ───────────────────────────────────────────────
-// Handles all 3 types: manpower | procurement | other
+
 router.post("/", verifyToken, async (req, res) => {
   const {
-    request_type,          // "manpower" | "procurement" | "other"
+    request_type,         
     target_role,
     target_user_id,
 
-    // Manpower fields
+   
     role, jd, experience, skills, deadline,
 
-    // Procurement fields
+
     product_name, cost, vendor, procurement_deadline,
     from_department, to_department, qty,
 
-    // Other (certificate) fields
     certificate_name, description, format,
 
-    // legacy fallback
+   
     name,
   } = req.body;
 
@@ -32,7 +30,7 @@ router.post("/", verifyToken, async (req, res) => {
     return res.status(400).json({ msg: "request_type is required." });
   }
 
-  // Build a readable name + description from fields
+ 
   let finalName, finalDescription, finalFormat;
 
   if (request_type === "manpower") {
@@ -82,7 +80,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// ─── GET /api/general-requests/my ─────────────────────────────────────────────
+
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -96,31 +94,53 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
-// ─── GET /api/general-requests/admin ──────────────────────────────────────────
+
 router.get("/admin", verifyToken, async (req, res) => {
-  if (!["super_admin", "admin", "admin_hr"].includes(req.user.role)) {
+  if (!["super_admin", "admin", "hr_admin"].includes(req.user.role)) {
     return res.status(403).json({ msg: "Access denied." });
   }
 
   try {
     let result;
+
     if (req.user.role === "super_admin") {
+    
       result = await pool.query(
-        `SELECT r.*, u.fullname AS employee_name
+        `SELECT r.*, u.fullname AS employee_name, e.employee_uav_id
          FROM general_requests r
          JOIN users u ON r.user_id = u.id
+         LEFT JOIN employees e ON u.id = e.user_id
          ORDER BY r.created_at DESC`
       );
-    } else {
+
+    } else if (req.user.role === "hr_admin") {
+      
       result = await pool.query(
-        `SELECT r.*, u.fullname AS employee_name
+        `SELECT r.*, u.fullname AS employee_name, e.employee_uav_id
          FROM general_requests r
          JOIN users u ON r.user_id = u.id
-         WHERE r.target_role = $1 OR r.target_user_id = $2
+         LEFT JOIN employees e ON u.id = e.user_id
+         WHERE r.target_role = 'hr_admin'
+            OR r.target_user_id = $1
          ORDER BY r.created_at DESC`,
-        [req.user.role, req.user.id]
+        [req.user.id]
+      );
+
+    } else {
+      
+      result = await pool.query(
+        `SELECT r.*, u.fullname AS employee_name, e.employee_uav_id
+         FROM general_requests r
+         JOIN users u ON r.user_id = u.id
+         LEFT JOIN employees e ON u.id = e.user_id
+         WHERE r.target_user_id = $1
+            OR r.target_role = 'admin'
+            OR (r.target_role = 'hr_admin' AND $2 = 'HR')
+         ORDER BY r.created_at DESC`,
+        [req.user.id, req.user.department || ""]
       );
     }
+
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);
@@ -128,9 +148,9 @@ router.get("/admin", verifyToken, async (req, res) => {
   }
 });
 
-// ─── PUT /api/general-requests/status/:id ─────────────────────────────────────
+
 router.put("/status/:id", verifyToken, async (req, res) => {
-  if (!["super_admin", "admin", "admin_hr"].includes(req.user.role)) {
+  if (!["super_admin", "admin", "hr_admin"].includes(req.user.role)) {
     return res.status(403).json({ msg: "Access denied." });
   }
 

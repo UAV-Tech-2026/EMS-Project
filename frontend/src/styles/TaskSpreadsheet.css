@@ -1,4 +1,4 @@
-/* ── TaskSpreadsheet.css (Premium Light) ───────────────────────────────── */
+
 
 :root {
   --ss-bg: #f8fafc;
@@ -176,7 +176,7 @@
   color: #ef4444;
 }
 
-/* Column Widths */
+
 .col-action { width: 40px; }
 .col-task { width: 250px; }
 .col-user { width: 180px; }
@@ -187,7 +187,7 @@
 .col-dep { width: 200px; }
 .col-link { width: 200px; }
 
-/* Status specific coloring */
+
 .status-select.pending { color: #f59e0b; font-weight: 700; background: #fffbeb; }
 .status-select.in-progress { color: #2563eb; font-weight: 700; background: #eff6ff; }
 .status-select.completed { color: #16a34a; font-weight: 700; background: #f0fdf4; }

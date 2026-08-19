@@ -1,9 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap');
 
-/* ──────────────────────────────────────────────────────────────────────────
-   EMS OTP — otpv2__ namespace
-   Theme: Premium Light
-   ────────────────────────────────────────────────────────────────────────── */
+
 
 :root {
   --otp-bg: #f8fafc;
@@ -16,29 +13,31 @@
   --otp-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 }
 
+/* AFTER */
 .otpv2__wrapper {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;        /* ← was center */
   min-height: 100vh;
   background-color: var(--otp-bg);
   font-family: 'DM Sans', sans-serif;
-  padding: 16px;
+  padding: 24px 16px;             /* ← was 16px */
   box-sizing: border-box;
+  overflow-y: auto;               /* ← ADD THIS */
 }
 
 .otpv2__card {
   background: var(--otp-card);
   border: 1px solid var(--otp-border);
   border-radius: 20px;
-  padding: 48px 40px;
+  padding: 40px 32px;             /* ← slightly reduced from 48px 40px */
   width: 100%;
   max-width: 440px;
   text-align: center;
   box-shadow: var(--otp-shadow);
   position: relative;
   z-index: 1;
-}
+  margin: auto;                   }
 
 .otpv2__icon {
   width: 56px;

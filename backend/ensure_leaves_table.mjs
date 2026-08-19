@@ -3,7 +3,7 @@ import pool from "./db.js";
 async function run() {
   console.log("Checking 'leaves' table...");
   try {
-    // 1. Create table if not exists
+   
     await pool.query(`
       CREATE TABLE IF NOT EXISTS leaves (
         id SERIAL PRIMARY KEY,
@@ -23,7 +23,7 @@ async function run() {
     `);
     console.log("✓ 'leaves' table is present.");
 
-    // 2. Check for applied_at column (common cause of 500 if missing)
+    
     const colCheck = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 

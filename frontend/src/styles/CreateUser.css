@@ -8,7 +8,7 @@
   width: 100%;
 }
 
-/* ── Top logo bar ── */
+
 .create-top-nav {
   display: flex;
   align-items: center;
@@ -44,7 +44,7 @@
   color: #1e293b;
 }
 
-/* ── Main form card ── */
+
 .create-form {
   background: #ffffff;
   padding: 20px 24px;
@@ -86,7 +86,7 @@
   padding-left: 30px;
 }
 
-/* ── Inputs & selects ── */
+
 input,
 select {
   background: #f8fafc;
@@ -117,7 +117,7 @@ select option {
   background: #ffffff;
 }
 
-/* ── Section headings in right column ── */
+
 .right-column h3 {
   font-size: 15px;
   font-weight: 700;
@@ -128,7 +128,7 @@ select option {
   margin-top: 4px;
 }
 
-/* ── Experience card ── */
+
 .experience-card {
   background: #f8fafc;
   padding: 16px;
@@ -139,7 +139,7 @@ select option {
   border: 1.5px solid #e2e8f0;
 }
 
-/* ── Add Experience button ── */
+
 .add-btn {
   background: linear-gradient(135deg, #10b981, #059669);
   border: none;
@@ -165,7 +165,7 @@ select option {
   cursor: pointer;
 }
 
-/* ── Form action buttons ── */
+
 .form-buttons {
   display: flex;
   gap: 14px;
@@ -192,7 +192,7 @@ select option {
   box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35);
 }
 
-/* ── Back to Dashboard — purple outlined ── */
+
 .back-btn {
   background: #ffffff;
   border: 2px solid #10b981;
@@ -212,7 +212,7 @@ select option {
   transform: translateY(-2px);
 }
 
-/* ── Remove experience button ── */
+
 .remove-btn {
   background: #fef2f2;
   border: 1.5px solid #ef4444;
@@ -242,7 +242,7 @@ label {
   margin-top: -10px;
 }
 
-/* ── Scrollbar Styling ── */
+
 .create-user-modal-inner::-webkit-scrollbar {
   width: 8px;
 }
@@ -289,7 +289,7 @@ label {
   }
 }
 
-/* ── Date inputs ── */
+
 input[type="date"] {
   color: #1e293b;
   background: #f8fafc;
@@ -306,9 +306,7 @@ input[type="date"]::-moz-focus-inner {
   border: 0;
 }
 
-/* ════════════════════════════════
-   SALARY BREAKDOWN
-════════════════════════════════ */
+
 
 .salary-fixed-grid {
   display: grid;
@@ -331,7 +329,7 @@ input[type="date"]::-moz-focus-inner {
   margin-top: 0;
 }
 
-/* ₹ prefix input wrapper */
+
 .salary-input-wrap {
   display: flex;
   align-items: center;
@@ -379,7 +377,7 @@ input[type="date"]::-moz-focus-inner {
   box-shadow: none !important;
 }
 
-/* Live net pay preview bar */
+
 .salary-preview {
   display: flex;
   align-items: center;
@@ -415,7 +413,7 @@ input[type="date"]::-moz-focus-inner {
 .sp-net    { color: #7c3aed; }
 .sp-sep    { font-size: 18px; color: #94a3b8; padding-bottom: 14px; }
 
-/* Document labels */
+
 .doc-label {
   font-size: 11px !important;
   font-weight: 700 !important;

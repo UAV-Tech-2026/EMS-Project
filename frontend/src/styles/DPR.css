@@ -1,7 +1,4 @@
-/* ─────────────────────────────────────────────
-   DPR.css (Modernized & Expanded)
-   Includes Sidebar/Topbar support and Wider Table
-───────────────────────────────────────────── */
+
 
 :root {
   --dpr-bg: #f8fafc;
@@ -268,7 +265,7 @@
   .dpr-grid2, .dpr-grid3, .dpr-grid5 { grid-template-columns: 1fr; }
 }
 
-/* === Payslip Request & Miscellaneous Legacy Classes === */
+
 .dpr-page {
   min-height: 100vh;
   background: var(--dpr-bg);

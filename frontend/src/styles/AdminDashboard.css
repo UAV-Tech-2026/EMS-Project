@@ -1,8 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
 
-/* ─────────────────────────────────────────
-   CSS VARIABLES
-───────────────────────────────────────── */
+
 :root {
   --stdc-bg: #f1f5f9;
   --stdc-surface: #ffffff;
@@ -16,9 +14,7 @@
   --stdc-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* ─────────────────────────────────────────
-   SHELL / LAYOUT
-───────────────────────────────────────── */
+
 .stdc-shell * { box-sizing: border-box; }
 
 .stdc-shell {
@@ -42,11 +38,9 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ─────────────────────────────────────────
-   SIDEBAR
-───────────────────────────────────────── */
+
 .stdc-sidebar {
-  width: 220px;
+  width: 236px;
   background: var(--stdc-sidebar);
   flex-shrink: 0;
   display: flex;
@@ -67,14 +61,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.stdc-logo-mark > div:last-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .stdc-logo-text {
   font-family: 'Syne', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #ffffff;
-  letter-spacing: .3px;
+  letter-spacing: .2px;
 }
 
 .stdc-logo-sub {
@@ -82,8 +82,14 @@
   font-weight: 600;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: .5px;
   font-family: 'DM Sans', sans-serif;
+  white-space: normal;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
 }
 
 .stdc-nav {
@@ -176,9 +182,7 @@
 
 .stdc-logout-btn:hover { background: #dc2626; }
 
-/* ─────────────────────────────────────────
-   MAIN AREA
-───────────────────────────────────────── */
+
 .stdc-main {
   flex: 1;
   display: flex;
@@ -186,9 +190,7 @@
   overflow: hidden;
 }
 
-/* ─────────────────────────────────────────
-   TOPBAR
-───────────────────────────────────────── */
+
 .stdc-topbar {
   height: 64px;
   background: #ffffff;
@@ -277,18 +279,14 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ─────────────────────────────────────────
-   CONTENT AREA
-───────────────────────────────────────── */
+
 .stdc-content {
   padding: 28px 32px;
   overflow-y: auto;
   flex: 1;
 }
 
-/* ─────────────────────────────────────────
-   STAT CARDS
-───────────────────────────────────────── */
+
 .stdc-stats-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -387,9 +385,7 @@
   margin-top: 6px;
 }
 
-/* ─────────────────────────────────────────
-   ATTENDANCE BANNER
-───────────────────────────────────────── */
+
 .stdc-attendance-banner {
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   border-radius: 16px;
@@ -466,9 +462,7 @@
   background: rgba(255, 255, 255, .1);
 }
 
-/* ─────────────────────────────────────────
-   SECTION HEADER
-───────────────────────────────────────── */
+
 .stdc-section-header {
   display: flex;
   align-items: center;
@@ -485,9 +479,7 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ─────────────────────────────────────────
-   QUICK ACTIONS GRID
-───────────────────────────────────────── */
+
 .stdc-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -546,9 +538,7 @@
   color: #6366f1;
 }
 
-/* ─────────────────────────────────────────
-   BOTTOM ROW
-───────────────────────────────────────── */
+
 .stdc-bottom-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -577,11 +567,9 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ─────────────────────────────────────────
-   BULLETIN SCROLLER
-───────────────────────────────────────── */
+
 .stdc-bulletin-container {
-  overflow: hidden;
+  overflow-y: auto; /* Allow manual scrolling */
   height: 200px;
   position: relative;
 }
@@ -589,11 +577,11 @@
 .stdc-bulletin-scroller {
   display: flex;
   flex-direction: column;
-  animation: stdcScroller 25s linear infinite;
+  /* Removed animation to keep it fixed */
 }
 
 .stdc-bulletin-scroller:hover {
-  animation-play-state: paused;
+  /* No pause needed since animation removed */
 }
 
 @keyframes stdcScroller {
@@ -635,9 +623,7 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ─────────────────────────────────────────
-   MODAL / OVERLAY
-───────────────────────────────────────── */
+
 .stdc-overlay {
   position: fixed;
   inset: 0;
@@ -678,9 +664,7 @@
 
 .stdc-modal-close-btn:hover { color: #0f172a; }
 
-/* ─────────────────────────────────────────
-   DOWNLOAD / EXPORT MODAL
-───────────────────────────────────────── */
+
 .stdc-download-modal {
   max-width: 480px;
   padding: 32px;
@@ -809,4 +793,51 @@
   .stdc-stats-row { grid-template-columns: 1fr 1fr; }
   .stdc-actions-grid { grid-template-columns: 1fr; }
   .stdc-attendance-banner { flex-direction: column; align-items: flex-start; }
+}
+
+
+.stdc-top-ticker {
+  background: #1e293b; 
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: 'DM Sans', sans-serif;
+  border-bottom: 2px solid #3b82f6; 
+}
+
+.stdc-ticker-content {
+  display: inline-block;
+  animation: stdcTickerScroll 30s linear infinite;
+  padding-left: 100%; 
+}
+
+.stdc-ticker-content:hover {
+  animation-play-state: paused;
+}
+
+@keyframes stdcTickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.stdc-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 60px;
+}
+.stdc-ticker-badge {
+  background: #ef4444; /* Red badge */
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 1px;
 }

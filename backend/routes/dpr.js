@@ -1,7 +1,7 @@
 import express from "express";
 import pool from "../db.js";
 import ExcelJS from "exceljs";
-import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { verifyToken, isAdminOrSuper, canReadFeature } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -17,7 +17,7 @@ const WHITE = "FFFFFFFF";
 const CREAM = "FFFFF9E6";
 
 function getLocalDateString(date) {
-  // IST = UTC+5:30
+  
   const offset = 5.5 * 60 * 60 * 1000;
   return new Date(date.getTime() + offset).toISOString().split("T")[0];
 }
@@ -72,21 +72,20 @@ router.get("/export", verifyToken, async (req, res) => {
 router.get("/eod-tasks", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    // BUG FIX: use IST date, not UTC
-    const today = getLocalDateString(new Date());
 
+    
     const result = await pool.query(`
       SELECT
         id,
         title,
         status,
         due_date AS deadline,
-        '' AS description
+        description
       FROM tasks
       WHERE assigned_to = $1
-        AND due_date = $2
-      ORDER BY id ASC
-    `, [userId, today]);
+        AND status NOT IN ('Completed')
+      ORDER BY due_date ASC NULLS LAST, id ASC
+    `, [userId]);
 
     res.json(result.rows);
   } catch (err) {
@@ -107,7 +106,7 @@ router.get("/download", verifyToken, async (req, res) => {
       });
     }
 
-    // Fetch employee info
+    
     const empRes = await pool.query(`
       SELECT u.fullname, e.designation, e.employee_uav_id
       FROM users u
@@ -120,7 +119,7 @@ router.get("/download", verifyToken, async (req, res) => {
 
     const emp = empRes.rows[0];
 
-    // Fetch attendance
+  
     const attRes = await pool.query(
       "SELECT check_in, check_out FROM attendance WHERE user_id=$1 AND attendance_date=$2",
       [userId, dprDate]
@@ -147,17 +146,17 @@ router.get("/download", verifyToken, async (req, res) => {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("DPR");
 
-    // Column widths
+  
     [18, 10, 14, 6, 42, 4, 22, 4, 22].forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
-    // Row heights
+   
     for (let r = 1; r <= 29; r++) ws.getRow(r).height = 16;
     ws.getRow(1).height = 10;
     ws.getRow(6).height = 10;
     ws.getRow(10).height = 10;
     ws.getRow(11).height = 22;
 
-    // Logo
+   
     ws.mergeCells("A2:C5");
     Object.assign(ws.getCell("A2"), {
       value: "UAV Tech",
@@ -165,7 +164,7 @@ router.get("/download", verifyToken, async (req, res) => {
       alignment: { horizontal: "center", vertical: "middle" },
     });
 
-    // Title
+
     ws.mergeCells("D2:I5");
     Object.assign(ws.getCell("D2"), {
       value: "DAILY PROGRESS REPORT",
@@ -190,28 +189,28 @@ router.get("/download", verifyToken, async (req, res) => {
         fill: { type: "pattern", pattern: "solid", fgColor: { argb: CREAM } },
       });
 
-    // Row 7
+    
     lbl("A7", "Name");
     ws.mergeCells("B7:E7"); val("B7", emp.fullname);
     lbl("F7", "Date"); val("G7", dateFmt);
     lbl("H7", "Location"); val("I7", entry.location || "Office");
 
-    // Row 8
+   
     lbl("A8", "Designation");
     ws.mergeCells("B8:E8"); val("B8", emp.designation || "");
     lbl("F8", "Day"); val("G8", dayName);
     lbl("H8", "Clock-in Time");
-    // BUG FIX: fmtTime() handles both Date objects and strings from DB
+    
     val("I8", entry.clock_in ? fmtTime(entry.clock_in) : fmtTime(att.check_in));
 
-    // Row 9
+   
     lbl("A9", "Project");
     ws.mergeCells("B9:E9"); val("B9", entry.project || "");
     lbl("F9", "Project Code"); val("G9", entry.project_code || emp.employee_uav_id || "");
     lbl("H9", "Clock-Out Time");
     val("I9", entry.clock_out ? fmtTime(entry.clock_out) : fmtTime(att.check_out));
 
-    // Task header row 11
+    
     const hdr = (ref, text) =>
       Object.assign(ws.getCell(ref), {
         value: text,
@@ -231,7 +230,7 @@ router.get("/download", verifyToken, async (req, res) => {
     hdr("G11", "Equipments / Software Used");
     hdr("H11", "Personnel Involved");
 
-    // BUG FIX: Fill task rows 12–24 from saved dpr_tasks data
+    
     for (let i = 0; i < 13; i++) {
       const row = 12 + i;
       const task = savedTasks[i] || {};
@@ -250,15 +249,15 @@ router.get("/download", verifyToken, async (req, res) => {
         c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFFFF" } };
       };
 
-      setCellStyle(1, fmtTime(task.start_time));   // Start
-      setCellStyle(2, fmtTime(task.end_time));      // End
-      setCellStyle(3, task.task_code || "");      // Task Code (merged C:D)
-      setCellStyle(5, task.summary || "");      // Summary (merged E:F)
-      setCellStyle(7, task.equipment || "");      // Equipment
-      setCellStyle(8, task.personnel || "");      // Personnel (merged H:I)
+      setCellStyle(1, fmtTime(task.start_time)); 
+      setCellStyle(2, fmtTime(task.end_time));      
+      setCellStyle(3, task.task_code || "");      
+      setCellStyle(5, task.summary || "");      
+      setCellStyle(7, task.equipment || "");     
+      setCellStyle(8, task.personnel || "");     
     }
 
-    // Requirement row 25 — use saved value
+   
     ws.getRow(25).height = 20;
     ws.mergeCells("A25:B25"); lbl("A25", "Requirement (If any)");
     ws.mergeCells("C25:I25");
@@ -269,7 +268,7 @@ router.get("/download", verifyToken, async (req, res) => {
       alignment: { vertical: "middle" },
     });
 
-    // Remarks row 27 — use saved value
+   
     ws.getRow(27).height = 20;
     ws.mergeCells("A27:B27"); lbl("A27", "Remarks / Issues");
     ws.mergeCells("C27:I27");
@@ -280,7 +279,7 @@ router.get("/download", verifyToken, async (req, res) => {
       alignment: { vertical: "middle" },
     });
 
-    // Date lock notice row 29
+
     ws.mergeCells("A29:I29");
     Object.assign(ws.getCell("A29"), {
       value: `⚠ This DPR is valid for ${dateFmt}. Editing allowed for today & tomorrow only. Past dates are locked.`,
@@ -297,8 +296,7 @@ router.get("/download", verifyToken, async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
-    // BUG FIX: removed res.end() after wb.xlsx.write(res) — calling res.end()
-    // after write() causes "write after end" crash because write() already ends the stream.
+
     await wb.xlsx.write(res);
 
   } catch (err) {
@@ -307,7 +305,7 @@ router.get("/download", verifyToken, async (req, res) => {
   }
 });
 
-// ─── EMPLOYEE: Get existing DPR for a date ───────────────────────────────────
+
 router.get("/my-dpr", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -333,13 +331,27 @@ router.get("/my-dpr", verifyToken, async (req, res) => {
   }
 });
 
-// ─── SAVE DPR (today or tomorrow only) ───────────────────────────────────────
+router.get("/my-history", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      "SELECT dpr_date, project, clock_in, clock_out, remarks FROM dpr_entries WHERE user_id = $1 ORDER BY dpr_date DESC",
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("MY DPR HISTORY ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 router.post("/save", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const {
       dpr_date, tasks, requirement, remarks,
       clock_in, clock_out, project, project_code, location,
+      assigned_admin_id,
     } = req.body;
 
     if (!isAllowedDate(dpr_date)) {
@@ -348,14 +360,46 @@ router.post("/save", verifyToken, async (req, res) => {
       });
     }
 
+    
+    const MIN_SUMMARY_LENGTH = 20;
+    const isDegenerate = (text) => {
+      const trimmed = text.trim();
+      if (trimmed.length < MIN_SUMMARY_LENGTH) return true;
+      const noSpaces = trimmed.replace(/\s/g, "");
+      if (/^(.)\1*$/.test(noSpaces)) return true;
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      if (words.length < 3) return true; 
+      return false;
+    };
+    const badRows = (tasks || [])
+      .map((t, i) => ({ i, summary: (t.summary || "").trim() }))
+      .filter(t => t.summary && isDegenerate(t.summary));
+    if (badRows.length > 0) {
+      return res.status(400).json({
+        msg: `Row ${badRows.map(r => r.i + 1).join(", ")}: summary is too short or looks like placeholder text. Please describe the work done (min ${MIN_SUMMARY_LENGTH} characters).`,
+      });
+    }
+
+    
+    try {
+      await pool.query(`
+        ALTER TABLE dpr_entries
+          ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT false,
+          ADD COLUMN IF NOT EXISTS flag_reason TEXT,
+          ADD COLUMN IF NOT EXISTS flagged_by INTEGER REFERENCES users(id),
+          ADD COLUMN IF NOT EXISTS flagged_at TIMESTAMPTZ
+      `);
+    } catch (e) {}
+
     await pool.query(`
       INSERT INTO dpr_entries
-        (user_id, dpr_date, project, project_code, location, clock_in, clock_out, requirement, remarks)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (user_id, dpr_date, project, project_code, location, clock_in, clock_out, requirement, remarks, assigned_admin_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       ON CONFLICT (user_id, dpr_date) DO UPDATE SET
         project=$3, project_code=$4, location=$5,
         clock_in=$6, clock_out=$7, requirement=$8,
-        remarks=$9, updated_at=NOW()
+        remarks=$9, assigned_admin_id=$10, updated_at=NOW(),
+        flagged=false, flag_reason=NULL, flagged_by=NULL, flagged_at=NULL
     `, [
       userId, dpr_date,
       project || "",
@@ -365,6 +409,7 @@ router.post("/save", verifyToken, async (req, res) => {
       clock_out || null,
       requirement || "N/A",
       remarks || "N/A",
+      assigned_admin_id || null,
     ]);
 
     await pool.query(
@@ -396,12 +441,178 @@ router.post("/save", verifyToken, async (req, res) => {
   }
 });
 
-router.get("/all", verifyToken, isAdminOrSuper, async (req, res) => {
+
+
+router.patch("/comment/:dprId", verifyToken, isAdminOrSuper, async (req, res) => {
+  try {
+    const { dprId } = req.params;
+    const { admin_comment } = req.body;
+    if (typeof admin_comment !== "string") {
+      return res.status(400).json({ msg: "admin_comment is required" });
+    }
+    await pool.query(
+      "UPDATE dpr_entries SET admin_comment = $1 WHERE id = $2",
+      [admin_comment, dprId]
+    );
+    res.json({ msg: "Comment saved" });
+  } catch (err) {
+    console.error("DPR COMMENT ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+router.put("/:dprId/flag", verifyToken, isAdminOrSuper, async (req, res) => {
+  try {
+    const { dprId } = req.params;
+    const reason = (req.body?.reason || "").trim();
+    if (!reason) return res.status(400).json({ msg: "A reason is required to flag an entry." });
+
+    try {
+      await pool.query(`
+        ALTER TABLE dpr_entries
+          ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT false,
+          ADD COLUMN IF NOT EXISTS flag_reason TEXT,
+          ADD COLUMN IF NOT EXISTS flagged_by INTEGER REFERENCES users(id),
+          ADD COLUMN IF NOT EXISTS flagged_at TIMESTAMPTZ
+      `);
+    } catch (e) {}
+
+    const result = await pool.query(
+      `UPDATE dpr_entries
+       SET flagged = true, flag_reason = $1, flagged_by = $2, flagged_at = NOW()
+       WHERE id = $3
+       RETURNING user_id, dpr_date`,
+      [reason, req.user.id, dprId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ msg: "DPR entry not found" });
+
+    res.json({ msg: "Entry flagged", ...result.rows[0] });
+  } catch (err) {
+    console.error("DPR FLAG ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+router.get("/flags/:userId", verifyToken, isAdminOrSuper, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, dpr_date, flag_reason, flagged_at,
+              (SELECT fullname FROM users WHERE id = flagged_by) AS flagged_by_name
+       FROM dpr_entries
+       WHERE user_id = $1 AND flagged = true
+       ORDER BY flagged_at DESC`,
+      [req.params.userId]
+    );
+    res.json({ flaggedCount: result.rows.length, entries: result.rows });
+  } catch (err) {
+    console.error("DPR FLAGS FETCH ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+router.get("/admins", verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.fullname, u.role, e.designation, e.department
+       FROM users u
+       LEFT JOIN employees e ON u.id = e.user_id
+       WHERE u.role IN ('admin', 'super_admin')
+       ORDER BY u.role DESC, u.fullname ASC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("DPR ADMINS ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+router.get("/task-codes", verifyToken, async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS dpr_task_codes (
+        code VARCHAR(40) PRIMARY KEY,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const result = await pool.query(`
+      SELECT DISTINCT code FROM (
+        SELECT task_code AS code FROM dpr_tasks WHERE task_code IS NOT NULL AND TRIM(task_code) != ''
+        UNION
+        SELECT code FROM dpr_task_codes
+      ) t
+      ORDER BY code ASC
+    `);
+    res.json(result.rows.map(r => r.code));
+  } catch (err) {
+    console.error("DPR TASK CODES ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+router.post("/task-codes/register", verifyToken, async (req, res) => {
+  try {
+    const code = (req.body?.code || "").trim();
+    if (!code) return res.status(400).json({ msg: "Code is required" });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS dpr_task_codes (
+        code VARCHAR(40) PRIMARY KEY,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await pool.query(
+      "INSERT INTO dpr_task_codes (code) VALUES ($1) ON CONFLICT (code) DO NOTHING",
+      [code]
+    );
+    res.json({ msg: "Code registered" });
+  } catch (err) {
+    console.error("DPR TASK CODE REGISTER ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+router.delete("/task-codes/:code", verifyToken, async (req, res) => {
+  try {
+    const code = (req.params.code || "").trim();
+    if (!code) return res.status(400).json({ msg: "Code is required" });
+
+    await pool.query("DELETE FROM dpr_task_codes WHERE code = $1", [code]);
+
+    const stillUsed = await pool.query(
+      "SELECT 1 FROM dpr_tasks WHERE task_code = $1 LIMIT 1",
+      [code]
+    );
+
+    res.json({
+      msg: "Code removed",
+      stillInHistory: stillUsed.rows.length > 0,
+    });
+  } catch (err) {
+    console.error("DPR TASK CODE DELETE ERROR:", err.message);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+router.get("/all", verifyToken, canReadFeature("dpr"), async (req, res) => {
   try {
     const { date, startDate, endDate } = req.query;
     const role = req.user.role?.toLowerCase();
 
-    // For scoped admins, fetch their department first
+    try {
+      await pool.query(`
+        ALTER TABLE dpr_entries
+          ADD COLUMN IF NOT EXISTS flagged BOOLEAN DEFAULT false,
+          ADD COLUMN IF NOT EXISTS flag_reason TEXT,
+          ADD COLUMN IF NOT EXISTS flagged_by INTEGER REFERENCES users(id),
+          ADD COLUMN IF NOT EXISTS flagged_at TIMESTAMPTZ
+      `);
+    } catch (e) {}
+
+  
     let departmentFilter = null;
     if (role !== "super_admin") {
       const adminRes = await pool.query(
@@ -414,15 +625,19 @@ router.get("/all", verifyToken, isAdminOrSuper, async (req, res) => {
     let query = `
       SELECT d.id, d.user_id, d.dpr_date, d.project, d.project_code, d.location,
        d.clock_in, d.clock_out, d.requirement, d.remarks,
-       u.fullname, e.designation, e.employee_uav_id
+       d.admin_comment, d.assigned_admin_id,
+       d.flagged, d.flag_reason, d.flagged_at,
+       u.fullname, e.designation, e.employee_uav_id,
+       au.fullname AS assigned_admin_name
       FROM dpr_entries d
       JOIN users u ON d.user_id = u.id
       JOIN employees e ON u.id = e.user_id
+      LEFT JOIN users au ON d.assigned_admin_id = au.id
       WHERE 1=1
     `;
     const params = [];
 
-    // Department scope (non-super admins)
+    
     if (departmentFilter) {
       params.push(departmentFilter);
       query += ` AND e.department = $${params.length}`;
@@ -519,7 +734,7 @@ router.get("/download-all", verifyToken, isAdminOrSuper, async (req, res) => {
       `attachment; filename="Whole_Project_DPR_${start_date || date || "All"}.xlsx"`
     );
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    // BUG FIX: removed res.end() — write() already ends the stream
+   
     await wb.xlsx.write(res);
   } catch (err) {
     console.error("DPR EXPORT ERROR:", err.message);

@@ -4,13 +4,15 @@ import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+
+const getUserId = (req) => req.user.id || req.user.employee_id;
+
 const superAdminOnly = (req, res, next) => {
   if (req.user.role?.toLowerCase() !== "super_admin")
     return res.status(403).json({ msg: "Only Super Admin allowed" });
   next();
 };
 
-// ─── GET EMPLOYEES LIST ──────────────────────────────────────────────────
 router.get("/employees", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -32,13 +34,11 @@ router.get("/employees", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
-// ─── GENERATE PAYSLIP ────────────────────────────────────────────────────
 router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { userId, from, to } = req.query;
     if (!userId || !from || !to) return res.status(400).json({ msg: "Missing params" });
 
-    // 1. Fetch Salary Structure
     const empRes = await pool.query(`
       SELECT u.id, u.fullname, e.employee_uav_id, e.designation,
         COALESCE(e.basic_salary, 0) AS basic, COALESCE(e.hra, 0) AS hra,
@@ -48,7 +48,6 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     if (empRes.rows.length === 0) return res.status(404).json({ msg: "Employee not found" });
     const emp = empRes.rows[0];
 
-    // 2. Fetch Attendance Summary
     const attRes = await pool.query(`
       SELECT
         COUNT(*) FILTER (WHERE status = 'Present')::int              AS present_days,
@@ -62,7 +61,6 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     `, [from, to, userId]);
     const att = attRes.rows[0];
 
-    // 3. Calculations
     const grossFixed      = Number(emp.basic) + Number(emp.hra);
     const dailyRate       = att.total_calendar_days > 0 ? grossFixed / att.total_calendar_days : 0;
     const lopDays         = Number(att.unpaid_days) + (Number(att.half_days) * 0.5);
@@ -71,7 +69,6 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     const totalDeductions = Number(emp.epf) + Number(emp.pt) + lopDeduction;
     const netSalary       = Math.max((grossFixed + otPay) - totalDeductions, 0);
 
-    // 4. YTD Cumulative
     const year = from.substring(0, 4);
     const ytdRes = await pool.query(`
       SELECT
@@ -83,7 +80,6 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     `, [userId, `${year}-%`]);
     const ytd = ytdRes.rows[0];
 
-    // 5. Check Approval Status
     const month = from.substring(0, 7);
     const checkApproved = await pool.query(
       "SELECT id FROM payroll_history WHERE user_id = $1 AND month = $2",
@@ -124,7 +120,6 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
-// ─── APPROVE & LOCK PAYROLL ──────────────────────────────────────────────
 router.post("/approve", verifyToken, superAdminOnly, async (req, res) => {
   try {
     const { userId, month, from, to, salary, attendance } = req.body;
@@ -146,7 +141,7 @@ router.post("/approve", verifyToken, superAdminOnly, async (req, res) => {
       salary.basic, salary.hra, salary.gross_salary,
       salary.epf_deduction, salary.pt_deduction, salary.lop_deduction,
       salary.ot_pay, salary.net_salary,
-      attendance.present_days, attendance.lop_days, req.user.id
+      attendance.present_days, attendance.lop_days, getUserId(req)
     ]);
 
     res.json({ msg: "Payroll approved and locked" });
@@ -156,7 +151,6 @@ router.post("/approve", verifyToken, superAdminOnly, async (req, res) => {
   }
 });
 
-// ─── GET PAYROLL HISTORY ─────────────────────────────────────────────────
 router.get("/history", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { userId, year } = req.query;
@@ -172,7 +166,6 @@ router.get("/history", verifyToken, isAdminOrSuper, async (req, res) => {
     `;
 
     const params = [];
-
     if (userId) {
       query += ` WHERE ph.user_id = $${params.length + 1}`;
       params.push(userId);
@@ -181,7 +174,6 @@ router.get("/history", verifyToken, isAdminOrSuper, async (req, res) => {
       query += (params.length > 0 ? " AND " : " WHERE ") + `ph.month LIKE $${params.length + 1}`;
       params.push(`${year}-%`);
     }
-
     query += " ORDER BY ph.month DESC";
 
     const result = await pool.query(query, params);
@@ -192,7 +184,41 @@ router.get("/history", verifyToken, isAdminOrSuper, async (req, res) => {
   }
 });
 
-// ─── UPDATE SALARY ───────────────────────────────────────────────────────
+
+router.get("/my", verifyToken, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { from, to } = req.query;
+
+    let query = `
+      SELECT
+        ph.*,
+        u.fullname,
+        COALESCE(e.employee_uav_id, 'N/A') AS employee_uav_id
+      FROM payroll_history ph
+      JOIN users u ON ph.user_id = u.id
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE ph.user_id = $1
+    `;
+    const params = [userId];
+
+    if (from && to) {
+      const startMonth = from.substring(0, 7);
+      const endMonth = to.substring(0, 7);
+      query += ` AND ph.month BETWEEN $2 AND $3`;
+      params.push(startMonth, endMonth);
+    }
+
+    query += " ORDER BY ph.month DESC";
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("GET MY PAYROLL HISTORY ERROR:", err);
+    res.status(500).json({ msg: "Error fetching my payroll history" });
+  }
+});
+
 router.put("/salary/:id", verifyToken, superAdminOnly, async (req, res) => {
   try {
     const { id } = req.params;

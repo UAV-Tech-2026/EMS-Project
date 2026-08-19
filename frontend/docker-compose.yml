@@ -1,9 +1,35 @@
-version: "3.9"
-
 services:
-  frontend:
-    build: .
+  ems-frontend:
+    build:
+      context: /home/ubuntu/frontend
+      args:
+        - VITE_API_URL
+        - VITE_WORKSTOCK_URL
+        - VITE_WORKSTOCK_API_URL
+        - VITE_LOGO_URL
     container_name: ems-frontend
-    ports:
-      - "80:80"
     restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - /home/ubuntu/frontend/.env
+    networks:
+      - frontend-network
+
+  workstock-frontend:
+    build:
+      context: /home/ubuntu/workstock-frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_EMS_URL: ${VITE_EMS_URL}
+        VITE_LOGO_URL: ${VITE_LOGO_URL}
+    container_name: workstock-frontend
+    restart: always
+    ports:
+      - "3001:80"
+    networks:
+      - frontend-network
+
+networks:
+  frontend-network:
+    driver: bridge

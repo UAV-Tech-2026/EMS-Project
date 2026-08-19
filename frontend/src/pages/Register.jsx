@@ -15,28 +15,28 @@ export default function Register() {
     confirmPassword: "",
     role: "super_admin",
   });
-  
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target; 
+    const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
-    
-    if (!formData.fullname || !formData.fullname.trim()) { 
-      setError("Full name is required"); 
-      return false; 
+
+    if (!formData.fullname || !formData.fullname.trim()) {
+      setError("Full name is required");
+      return false;
     }
-    if (!formData.username || !formData.username.trim()) { 
-      setError("Username is required"); 
-      return false; 
+    if (!formData.username || !formData.username.trim()) {
+      setError("Username is required");
+      return false;
     }
     if (!formData.email.match(/^[a-zA-Z0-9._%+-]+@uavtech\.ai$/)) {
-       setError("Email must be a valid @uavtech.ai address");
+      setError("Email must be a valid @uavtech.ai address");
       return false;
     }
     if (formData.password.length < 6) {
@@ -57,7 +57,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      
+
       await axios.post(`${API_URL}/register`, {
         fullname: formData.fullname,
         username: formData.username,
@@ -77,8 +77,8 @@ export default function Register() {
     <div className="ems-reg-wrapper">
       <div className="ems-reg-box">
         <div className="ems-reg-top">
-          <h1>EMS</h1>
-          <p>Employee Management System</p>
+          <h1>WorkStockPro</h1>
+          <p>Enterprise Management System</p>
           <h3>Create Account</h3>
         </div>
 
@@ -88,7 +88,7 @@ export default function Register() {
             <input
               id="fullname"
               type="text"
-              name="fullname" 
+              name="fullname"
               value={formData.fullname}
               onChange={handleInputChange}
               placeholder="Enter your full name"

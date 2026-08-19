@@ -50,7 +50,7 @@ export default function Documents() {
   const [uploadMode, setUploadMode] = useState("file"); // "file" | "link"
   const fileInputRef = useRef();
 
-  // ── Fetch docs ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
     fetchDocs();
   }, []);
@@ -68,17 +68,17 @@ export default function Documents() {
     }
   };
 
-  // ── Toast helper ────────────────────────────────────────────────────────────
+ 
   const showToast = (type, msg) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── File selection ──────────────────────────────────────────────────────────
+  
   const handleFileSelect = (file) => {
     if (!file) return;
     setSelectedFile(file);
-    setDocName(file.name.replace(/\.[^.]+$/, "")); // default name = filename without extension
+    setDocName(file.name.replace(/\.[^.]+$/, ""));
   };
 
   const handleDrop = (e) => {
@@ -88,7 +88,7 @@ export default function Documents() {
     if (file) handleFileSelect(file);
   };
 
-  // ── Upload ──────────────────────────────────────────────────────────────────
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -134,7 +134,7 @@ export default function Documents() {
     }
   };
 
-  // ── Download ────────────────────────────────────────────────────────────────
+  
   const handleDownload = async (doc) => {
     if (doc.file_type === "link") {
       window.open(doc.file_path, "_blank");
@@ -153,7 +153,7 @@ export default function Documents() {
     }
   };
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
+
   const handleDelete = async (docId) => {
     if (!window.confirm("Are you sure you want to delete this document?")) return;
     try {
@@ -165,7 +165,7 @@ export default function Documents() {
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  
   return (
     <div style={{
       minHeight: "100vh",
@@ -175,7 +175,7 @@ export default function Documents() {
     }}>
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
 
-        {/* ── Toast ── */}
+        
         {toast && (
           <div style={{
             position: "fixed", top: "20px", right: "20px", zIndex: 9999,
@@ -193,7 +193,7 @@ export default function Documents() {
           </div>
         )}
 
-        {/* ── Header ── */}
+        
         <div style={{ marginBottom: "28px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1 style={{ fontSize: "26px", fontWeight: 700, color: "#1e293b", marginBottom: "6px" }}>
@@ -205,9 +205,8 @@ export default function Documents() {
           </div>
           <button
             onClick={() => {
-              const role = JSON.parse(localStorage.getItem("user"))?.role;
+              const role = JSON.parse(sessionStorage.getItem("user"))?.role;
               if (role === "super_admin") navigate("/super-admin-dashboard");
-              else if (role === "admin_hr") navigate("/admin-dashboard");
               else if (role === "admin") navigate("/admin-dashboard");
               else navigate("/employee-dashboard");
             }}
@@ -226,7 +225,7 @@ export default function Documents() {
           </button>
         </div>
 
-        {/* ── Mode Toggle ── */}
+        
         <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
           <button
             onClick={() => setUploadMode("file")}
@@ -252,7 +251,7 @@ export default function Documents() {
           </button>
         </div>
 
-        {/* ── Upload Zone ── */}
+       
         <div style={{
           borderRadius: "14px",
           border: uploadMode === "file" && dragOver ? "2px dashed #3b82f6" : "2px dashed #cbd5e1",
@@ -424,7 +423,7 @@ export default function Documents() {
           )}
         </div>
 
-        {/* ── Documents List ── */}
+       
         <div style={{
           background: "#fff", borderRadius: "14px",
           border: "1px solid #e2e8f0", overflow: "hidden"

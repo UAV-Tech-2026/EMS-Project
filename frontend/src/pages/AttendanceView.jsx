@@ -142,9 +142,8 @@ export default function AttendanceView() {
       <div style={{ marginTop: "2rem", display: "flex", justifyContent: "flex-end" }}>
         <button
           onClick={() => {
-            const role = JSON.parse(localStorage.getItem("user"))?.role;
+            const role = JSON.parse(sessionStorage.getItem("user"))?.role;
             if (role === "super_admin") navigate("/super-admin-dashboard");
-            else if (role === "admin_hr") navigate("/admin-dashboard");
             else if (role === "admin") navigate("/admin-dashboard");
             else navigate("/employee-dashboard");
           }}

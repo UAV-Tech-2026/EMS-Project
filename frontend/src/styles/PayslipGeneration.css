@@ -1,6 +1,6 @@
-/* PayslipGeneration.css — Light Theme */
 
-.payslip-container {
+
+.ps-page-wrapper {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -8,10 +8,10 @@
   color: #1e293b;
   background: #f1f5f9;
   min-height: 100%;
-  padding: 4px;
+  padding: 24px;
 }
 
-/* ── TABS HEADER ── */
+
 .ps-tabs-header {
   display: flex;
   gap: 12px;
@@ -47,7 +47,7 @@
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
 }
 
-/* ── CONTROLS CARD ── */
+
 .ps-controls-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -92,6 +92,8 @@
   padding: 9px 12px;
   transition: border-color 0.2s;
   width: 100%;
+  height: 40px;
+  box-sizing: border-box;
 }
 
 .ps-control-field select:focus,
@@ -155,7 +157,7 @@
   color: #dc2626;
 }
 
-/* ── SALARY SETTINGS CARD ── */
+
 .salary-settings-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -291,7 +293,7 @@
   box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
 }
 
-/* ── PAYSLIP RESULT ── */
+
 .payslip-result {
   display: flex;
   flex-direction: column;
@@ -372,7 +374,7 @@
 .earn-t   { color: #16a34a; }
 .deduct-t { color: #ef4444; }
 
-/* ── ACTION BUTTONS ── */
+
 .result-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .preview-btn {
@@ -415,7 +417,7 @@
   animation: fadeIn 0.4s ease-out;
 }
 
-/* ── PRINT MODAL ── */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -473,7 +475,7 @@
 }
 .print-action-btn:hover { opacity: 0.88; }
 
-/* ── PAYSLIP DOCUMENT ── */
+
 .payslip-doc {
   padding: 32px 40px;
   background: #fff;
@@ -481,7 +483,7 @@
   font-family: 'Segoe UI', Arial, sans-serif;
 }
 
-/* ── PAYROLL HISTORY VIEW ── */
+
 .payroll-history-view {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -655,7 +657,7 @@
   font-style: italic;
 }
 
-/* ── PRINT ── */
+
 @media print {
   .no-print { display: none !important; }
   body * { visibility: hidden; }
@@ -663,13 +665,13 @@
   #payslip-doc { position: fixed; top: 0; left: 0; width: 100%; }
 }
 
-/* ── ANIMATIONS ── */
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── RESPONSIVE ── */
+
 @media (max-width: 1024px) {
   .result-summary-grid { grid-template-columns: repeat(2, 1fr); }
 }

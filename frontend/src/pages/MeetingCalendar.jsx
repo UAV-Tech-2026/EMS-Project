@@ -17,27 +17,28 @@ const PUBLIC_HOLIDAYS = [
   { title: "Christmas Day", date: "2026-12-25" }
 ];
 
-export default function MeetingCalendar({ onClose }) {
+export default function MeetingCalendar({ onClose, readOnly }) {
   const [events, setEvents] = useState([]);
   const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [btnLoading, setBtnLoading] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
+  const [momText, setMomText] = useState("");
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const isAdmin = user?.role === "super_admin" || user?.role === "admin" || user?.role === "admin_hr";
-  const canAssignCreator = user?.role === "super_admin" || user?.role === "admin_hr";
+  const user = JSON.parse(sessionStorage.getItem("user"));
+  const isAdmin = user?.role === "super_admin" || user?.role === "admin";
+  const canAssignCreator = user?.role === "super_admin" || (user?.role === "admin" && user?.department === "HR");
   const navigate = useNavigate();
 
   const handleBackToDashboard = () => {
-    // If onClose prop is provided, use it (e.g. when rendered inside a modal)
+   
     if (onClose) {
       onClose();
       return;
     }
 
-    const storedUser = localStorage.getItem("user");
+    const storedUser = sessionStorage.getItem("user");
     if (!storedUser) {
       navigate("/login");
       return;
@@ -48,7 +49,6 @@ export default function MeetingCalendar({ onClose }) {
     const roleRoutes = {
       super_admin: "/super-admin-dashboard",
       admin: "/admin-dashboard",
-      admin_hr: "/admin-dashboard",
       employee: "/employee-dashboard",
       intern: "/employee-dashboard",
     };
@@ -63,8 +63,21 @@ export default function MeetingCalendar({ onClose }) {
     start_time: "",
     end_time: "",
     meeting_link: "",
-    assigned_creator: ""
+    assigned_creator: "",
+    target_users: []
   });
+
+  const toggleTargetUser = (userId) => {
+    setFormData(prev => {
+      const isSelected = prev.target_users.includes(userId);
+      return {
+        ...prev,
+        target_users: isSelected 
+          ? prev.target_users.filter(id => id !== userId) 
+          : [...prev.target_users, userId]
+      };
+    });
+  };
 
   const loadMeetings = async () => {
     try {
@@ -103,25 +116,24 @@ export default function MeetingCalendar({ onClose }) {
   }, []);
 
   useEffect(() => {
-    if (canAssignCreator) {
-      api.get("/employees/all-assignable")
-        .then(res => {
-          const filtered = res.data.filter(u => u.id !== user.id);
-          setAllUsers(filtered);
-        })
-        .catch(err => console.error("Error fetching users:", err));
-    }
+    api.get("/employees/all-assignable")
+      .then(res => {
+        const filtered = res.data.filter(u => u.id !== user?.id);
+        setAllUsers(filtered);
+      })
+      .catch(err => console.error("Error fetching users:", err));
   }, []);
 
   const handleCreateMeeting = async (e) => {
     e.preventDefault();
+    if (readOnly) return;
     try {
       setBtnLoading(true);
       await api.post("/meetings", formData);
       setShowCreateForm(false);
       setFormData({
         title: "", description: "", meeting_date: "",
-        start_time: "", end_time: "", meeting_link: "", assigned_creator: ""
+        start_time: "", end_time: "", meeting_link: "", assigned_creator: "", target_users: []
       });
       loadMeetings();
     } catch (err) {
@@ -132,6 +144,7 @@ export default function MeetingCalendar({ onClose }) {
   };
 
   const handleStartMeeting = async (meetingId) => {
+    if (readOnly) return;
     try {
       setBtnLoading(true);
       const res = await api.patch(`/meetings/${meetingId}/start`);
@@ -145,6 +158,27 @@ export default function MeetingCalendar({ onClose }) {
     }
   };
 
+  const handleSaveMom = async () => {
+    if (readOnly || !selectedMeeting) return;
+    try {
+      setBtnLoading(true);
+      const res = await api.patch(`/meetings/${selectedMeeting.id}/mom`, { minutes_of_meeting: momText });
+      setSelectedMeeting(res.data.meeting);
+      loadMeetings();
+      alert("Minutes of Meeting saved successfully!");
+    } catch (err) {
+      alert("Failed to save Minutes of Meeting");
+    } finally {
+      setBtnLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMeeting) {
+      setMomText(selectedMeeting.minutes_of_meeting || "");
+    }
+  }, [selectedMeeting]);
+
   const renderEventContent = (eventInfo) => {
     if (eventInfo.event.extendedProps.isHoliday) {
       return (
@@ -157,6 +191,7 @@ export default function MeetingCalendar({ onClose }) {
     return (
       <div className={`calendar-event-pills status-${status?.toLowerCase()}`}>
         <div className="event-main-title">{eventInfo.event.title}</div>
+        <div className="event-organizer">👤 {eventInfo.event.extendedProps.creator_name || "—"}</div>
         <div className="event-sub-info">
           {status === "In Progress" ? " Ongoing" : " Scheduled"}
         </div>
@@ -195,7 +230,7 @@ export default function MeetingCalendar({ onClose }) {
           </div>
         </div>
         <div className="cal-header-actions">
-          {isAdmin && (
+          {!readOnly && (
             <button onClick={() => setShowCreateForm(true)} className="create-meeting-btn">
               + Schedule Meeting
             </button>
@@ -218,12 +253,12 @@ export default function MeetingCalendar({ onClose }) {
         />
       )}
 
-      {/* Detail Modal */}
+  
       {selectedMeeting && (
         <div className="task-modal-overlay" onClick={() => setSelectedMeeting(null)}>
           <div className="task-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>🤝 Meeting Details</h3>
+              <h3> Meeting Details</h3>
               <button className="close-x" onClick={() => setSelectedMeeting(null)}>✕</button>
             </div>
             <div className="modal-body">
@@ -237,6 +272,10 @@ export default function MeetingCalendar({ onClose }) {
                   <span className={`status-pill status-${selectedMeeting.status?.toLowerCase()}`}>
                     {selectedMeeting.status}
                   </span>
+                </div>
+                <div className="detail-item">
+                  <label>Organizer</label>
+                  <div> {selectedMeeting.creator_name || "Unknown"}</div>
                 </div>
                 <div className="detail-item">
                   <label>Time</label>
@@ -259,9 +298,41 @@ export default function MeetingCalendar({ onClose }) {
                   <p>{selectedMeeting.description}</p>
                 </div>
               )}
+
+              {/* Minutes of Meeting Section */}
+              <div className="detail-desc" style={{ marginTop: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                <label style={{ color: "#4f46e5", display: "flex", alignItems: "center", gap: "6px" }}>
+                  📝 Minutes of Meeting
+                </label>
+                {readOnly ? (
+                  <div style={{ background: "#f8fafc", padding: "10px", borderRadius: "6px", fontSize: "13px", minHeight: "60px", whiteSpace: "pre-wrap" }}>
+                    {selectedMeeting.minutes_of_meeting || "No minutes of meeting recorded yet."}
+                  </div>
+                ) : (
+                  <div>
+                    <textarea 
+                      value={momText}
+                      onChange={(e) => setMomText(e.target.value)}
+                      placeholder="Enter minutes of meeting, key takeaways, action items..."
+                      rows="4"
+                      style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #cbd5e1", marginTop: "6px", fontSize: "13px", fontFamily: "inherit" }}
+                    />
+                    <div style={{ textAlign: "right", marginTop: "8px" }}>
+                      <button 
+                        onClick={handleSaveMom} 
+                        disabled={btnLoading}
+                        style={{ background: "#4f46e5", color: "white", border: "none", padding: "6px 14px", borderRadius: "6px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+                      >
+                        {btnLoading ? "Saving..." : "Save MoM"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
             <div className="modal-footer">
-              {selectedMeeting.status === "Pending" && (
+              {selectedMeeting.status === "Pending" && !readOnly && (
                 <button
                   className="start-meeting-action-btn"
                   onClick={() => handleStartMeeting(selectedMeeting.id)}
@@ -276,7 +347,6 @@ export default function MeetingCalendar({ onClose }) {
         </div>
       )}
 
-      {/* Create Meeting Modal */}
       {showCreateForm && (
         <div className="task-modal-overlay" onClick={() => setShowCreateForm(false)}>
           <div className="task-modal" onClick={e => e.stopPropagation()}>
@@ -290,11 +360,10 @@ export default function MeetingCalendar({ onClose }) {
                 <div className="form-group">
                   <label>Set Meeting Creator</label>
                   <select
-                    required
                     value={formData.assigned_creator}
                     onChange={e => setFormData({ ...formData, assigned_creator: e.target.value })}
                   >
-                    <option value="">— Select User —</option>
+                    <option value="">— Default (Yourself) —</option>
                     {allUsers.map(u => (
                       <option key={u.id} value={u.id}>
                         {u.fullname} ({u.employee_uav_id || u.role})
@@ -303,6 +372,24 @@ export default function MeetingCalendar({ onClose }) {
                   </select>
                 </div>
               )}
+
+              <div className="form-group">
+                <label>Select Participants (Notify Admins / Users)</label>
+                <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid #e2e8f0", padding: "8px", borderRadius: "6px", background: "#f8fafc" }}>
+                  {allUsers.length === 0 && <span style={{fontSize: "12px", color: "#64748b"}}>Loading users...</span>}
+                  {allUsers.map(u => (
+                    <label key={`target-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", fontSize: "13px", cursor: "pointer" }}>
+                      <input 
+                        type="checkbox" 
+                        checked={formData.target_users.includes(u.id)}
+                        onChange={() => toggleTargetUser(u.id)}
+                        style={{ cursor: "pointer", width: "14px", height: "14px" }}
+                      />
+                      {u.fullname} <span style={{color: "#64748b", fontSize: "12px"}}>({u.role}{u.department ? ` · ${u.department}` : ''})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <div className="form-group">
                 <label>Meeting Title</label>

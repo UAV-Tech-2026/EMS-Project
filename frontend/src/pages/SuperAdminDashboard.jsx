@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api, API_URL } from "../utils/api";
 
 import {
   Users, LogOut, UserPlus,
   Calendar, Download, ClipboardList,
-  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote
+  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote, Building2
 } from "lucide-react";
 import ControlPanel from "./ControlPanel";
 import AttendanceRecords from "./AttendanceRecords";
@@ -17,6 +17,7 @@ import AdminLeaveManagement from "./AdminLeaveManagement";
 import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
 import Departments from "./Departments";
+import MeetingCalendar from "./MeetingCalendar";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
@@ -26,9 +27,28 @@ import "../styles/EmployeeDashboard.css";
 import PayslipApprovals from "./PayslipApprovals";
 import DirectoryPanel from "./DirectoryPanel";
 
+
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
+  // Read from sessionStorage into state so the component re-renders
+  // when DashboardSwitcher updates the user after its background refresh.
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("user")); }
+    catch { return null; }
+  });
+
+  // If user is null on mount, try once more then redirect
+  useEffect(() => {
+    if (!user) {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem("user"));
+        if (stored) setUser(stored);
+        else navigate("/login", { replace: true });
+      } catch {
+        navigate("/login", { replace: true });
+      }
+    }
+  }, []);
 
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -53,23 +73,25 @@ export default function SuperAdminDashboard() {
   const [showAttRecords, setShowAttRecords] = useState(false);
   const [showControlPanel, setShowControlPanel] = useState(false);
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showMeeting, setShowMeeting] = useState(false);
+  const [showDepartments, setShowDepartments] = useState(false);
+  const [directoryFilter, setDirectoryFilter] = useState(null); // "employee" | "intern" | "admin" | "present" | null
 
-  // ── Notifications state ──
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(true);
   const notifRef = useRef(null);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const [pendingRequests, setPendingRequests] = useState([]);
 
-  // ── Fetch notifications ──
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const pendingRequestCount = pendingRequests.filter(r => r.status === "pending").length;
+
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/notifications/my`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const token = sessionStorage.getItem("token");
+        const res = await api.get("/notifications/my");
         setNotifications(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Failed to fetch notifications:", err);
@@ -83,17 +105,14 @@ export default function SuperAdminDashboard() {
 
   const handleMarkAllRead = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${import.meta.env.VITE_API_URL}/notifications/mark-read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const token = sessionStorage.getItem("token");
+      await api.post("/notifications/mark-read", {});
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (err) {
       console.error("Failed to mark notifications as read:", err);
     }
   };
 
-  // ── Close dropdown on outside click ──
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -114,14 +133,14 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (!token) return navigate("/login");
-        const headers = { Authorization: `Bearer ${token}` };
 
-        const [statsRes, bulletinsRes, attendanceRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/employees/stats`, { headers }),
-          axios.get(`${import.meta.env.VITE_API_URL}/bulletins`, { headers }),
-          axios.get(`${import.meta.env.VITE_API_URL}/employees/attendance-today`, { headers }),
+        const [statsRes, bulletinsRes, attendanceRes, reqRes] = await Promise.all([
+          api.get("/employees/stats"),
+          api.get("/bulletins"),
+          api.get("/employees/attendance-today"),
+          api.get("/general-requests/admin").catch(() => ({ data: [] })),
         ]);
 
         setStats({
@@ -133,6 +152,7 @@ export default function SuperAdminDashboard() {
           presentToday: attendanceRes.data.presentToday || 0,
         });
         setBulletins(bulletinsRes.data);
+        setPendingRequests(Array.isArray(reqRes.data) ? reqRes.data : []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -144,11 +164,10 @@ export default function SuperAdminDashboard() {
 
   const refreshStats = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
+      const token = sessionStorage.getItem("token");
       const [statsRes, attendanceRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/employees/stats`, { headers }),
-        axios.get(`${import.meta.env.VITE_API_URL}/employees/attendance-today`, { headers }),
+        api.get("/employees/stats"),
+        api.get("/employees/attendance-today"),
       ]);
       setStats({
         totalUsers: statsRes.data.totalUsers,
@@ -165,15 +184,11 @@ export default function SuperAdminDashboard() {
 
   const handlePostBulletin = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${import.meta.env.VITE_API_URL}/bulletins`, bulletinForm, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const token = sessionStorage.getItem("token");
+      await api.post("/bulletins", bulletinForm);
       setShowBulletinModal(false);
       setBulletinForm({ title: "", content: "" });
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/bulletins`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get("/bulletins");
       setBulletins(res.data);
     } catch (err) {
       console.error(err);
@@ -181,13 +196,16 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  if (!user) return <div className="sad-loading">Authenticating…</div>;
+  if (!user) return <div className="sad-loading">Loading…</div>;
   if (loading) return <div className="sad-loading">Loading dashboard…</div>;
 
   const pendingCount = stats.totalEmployees - stats.presentToday;
   const initials = (name = "") => name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-
   const todayNotifs = notifications.filter(n => n.created_at && n.created_at.startsWith(todayStr));
+
+  // ── WorkStockPro iframe URL ──
+  const workstockToken = sessionStorage.getItem("token");
+  const workstockUrl = `${import.meta.env.VITE_WORKSTOCK_URL || `http://${window.location.hostname}:3001`}?token=${workstockToken}`;
 
   return (
     <div className="sad-shell">
@@ -197,19 +215,22 @@ export default function SuperAdminDashboard() {
         <div className="sad-logo-area">
           <div className="sad-logo-mark">
             <div style={{
-              width: 40, height: 40,
+              width: 56, height: 56,
               background: "#ffffff",
-              borderRadius: 8,
+              borderRadius: 10,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              overflow: "hidden"
+              overflow: "hidden",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+              padding: 6,
+              boxSizing: "border-box"
             }}>
               <img
                 src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
                 alt="Logo"
-                style={{ width: 34, height: 34, objectFit: "contain" }}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
                   if (e.target.src !== window.location.origin + "/logo.jpg") {
                     e.target.src = "/logo.jpg";
@@ -220,8 +241,8 @@ export default function SuperAdminDashboard() {
               />
             </div>
             <div>
-              <div className="sad-logo-text">UAV TECH</div>
-              <div className="sad-logo-sub">Super Admin Portal</div>
+              <div className="sad-logo-text">WorkStockPro</div>
+              <div className="sad-logo-sub">Super Admin</div>
             </div>
           </div>
         </div>
@@ -239,51 +260,69 @@ export default function SuperAdminDashboard() {
           <div
             className={`sad-nav-item ${activeView === "request-panel" ? "sad-active" : ""}`}
             onClick={() => setActiveView("request-panel")}
+            style={{ position: "relative" }}
           >
             <MessageSquare size={18} /> Request Panel
+            {pendingRequestCount > 0 && (
+              <span style={{
+                marginLeft: "auto",
+                background: "#ef4444",
+                color: "#fff",
+                fontSize: 10,
+                fontWeight: 800,
+                borderRadius: 20,
+                padding: "1px 6px",
+                minWidth: 18,
+                textAlign: "center",
+                lineHeight: "16px",
+              }}>
+                {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+              </span>
+            )}
           </div>
 
-
-
-          {/* ── Payroll removed from sidebar ── */}
-
           <div
-            className="sad-nav-item"
-            onClick={() => setShowControlPanel(true)}
+            className={`sad-nav-item ${activeView === "control-panel" ? "sad-active" : ""}`}
+            onClick={() => setActiveView("control-panel")}
           >
             <Shield size={18} /> Control Panel
           </div>
 
           <div
             className={`sad-nav-item ${activeView === "directory" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("directory")}
+            onClick={() => { setDirectoryFilter(null); setActiveView("directory"); }}
           >
             <Users size={18} /> Directory
           </div>
 
-          <div
-            className={`sad-nav-item ${activeView === "departments" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("departments")}
+          {/* <div
+            className={`sad-nav-item ${activeView === "permissions" ? "sad-active" : ""}`}
+            onClick={() => setActiveView("permissions")}
           >
-            <Briefcase size={18} /> Departments
+            <Shield size={18} /> User Permissions
+          </div> */}
+
+          {/* ── WorkStockPro Sidebar Item ── */}
+          <div
+            className={`sad-nav-item ${activeView === "workstockpro" ? "sad-active" : ""}`}
+            onClick={() => setActiveView("workstockpro")}
+          >
+            <Package size={18} /> WorkStockPro
           </div>
-
-
 
         </nav>
         <div className="sad-sidebar-footer">
           <button
             className="sad-logout"
-            onClick={() => { localStorage.clear(); navigate("/login"); }}
+            onClick={() => { sessionStorage.clear(); navigate("/login", { replace: true }); }}
           >
             <LogOut size={15} /> Logout
           </button>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
       <div className="sad-main">
-        {/* Topbar */}
+        
         <div className="sad-topbar">
           <div className="sad-topbar-left">
             <div className="sad-page-title">Super Admin Dashboard</div>
@@ -299,7 +338,6 @@ export default function SuperAdminDashboard() {
               {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
             </div>
 
-            {/* ── Bell / Notifications ── */}
             <div className="emp-notif-wrapper" ref={notifRef}>
               <button
                 className="emp-notif-bell"
@@ -364,14 +402,25 @@ export default function SuperAdminDashboard() {
               )}
             </div>
 
-            <div className="sad-profile-pill" onClick={() => setShowProfileModal(true)}>
-              <div className="sad-avatar">{initials(user?.fullname)}</div>
-              <span className="sad-avatar-name">{user?.fullname || "Super Admin"}</span>
-            </div>
+            {(() => {
+              let pic = user?.profilePic || user?.profile_pic;
+              if (pic && pic.startsWith("/uploads")) {
+                pic = `${API_URL}${pic}`;
+              }
+              return (
+                <div className="sad-profile-pill" onClick={() => navigate("/settings")}>
+                  {pic ? (
+                    <img src={pic} alt="Avatar" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+                  ) : (
+                    <div className="sad-avatar">{initials(user?.fullname)}</div>
+                  )}
+                  <span className="sad-avatar-name">{user?.fullname || "Super Admin"}</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
-        {/* Content */}
         <div className="sad-content">
 
           {activeView === "request-panel" ? (
@@ -379,40 +428,70 @@ export default function SuperAdminDashboard() {
           ) : activeView === "leaves" ? (
             <AdminLeaveManagement />
           ) : activeView === "directory" ? (
-            <DirectoryPanel />
+            <div>
+              {directoryFilter && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <button
+                    onClick={() => { setDirectoryFilter(null); setActiveView("directory"); }}
+                    style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    ← Back to All
+                  </button>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#4f46e5", background: "#eef2ff", borderRadius: 8, padding: "4px 12px", textTransform: "capitalize" }}>
+                    Showing: {directoryFilter === "present" ? "Present Today" : `${directoryFilter}s`}
+                  </span>
+                </div>
+              )}
+              <DirectoryPanel filterRole={directoryFilter} />
+            </div>
           ) : activeView === "dpr" ? (
             <AdminDPR />
-          ) : activeView === "departments" ? (
-            <Departments />
+          ) : activeView === "control-panel" ? (
+            <ControlPanel />
+          ) : activeView === "workstockpro" ? (
+            // ── WorkStockPro inline view ──
+            <div style={{ padding: "24px", animation: "cpFadeIn 0.4s ease-out" }}>
+              <div style={{ display: "none" }}></div>
+              <iframe
+                src={workstockUrl}
+                style={{
+                  width: "100%",
+                  height: "82vh",
+                  border: "none",
+                  borderRadius: "12px",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+                }}
+                title="WorkStockPro"
+                allow="same-origin"
+              />
+            </div>
           ) : null}
 
-          {/* ── Dashboard (Stats, Hero, Actions) ── */}
           {activeView === "dashboard" && (
             <>
-              {/* ── Stat cards ── */}
               <div className="sad-stats-row">
-                <div className="sad-stat-card sad-teal">
+                <div className="sad-stat-card sad-teal" style={{ cursor: "pointer" }} onClick={() => { setDirectoryFilter("employee"); setActiveView("directory"); }}>
                   <div className="sad-stat-badge">Team</div>
                   <div className="sad-stat-icon"><Users size={24} /></div>
                   <div className="sad-stat-number">{stats.totalEmployees}</div>
                   <div className="sad-stat-label">Employees</div>
                 </div>
 
-                <div className="sad-stat-card sad-blue">
+                <div className="sad-stat-card sad-blue" style={{ cursor: "pointer" }} onClick={() => { setDirectoryFilter("intern"); setActiveView("directory"); }}>
                   <div className="sad-stat-badge">Team</div>
                   <div className="sad-stat-icon"><UserPlus size={24} /></div>
                   <div className="sad-stat-number">{stats.totalInterns}</div>
                   <div className="sad-stat-label">Interns</div>
                 </div>
 
-                <div className="sad-stat-card sad-green">
+                <div className="sad-stat-card sad-green" style={{ cursor: "pointer" }} onClick={() => { setDirectoryFilter("admin"); setActiveView("directory"); }}>
                   <div className="sad-stat-badge">Staff</div>
                   <div className="sad-stat-icon"><Shield size={24} /></div>
                   <div className="sad-stat-number">{stats.totalAdmins}</div>
                   <div className="sad-stat-label">Admins</div>
                 </div>
 
-                <div className="sad-stat-card sad-purple">
+                <div className="sad-stat-card sad-purple" style={{ cursor: "pointer" }} onClick={() => { setDirectoryFilter("present"); setActiveView("directory"); }}>
                   <div className="sad-stat-badge">Today</div>
                   <div className="sad-stat-icon"><Calendar size={24} /></div>
                   <div className="sad-stat-number">{stats.presentToday}</div>
@@ -420,7 +499,6 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              {/* ── Attendance hero ── */}
               <div className="sad-att-hero">
                 <div className="sad-ah-left">
                   <h3>Today's Attendance</h3>
@@ -447,102 +525,44 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
-              {/* ── Quick Actions ── */}
-              <div className="sad-section-header">
-                <div className="sad-section-title">Quick Actions</div>
-              </div>
-
-              <div className="sad-actions-grid">
-                <div className="sad-action-card sad-ac-enroll" onClick={() => setShowCreateUser(true)}>
-                  <div className="sad-action-icon"><UserPlus size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Enroll Member</div>
-                    <div className="sad-action-desc">Add new Admin/Employee</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginTop: "24px" }}>
+                {[
+                  { label: "Enroll Member", desc: "Add new Admin/Employee", icon: <UserPlus size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setShowCreateUser(true) },
+                  { label: "Upload Attendance", desc: "Excel or Google Drive", icon: <FileSpreadsheet size={22} />, color: "#f59e0b", bg: "#fffbeb", action: () => setShowUpload(true) },
+                  { label: "Leave Management", desc: "Approve / Track Leaves", icon: <CalendarCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowLeaveManagement(true) },
+                  { label: "Tasks", desc: "Manage assignments", icon: <ClipboardList size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setShowTaskModal(true) },
+                  { label: "Certificate Requests", desc: "Approve employee requests", icon: <Download size={22} />, color: "#f59e0b", bg: "#fffbeb", action: () => setActiveView("request-panel") },
+                  { label: "Payroll", desc: "Generate payslips", icon: <Banknote size={22} />, color: "#f59e0b", bg: "#fffbeb", action: () => setShowPayslip(true) },
+                  { label: "Reports", desc: "Export attendance data", icon: <ClipboardCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowDownloadModal(true) },
+                  { label: "DPR Overview", desc: "Review daily progress", icon: <MessageSquare size={22} />, color: "#8b5cf6", bg: "#f5f3ff", action: () => setActiveView("dpr") },
+                  { label: "Meetings", desc: "Meeting Calendar", icon: <Calendar size={22} />, color: "#3b82f6", bg: "#eff6ff", action: () => setShowMeeting(true) },
+                  { label: "Departments", desc: "Manage Departments", icon: <Building2 size={22} />, color: "#4f46e5", bg: "#eef2ff", action: () => setShowDepartments(true) }
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    onClick={item.action}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "14px",
+                      background: "#fff", border: "1px solid #e8ecf0",
+                      borderRadius: "12px", padding: "18px 20px", cursor: "pointer",
+                      transition: "box-shadow 0.18s, border-color 0.18s, transform 0.15s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(99,102,241,0.10)"; e.currentTarget.style.borderColor = "#c7d2fe"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; e.currentTarget.style.transform = "translateY(0)"; }}
+                  >
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: item.bg, color: item.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", marginBottom: 3 }}>{item.label}</div>
+                      <div style={{ fontSize: 12, color: "#94a3b8" }}>{item.desc}</div>
+                    </div>
                   </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-dl" onClick={() => setShowUpload(true)}>
-                  <div className="sad-action-icon"><FileSpreadsheet size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Upload Attendance</div>
-                    <div className="sad-action-desc">Excel or Google Drive</div>
-                  </div>
-                </div>
-
-                <div
-                  className="sad-action-card sad-ac-leave"
-                  onClick={() => setShowLeaveManagement(true)}
-                >
-                  <div className="sad-action-icon">
-                    <ClipboardCheck size={20} />
-                  </div>
-                  <div>
-                    <div className="sad-action-name">Leave Management</div>
-                    <div className="sad-action-desc">Approve / Track Leaves</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-task" onClick={() => setShowTaskModal(true)}>
-                  <div className="sad-action-icon"><ClipboardList size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Tasks</div>
-                    <div className="sad-action-desc">Manage assignments</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-pay" onClick={() => navigate("/payslip-approvals")}>
-                  <div className="sad-action-icon"><FileSpreadsheet size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Certificate Requests</div>
-                    <div className="sad-action-desc">Approve employee requests</div>
-                  </div>
-                </div>
-
-                {/* ── Payroll card opens PayslipGeneration modal ── */}
-                <div className="sad-action-card sad-ac-pay" onClick={() => setShowPayslip(true)}>
-                  <div className="sad-action-icon"><Banknote size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Payroll</div>
-                    <div className="sad-action-desc">Generate payslips</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-cal" onClick={() => navigate("/meeting-calendar")}>
-                  <div className="sad-action-icon"><Calendar size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Meetings</div>
-                    <div className="sad-action-desc">Meeting Calendar</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-reports" onClick={() => setShowDownloadModal(true)}>
-                  <div className="sad-action-icon"><FileSpreadsheet size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Reports</div>
-                    <div className="sad-action-desc">Export attendance data</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-stock" onClick={() => window.open('/stock', '_blank')}>
-                  <div className="sad-action-icon"><Package size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">Workstock Pro</div>
-                    <div className="sad-action-desc">Manage Inventory & Stock</div>
-                  </div>
-                </div>
-
-                <div className="sad-action-card sad-ac-dpr" onClick={() => setActiveView("dpr")}>
-                  <div className="sad-action-icon"><ClipboardList size={20} /></div>
-                  <div>
-                    <div className="sad-action-name">DPR Overview</div>
-                    <div className="sad-action-desc">Review daily progress</div>
-                  </div>
-                </div>
+                ))}
               </div>
             </>
           )}
 
-          {/* ── Persistent Bottom Row ── */}
           {(activeView === "dashboard" || activeView === "control-panel" || activeView === "leaves" || activeView === "directory" || activeView === "request-panel" || activeView === "dpr") && (
             <div className="sad-bottom-row" style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
               <div className="sad-bottom-card">
@@ -571,10 +591,41 @@ export default function SuperAdminDashboard() {
               </div>
 
               <div className="sad-bottom-card" onClick={() => setActiveView("request-panel")} style={{ cursor: "pointer" }}>
-                <div className="sad-section-title" style={{ marginBottom: "15px" }}>Requests</div>
-                <div className="sad-placeholder-text" style={{ fontSize: "12px", color: "#64748b" }}>
-                  Click here to view the Request Panel.
+                <div className="sad-section-title" style={{ marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>Incoming Requests</span>
+                  {pendingRequestCount > 0 && (
+                    <span style={{ background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, borderRadius: 20, padding: "2px 8px" }}>
+                      {pendingRequestCount} pending
+                    </span>
+                  )}
                 </div>
+                {pendingRequests.length === 0 ? (
+                  <div className="sad-placeholder-text" style={{ fontSize: "12px", color: "#94a3b8" }}>No requests yet.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {pendingRequests.filter(r => r.status === "pending").slice(0, 3).map((req, i) => (
+                      <div key={req.id || i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "#fef9f0", borderRadius: 8, border: "1px solid #fde68a" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {req.name || req.certificate_name || "Request"}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>
+                            {req.employee_name || "Employee"}{req.request_type ? ` · ${req.request_type}` : ""}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 6, background: "#fef3c7", color: "#92400e", flexShrink: 0, marginLeft: 8 }}>Pending</span>
+                      </div>
+                    ))}
+                    {pendingRequestCount > 3 && (
+                      <div style={{ fontSize: 11, color: "#4f46e5", fontWeight: 700, textAlign: "center", paddingTop: 4 }}>
+                        +{pendingRequestCount - 3} more · click to view all
+                      </div>
+                    )}
+                    {pendingRequestCount === 0 && pendingRequests.length > 0 && (
+                      <div style={{ fontSize: 12, color: "#64748b" }}>All requests resolved. Click to view history.</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="sad-bottom-card">
@@ -669,12 +720,7 @@ export default function SuperAdminDashboard() {
       {showLeaveManagement && (
         <div className="sad-modal-overlay">
           <div className="sad-modal-content" style={{ width: "95%", maxWidth: "1200px" }}>
-            <button
-              className="sad-modal-close"
-              onClick={() => setShowLeaveManagement(false)}
-            >
-              ✕
-            </button>
+            <button className="sad-modal-close" onClick={() => setShowLeaveManagement(false)}>✕</button>
             <AdminLeaveManagement />
           </div>
         </div>
@@ -739,12 +785,28 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* ── Payroll Modal (opened from Quick Action card) ── */}
       {showPayslip && (
         <div className="sad-modal-overlay">
           <div className="sad-modal-content" style={{ width: "95%", maxWidth: "1200px" }}>
             <button className="sad-modal-close" onClick={() => setShowPayslip(false)}>✕</button>
             <PayslipGeneration />
+          </div>
+        </div>
+      )}
+
+      {showMeeting && (
+        <div className="sad-modal-overlay">
+          <div className="sad-modal-content" style={{ width: "95%", maxWidth: "1200px", padding: "0" }}>
+            <MeetingCalendar onClose={() => setShowMeeting(false)} />
+          </div>
+        </div>
+      )}
+
+      {showDepartments && (
+        <div className="sad-modal-overlay">
+          <div className="sad-modal-content" style={{ width: "95%", maxWidth: "800px" }}>
+            <button className="sad-modal-close" onClick={() => setShowDepartments(false)}>✕</button>
+            <Departments />
           </div>
         </div>
       )}
@@ -795,10 +857,10 @@ export default function SuperAdminDashboard() {
               disabled={!fromDate || !toDate}
               onClick={async () => {
                 try {
-                  const token = localStorage.getItem("token");
-                  const res = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/attendance/export-excel?from=${fromDate}&to=${toDate}`,
-                    { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }
+                  const token = sessionStorage.getItem("token");
+                  const res = await api.get(
+                    `/attendance/export-excel?from=${fromDate}&to=${toDate}`,
+                    { responseType: "blob" }
                   );
                   const url = URL.createObjectURL(res.data);
                   const a = document.createElement("a");
