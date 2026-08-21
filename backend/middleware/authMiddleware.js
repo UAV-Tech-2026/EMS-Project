@@ -106,3 +106,17 @@ export const canReadFeature = (featureName) => async (req, res, next) => {
 
 export const isHRDept = isAdminOrSuper;
 export const isProductionAdmin = isAdminOrSuper;
+
+export const isHRAdminOrSuper = (req, res, next) => {
+  const role = req.user.role?.toLowerCase();
+  const isSuper = role && role.toLowerCase().replace(/[^a-z]/g, '') === "superadmin";
+  const isAdmin = role === "admin";
+  const dept = (req.user.department || "").toLowerCase();
+  const isHR = dept.includes("hr") || dept.includes("human resources");
+
+  if (isSuper || (isAdmin && isHR)) {
+    next();
+  } else {
+    return res.status(403).json({ msg: "Access Denied: Requires HR Admin or Super Admin privileges" });
+  }
+};

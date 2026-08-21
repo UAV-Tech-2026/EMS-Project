@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import pool from "../db.js";
 import bcrypt from "bcryptjs";
-import { verifyToken, isAdminOrSuper, isSuperAdmin } from "../middleware/authMiddleware.js";
+import { verifyToken, isAdminOrSuper, isSuperAdmin, isHRAdminOrSuper } from "../middleware/authMiddleware.js";
 import { generateUavId } from "./authRoutes.js";
 
 const router = express.Router();
@@ -398,6 +398,94 @@ router.patch("/reset-password/:id", verifyToken, isAdminOrSuper, async (req, res
   } catch (err) {
     console.error("RESET PASSWORD ERROR:", err.message);
     res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.get("/get/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT 
+         u.id, u.username, u.fullname, u.email, u.phone, u.role, u.department, u.status AS status,
+         e.employee_uav_id, e.designation, e.adhar_path, e.address_path, e.account_number, e.pan_number,
+         e.basic_salary, e.hra, e.epf_amount, e.pt_amount, e.police_certificate, e.medical_certificate,
+         e.assigned_admin_id
+       FROM users u
+       LEFT JOIN employees e ON u.id = e.user_id
+       WHERE u.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ msg: "Employee not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("GET EMPLOYEE DETAIL ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.put("/edit/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  const {
+    fullname, phone, email, role, department,
+    designation, adhar_path, address_path, account_number, pan_number,
+    basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate,
+    assigned_admin_id
+  } = req.body;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Fetch current employee_uav_id to sync username
+    const empRes = await client.query("SELECT employee_uav_id FROM employees WHERE user_id = $1", [id]);
+    const uavId = empRes.rows[0]?.employee_uav_id;
+    let usernameUpdate = "";
+    const params = [fullname, phone, email, role, department, id];
+    if (uavId) {
+      const newUsername = `${email.trim().toLowerCase()}_${uavId.toLowerCase()}`;
+      usernameUpdate = ", username = $7";
+      params.push(newUsername);
+    }
+
+    // 1. Update users table
+    await client.query(
+      `UPDATE users 
+       SET fullname = $1, phone = $2, email = $3, role = $4, department = $5 ${usernameUpdate}
+       WHERE id = $6`,
+      params
+    );
+
+    // 2. Update employees table
+    await client.query(
+      `UPDATE employees 
+       SET fullname = $1, phone = $2, designation = $3, department = $4, 
+           adhar_path = $5, address_path = $6, account_number = $7, pan_number = $8,
+           basic_salary = $9, hra = $10, epf_amount = $11, pt_amount = $12,
+           police_certificate = $13, medical_certificate = $14, assigned_admin_id = $15
+       WHERE user_id = $16`,
+      [
+        fullname, phone, designation, department,
+        adhar_path || null, address_path || null, account_number || null, pan_number || null,
+        parseFloat(basic_salary) || 0, parseFloat(hra) || 0,
+        parseFloat(epf_amount) || 0, parseFloat(pt_amount) || 0,
+        police_certificate || null, medical_certificate || null,
+        assigned_admin_id ? parseInt(assigned_admin_id, 10) : null,
+        id
+      ]
+    );
+
+    await client.query("COMMIT");
+    res.json({ msg: "Employee details updated successfully" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("EDIT EMPLOYEE ERROR:", err.message);
+    res.status(500).json({ msg: "Server error: " + err.message });
+  } finally {
+    client.release();
   }
 });
 

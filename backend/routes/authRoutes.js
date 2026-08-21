@@ -282,6 +282,7 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
       adhar, addressProof, account_number, pan_number,
       police_certificate, medical_certificate,
       employee_uav_id: manualUavId,   // ← NEW: manually provided ID
+      assigned_admin,
     } = req.body;
 
     let { role, department } = req.body;
@@ -349,15 +350,16 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
       `INSERT INTO employees
          (user_id, employee_uav_id, fullname, designation, department, phone,
           adhar_path, address_path, account_number, pan_number,
-          basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, 'active')`,
+          basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate, status, assigned_admin_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, 'active', $17)`,
       [
         userId, employee_uav_id, fullname, designation || null, department || null,
         phone || null, adhar || null, addressProof || null,
         account_number || null, pan_number || null,
         parseFloat(basic_salary) || 0, parseFloat(hra) || 0,
         parseFloat(epf_amount) || 0, parseFloat(pt_amount) || 0,
-        police_certificate || null, medical_certificate || null
+        police_certificate || null, medical_certificate || null,
+        assigned_admin ? parseInt(assigned_admin, 10) : null
       ]
     );
 

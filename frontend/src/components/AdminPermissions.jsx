@@ -431,6 +431,9 @@ export default function AdminPermissions() {
                   cursor: saving ? "not-allowed" : "pointer",
                   transition: "background 0.2s",
                 }}
+
+
+                
               >
                 {saving ? "Saving…" : saved ? "✓ Saved" : "Save Permissions"}
               </button>
