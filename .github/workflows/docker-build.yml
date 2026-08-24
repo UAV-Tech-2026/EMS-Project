@@ -20,6 +20,11 @@ jobs:
           context: ./frontend
           push: true
           tags: ghcr.io/divyasree11-04/ems-frontend:latest
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL }}
+            VITE_WORKSTOCK_URL=${{ vars.VITE_WORKSTOCK_URL }}
+            VITE_WORKSTOCK_API_URL=${{ vars.VITE_WORKSTOCK_API_URL }}
+            VITE_LOGO_URL=${{ vars.VITE_LOGO_URL }}
 
   build-ems-backend:
     runs-on: ubuntu-latest
