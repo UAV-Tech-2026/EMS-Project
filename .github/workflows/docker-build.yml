@@ -3,6 +3,9 @@ name: Build and Push Images
 on:
   push:
     branches: [testing]
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-ems-frontend:
