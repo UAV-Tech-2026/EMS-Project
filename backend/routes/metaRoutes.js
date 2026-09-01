@@ -1,6 +1,6 @@
 import express from "express";
 import pool from "../db.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+import { verifyToken, isHRAdminOrSuper } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -124,6 +124,75 @@ router.get("/departments", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("[MetaRoutes] departments error:", err.message);
     return res.json(DEFAULT_DEPARTMENTS);
+  }
+});
+
+// ── Custom Field Definitions ──
+router.get("/custom-fields", verifyToken, async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS custom_field_definitions (
+        id SERIAL PRIMARY KEY,
+        section VARCHAR(50) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        field_key VARCHAR(100) UNIQUE NOT NULL,
+        field_type VARCHAR(50) DEFAULT 'text',
+        options JSONB DEFAULT '[]'::jsonb,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const result = await pool.query("SELECT * FROM custom_field_definitions ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("[MetaRoutes] get custom fields error:", err.message);
+    res.status(500).json({ msg: "Server error fetching custom fields" });
+  }
+});
+
+router.post("/custom-fields", verifyToken, isHRAdminOrSuper, async (req, res) => {
+  try {
+    const { section, label, field_key, field_type, options } = req.body;
+    if (!section || !label) {
+      return res.status(400).json({ msg: "Section and Label are required" });
+    }
+    const safeKey = (field_key || label)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    const insertRes = await pool.query(
+      `INSERT INTO custom_field_definitions (section, label, field_key, field_type, options, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (field_key) DO UPDATE
+         SET label = EXCLUDED.label, section = EXCLUDED.section, field_type = EXCLUDED.field_type
+       RETURNING *`,
+      [
+        section,
+        label.trim(),
+        safeKey,
+        field_type || "text",
+        JSON.stringify(options || []),
+        req.user.id
+      ]
+    );
+
+    res.status(201).json(insertRes.rows[0]);
+  } catch (err) {
+    console.error("[MetaRoutes] create custom field error:", err.message);
+    res.status(500).json({ msg: "Failed to create custom field: " + err.message });
+  }
+});
+
+router.delete("/custom-fields/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM custom_field_definitions WHERE id = $1", [id]);
+    res.json({ msg: "Custom field deleted successfully" });
+  } catch (err) {
+    console.error("[MetaRoutes] delete custom field error:", err.message);
+    res.status(500).json({ msg: "Failed to delete custom field" });
   }
 });
 

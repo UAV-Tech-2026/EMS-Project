@@ -5,9 +5,14 @@ import speakeasy from "speakeasy";
 import qrcode from "qrcode";
 import pool from "../db.js";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { rateLimiter } from "../middleware/securityMiddleware.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key_change_this";
+
+
+const loginLimiter = rateLimiter(10, 10 * 60 * 1000);
+const otpLimiter = rateLimiter(10, 10 * 60 * 1000);
 
 
 function generateTotpSecret(label) {
@@ -29,7 +34,7 @@ export async function generateUavId(role) {
     [`${prefix}%`]
   );
 
-  // Collect all existing numbers for this prefix
+
   const usedNums = new Set();
   for (const row of res.rows) {
     const numStr = row.employee_uav_id.slice(prefix.length);
@@ -37,7 +42,7 @@ export async function generateUavId(role) {
     if (!isNaN(n)) usedNums.add(n);
   }
 
-  // Find the first available number (fills gaps like UTPLA001)
+
   let next = 1;
   while (usedNums.has(next)) next++;
 
@@ -48,7 +53,7 @@ export async function generateUavId(role) {
 
 
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   const identifier = (username || "").trim().toUpperCase();
 
@@ -144,7 +149,7 @@ router.post("/reset-2fa", verifyToken, isAdminOrSuper, async (req, res) => {
     return res.json({
       msg: "2FA reset successfully. Show this QR to the user.",
       qrCode,
-      manualKey: secret.base32  // ← also return manual key as fallback
+      manualKey: secret.base32
     });
   } catch (err) {
     console.error("RESET 2FA ERROR:", err);
@@ -205,7 +210,7 @@ router.post("/verify-phone", async (req, res) => {
 
 
 
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", otpLimiter, async (req, res) => {
   const { tempToken, otp, isSetup } = req.body;
   try {
     const decoded = jwt.verify(tempToken, JWT_SECRET);
@@ -277,11 +282,11 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
 
   try {
     const {
-      fullname, phone, email, altEmail, designation, password,
-      experiences, basic_salary, hra, epf_amount, pt_amount,
-      adhar, addressProof, account_number, pan_number,
-      police_certificate, medical_certificate,
-      employee_uav_id: manualUavId,   // ← NEW: manually provided ID
+      title, fullname, phone, email, altEmail, designation, password,
+      experiences, custom_fields, basic_salary, hra, epf_amount, pt_amount,
+      adhar, addressProof, account_number, ifsc_code, bank_name, branch_name, pan_number,
+      police_certificate, medical_certificate, offer_letter_path, nda_path, hr_docs_path,
+      employee_uav_id: manualUavId,
       assigned_admin,
     } = req.body;
 
@@ -309,13 +314,11 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
 
     await client.query("BEGIN");
 
-    // Remove unique constraint on users email/username if it exists so multiple department enrollments are allowed
     try {
       await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key");
       await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key");
-    } catch (e) {}
+    } catch (e) { }
 
-    // Determine Employee UAV ID
     let employee_uav_id;
     if (manualUavId && manualUavId.trim()) {
       employee_uav_id = manualUavId.trim().toUpperCase();
@@ -346,26 +349,44 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
     );
     const userId = userRes.rows[0].id;
 
+    let parsedExperiences = [];
+    if (typeof experiences === "string") {
+      try { parsedExperiences = JSON.parse(experiences); } catch (e) { parsedExperiences = []; }
+    } else if (Array.isArray(experiences)) {
+      parsedExperiences = experiences;
+    }
+
+    let parsedCustomFields = {};
+    if (typeof custom_fields === "string") {
+      try { parsedCustomFields = JSON.parse(custom_fields); } catch (e) { parsedCustomFields = {}; }
+    } else if (custom_fields && typeof custom_fields === "object") {
+      parsedCustomFields = custom_fields;
+    }
+
     await client.query(
       `INSERT INTO employees
-         (user_id, employee_uav_id, fullname, designation, department, phone,
-          adhar_path, address_path, account_number, pan_number,
-          basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate, status, assigned_admin_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, 'active', $17)`,
+         (user_id, employee_uav_id, title, fullname, designation, department, phone,
+          adhar_path, address_path, account_number, ifsc_code, bank_name, branch_name, pan_number,
+          basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate,
+          offer_letter_path, nda_path, hr_docs_path, status, assigned_admin_id, experiences, custom_fields)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,'active',$24,$25,$26)`,
       [
-        userId, employee_uav_id, fullname, designation || null, department || null,
+        userId, employee_uav_id, title || 'Mr.', fullname, designation || null, department || null,
         phone || null, adhar || null, addressProof || null,
-        account_number || null, pan_number || null,
+        account_number || null, ifsc_code || null, bank_name || null, branch_name || null, pan_number || null,
         parseFloat(basic_salary) || 0, parseFloat(hra) || 0,
         parseFloat(epf_amount) || 0, parseFloat(pt_amount) || 0,
         police_certificate || null, medical_certificate || null,
-        assigned_admin ? parseInt(assigned_admin, 10) : null
+        offer_letter_path || null, nda_path || null, hr_docs_path || null,
+        assigned_admin ? parseInt(assigned_admin, 10) : null,
+        JSON.stringify(parsedExperiences),
+        JSON.stringify(parsedCustomFields)
       ]
     );
 
     await client.query("COMMIT");
 
-  
+
     const identifier = username;
     const secret = generateTotpSecret(`UAVTech EMS (${identifier})`);
 
@@ -382,7 +403,7 @@ router.post("/create-user", verifyToken, isAdminOrSuper, async (req, res) => {
       username,
       employee_uav_id,
       department,
-      qrCode,          
+      qrCode,
     });
 
   } catch (err) {
@@ -463,7 +484,7 @@ router.put("/change-password", verifyToken, async (req, res) => {
 
     const hashed = await bcrypt.hash(new_password, 10);
 
-    
+
     await pool.query(
       "UPDATE users SET password = $1, totp_secret = NULL, totp_secret_temp = NULL WHERE id = $2",
       [hashed, user.id]
@@ -492,6 +513,7 @@ router.post("/reset-password", async (req, res) => {
     console.error("RESET PASSWORD ERROR:", err);
     return res.status(401).json({ msg: "Invalid or expired reset token" });
   }
+
 });
 
 export default router;

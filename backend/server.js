@@ -7,6 +7,7 @@ import ensureSchemaModule from "./utils/ensure_schema.js";
 
 
 import { runRecurringTaskGenerator } from "./routes/recurringTaskGenerator.js";
+import { securityHeaders } from "./middleware/securityMiddleware.js";
 
 const ensureSchema = typeof ensureSchemaModule === "function" 
   ? ensureSchemaModule 
@@ -34,6 +35,9 @@ import reimbursementRoutes from "./routes/reimbursementRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+
+app.use(securityHeaders);
 
 const corsOptions = {
   origin: true,
@@ -91,21 +95,21 @@ let server;
 async function startServer() {
   try {
     await pool.query("SELECT 1");
-    console.log("✓ Database connected successfully");
+    console.log(" Database connected successfully");
 
     await ensureSchema();
-    console.log("✓ Schema verified");
+    console.log(" Schema verified");
 
    
     await runRecurringTaskGenerator();
-    console.log("✓ Recurring task generator ran");
+    console.log(" Recurring task generator ran");
 
     server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`✓ Server running on port ${PORT}`);
+      console.log(` Server running on port ${PORT}`);
     });
 
   } catch (err) {
-    console.error("❌ Startup failed:", err.message);
+    console.error(" Startup failed:", err.message);
     process.exit(1);
   }
 }

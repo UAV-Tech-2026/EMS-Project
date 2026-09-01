@@ -375,7 +375,7 @@ export const ensureSchema = async () => {
 
       console.log("✓ Super Admin seeded: UTPLS001 / super123");
     } else {
-      
+
       const missingEmployeeRow = await client.query(`
         SELECT u.id FROM users u
         LEFT JOIN employees e ON e.user_id = u.id
@@ -433,14 +433,39 @@ export const ensureSchema = async () => {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret_temp VARCHAR(255)`);
 
     // employees
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS title VARCHAR(10) DEFAULT 'Mr.'`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS department VARCHAR(100)`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS account_number VARCHAR(20)`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS ifsc_code VARCHAR(20)`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100)`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS branch_name VARCHAR(100)`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS pan_number VARCHAR(10)`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS adhar_path TEXT`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS address_path TEXT`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS police_certificate TEXT`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS medical_certificate TEXT`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS offer_letter_path TEXT`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS nda_path TEXT`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS hr_docs_path TEXT`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS total_ml INTEGER DEFAULT 12`);
     await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS assigned_admin_id INTEGER REFERENCES users(id)`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS experiences JSONB DEFAULT '[]'::jsonb`);
+    await client.query(`ALTER TABLE employees ADD COLUMN IF NOT EXISTS custom_fields JSONB DEFAULT '{}'::jsonb`);
+
+    // custom field definitions
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS custom_field_definitions (
+        id SERIAL PRIMARY KEY,
+        section VARCHAR(50) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        field_key VARCHAR(100) UNIQUE NOT NULL,
+        field_type VARCHAR(50) DEFAULT 'text',
+        options JSONB DEFAULT '[]'::jsonb,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
     // attendance
     await client.query(`ALTER TABLE attendance ADD COLUMN IF NOT EXISTS hours_worked VARCHAR(20)`);

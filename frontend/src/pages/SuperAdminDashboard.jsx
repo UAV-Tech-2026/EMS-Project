@@ -5,7 +5,7 @@ import { api, API_URL } from "../utils/api";
 import {
   Users, LogOut, UserPlus,
   Calendar, Download, ClipboardList,
-  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote, Building2
+  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote, Building2, Activity
 } from "lucide-react";
 import ControlPanel from "./ControlPanel";
 import AttendanceRecords from "./AttendanceRecords";
@@ -21,6 +21,7 @@ import MeetingCalendar from "./MeetingCalendar";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
+import SystemActivityLogs from "./SystemActivityLogs";
 import "../styles/SuperAdminDashboard.css";
 import "../styles/EmployeeDashboard.css";
 
@@ -310,6 +311,13 @@ export default function SuperAdminDashboard() {
             <Package size={18} /> WorkStockPro
           </div>
 
+          <div
+            className={`sad-nav-item ${activeView === "activity-logs" ? "sad-active" : ""}`}
+            onClick={() => setActiveView("activity-logs")}
+          >
+            <Activity size={18} /> Activity Audit Logs
+          </div>
+
         </nav>
         <div className="sad-sidebar-footer">
           <button
@@ -322,7 +330,7 @@ export default function SuperAdminDashboard() {
       </aside>
 
       <div className="sad-main">
-        
+
         <div className="sad-topbar">
           <div className="sad-topbar-left">
             <div className="sad-page-title">Super Admin Dashboard</div>
@@ -462,8 +470,11 @@ export default function SuperAdminDashboard() {
                   boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
                 }}
                 title="WorkStockPro"
-                allow="same-origin"
               />
+            </div>
+          ) : activeView === "activity-logs" ? (
+            <div style={{ padding: "24px" }}>
+              <SystemActivityLogs limit={100} />
             </div>
           ) : null}
 
@@ -654,6 +665,9 @@ export default function SuperAdminDashboard() {
                     )}
                   </div>
                 )}
+              </div>
+              <div style={{ marginTop: "24px" }}>
+                <SystemActivityLogs limit={10} />
               </div>
             </div>
           )}

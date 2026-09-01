@@ -26,7 +26,7 @@ router.get("/stats", verifyToken, async (req, res) => {
     }
 
     const today = new Date().toISOString().split("T")[0];
-    
+
     let deptFilter = "";
     let pendingRequestsQuery = `
       (SELECT COUNT(*) FROM leaves WHERE status = 'pending') +
@@ -48,12 +48,12 @@ router.get("/stats", verifyToken, async (req, res) => {
     const data = statsRes.rows[0];
 
     res.json({
-      totalEmployees:  parseInt(data.total_employees) || 0,
-      totalInterns:    parseInt(data.total_interns) || 0,
-      totalAdmins:     parseInt(data.total_admins) || 0,
+      totalEmployees: parseInt(data.total_employees) || 0,
+      totalInterns: parseInt(data.total_interns) || 0,
+      totalAdmins: parseInt(data.total_admins) || 0,
       activeEmployees: parseInt(data.total_employees) || 0,
-      totalTasks:      parseInt(data.total_tasks) || 0,
-      presentToday:    parseInt(data.present_today) || 0,
+      totalTasks: parseInt(data.total_tasks) || 0,
+      presentToday: parseInt(data.present_today) || 0,
       pendingRequests: parseInt(data.pending_requests) || 0,
     });
 
@@ -65,21 +65,21 @@ router.get("/stats", verifyToken, async (req, res) => {
 
 
 router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
-  const { 
-    username, password, fullname, email, role, employee_uav_id, designation, 
+  const {
+    username, password, fullname, email, role, employee_uav_id, designation,
     aadhar_proof, address_proof // links from frontend
   } = req.body;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    
+
+
     // Drop unique constraints on users email/username if present
     try {
       await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key");
       await client.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key");
-    } catch (e) {}
+    } catch (e) { }
 
     let uavIdToUse = employee_uav_id;
     if (!uavIdToUse || !uavIdToUse.trim()) {
@@ -110,6 +110,10 @@ router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
       [userId, uavIdToUse, fullname, designation, aadhar_proof || null, address_proof || null]
     );
+    await client.query(
+      "INSERT INTO activity_logs (user_id, action) VALUES ($1, $2)",
+      [req.user.id, `Enrolled new employee ${fullname} (${uavIdToUse})`]
+    );
     await client.query("COMMIT");
     res.status(201).json({ msg: "Employee enrolled successfully" });
   } catch (err) {
@@ -126,7 +130,7 @@ router.get("/attendance-today", verifyToken, async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0];
     const role = req.user.role?.toLowerCase();
-    
+
     let query = `
       SELECT
         COUNT(*) FILTER (WHERE a.status = 'Present') AS present_today
@@ -136,8 +140,8 @@ router.get("/attendance-today", verifyToken, async (req, res) => {
       WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
     `;
     const params = [today];
-    
-    
+
+
 
     const result = await pool.query(query, params);
 
@@ -184,7 +188,7 @@ router.get("/list", verifyToken, async (req, res) => {
       params.push(req.user.id);
       query += ` WHERE u.id = $${params.length}`;
     }
-    
+
 
     query += " ORDER BY u.fullname ASC";
 
@@ -207,7 +211,7 @@ router.get("/my-profile", verifyToken, async (req, res) => {
       INNER JOIN users u ON e.user_id = u.id
       WHERE e.user_id = $1
     `, [req.user.id]);
-    
+
     if (result.rows.length === 0) return res.status(404).json({ msg: "Profile not found" });
     res.json(result.rows[0]);
   } catch (err) {
@@ -222,11 +226,11 @@ router.put("/update-profile", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    
-   
+
+
     const userRes = await client.query("SELECT phone FROM users WHERE id = $1", [req.user.id]);
     const currentPhone = userRes.rows[0]?.phone;
-    
+
     let phoneChanged = false;
     if (phone && phone !== currentPhone) {
       phoneChanged = true;
@@ -236,14 +240,14 @@ router.put("/update-profile", verifyToken, async (req, res) => {
       "UPDATE users SET fullname = $1, phone = $2 WHERE id = $3",
       [fullname, phone, req.user.id]
     );
-    
+
     await client.query(
       "UPDATE employees SET fullname = $1, phone = $2 WHERE user_id = $3",
       [fullname, phone, req.user.id]
     );
 
     if (phoneChanged) {
-     
+
       await client.query(
         "UPDATE users SET totp_secret = NULL, totp_secret_temp = NULL WHERE id = $1",
         [req.user.id]
@@ -265,16 +269,16 @@ router.put("/update-profile", verifyToken, async (req, res) => {
 router.post("/upload-profile-pic", verifyToken, isSuperAdmin, upload.single("profile_pic"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ msg: "No image uploaded" });
-    
+
     const imageUrl = `/uploads/${req.file.filename}`;
     const targetUserId = req.body.target_user_id || req.user.id;
-    
+
     await pool.query(
       "UPDATE users SET profile_pic = $1 WHERE id = $2",
       [imageUrl, targetUserId]
     );
-    
-    res.json({ 
+
+    res.json({
       msg: targetUserId === req.user.id ? "Your photo updated!" : "User photo updated!",
       profilePic: imageUrl
     });
@@ -291,6 +295,21 @@ router.get("/my-activity", verifyToken, async (req, res) => {
       [req.user.id]
     );
     res.json(result.rows.map(row => `${row.action} on ${new Date(row.created_at).toLocaleDateString()}`));
+  } catch (err) {
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+router.get("/all-activity-logs", verifyToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.action, a.created_at, u.fullname, u.role, u.username
+      FROM activity_logs a
+      LEFT JOIN users u ON a.user_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 100
+    `);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ msg: "Server error" });
   }
@@ -326,7 +345,7 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
     `;
     const params = [];
 
-    
+
 
     query += `
       ORDER BY
@@ -348,8 +367,8 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
 
 router.patch("/status/:id", verifyToken, isAdminOrSuper, async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; 
-  
+  const { status } = req.body;
+
   if (!status || !['active', 'inactive'].includes(status.toLowerCase())) {
     return res.status(400).json({ msg: "Invalid status value" });
   }
@@ -357,7 +376,7 @@ router.patch("/status/:id", verifyToken, isAdminOrSuper, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    
+
     const userStatus = status.toLowerCase() === 'active' ? 'Active' : 'Inactive';
     await client.query("UPDATE users SET status = $1 WHERE id = $2", [userStatus, id]);
 
@@ -407,9 +426,11 @@ router.get("/get/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
     const result = await pool.query(
       `SELECT 
          u.id, u.username, u.fullname, u.email, u.phone, u.role, u.department, u.status AS status,
-         e.employee_uav_id, e.designation, e.adhar_path, e.address_path, e.account_number, e.pan_number,
+         e.title, e.employee_uav_id, e.designation, e.adhar_path, e.address_path, e.account_number,
+         e.ifsc_code, e.bank_name, e.branch_name, e.pan_number,
          e.basic_salary, e.hra, e.epf_amount, e.pt_amount, e.police_certificate, e.medical_certificate,
-         e.assigned_admin_id
+         e.offer_letter_path, e.nda_path, e.hr_docs_path, e.assigned_admin_id,
+         e.experiences, e.custom_fields
        FROM users u
        LEFT JOIN employees e ON u.id = e.user_id
        WHERE u.id = $1`,
@@ -420,7 +441,22 @@ router.get("/get/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
       return res.status(404).json({ msg: "Employee not found" });
     }
 
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    if (typeof row.experiences === "string") {
+      try { row.experiences = JSON.parse(row.experiences); } catch (e) { row.experiences = []; }
+    }
+    if (!row.experiences || !Array.isArray(row.experiences)) {
+      row.experiences = [];
+    }
+
+    if (typeof row.custom_fields === "string") {
+      try { row.custom_fields = JSON.parse(row.custom_fields); } catch (e) { row.custom_fields = {}; }
+    }
+    if (!row.custom_fields || typeof row.custom_fields !== "object") {
+      row.custom_fields = {};
+    }
+
+    res.json(row);
   } catch (err) {
     console.error("GET EMPLOYEE DETAIL ERROR:", err.message);
     res.status(500).json({ msg: "Server error" });
@@ -430,10 +466,12 @@ router.get("/get/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
 router.put("/edit/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
   const { id } = req.params;
   const {
-    fullname, phone, email, role, department,
-    designation, adhar_path, address_path, account_number, pan_number,
+    title, fullname, phone, email, role, department,
+    designation, adhar_path, address_path, account_number,
+    ifsc_code, bank_name, branch_name, pan_number,
     basic_salary, hra, epf_amount, pt_amount, police_certificate, medical_certificate,
-    assigned_admin_id
+    offer_letter_path, nda_path, hr_docs_path, assigned_admin_id,
+    experiences, custom_fields
   } = req.body;
 
   const client = await pool.connect();
@@ -462,20 +500,35 @@ router.put("/edit/:id", verifyToken, isHRAdminOrSuper, async (req, res) => {
     // 2. Update employees table
     await client.query(
       `UPDATE employees 
-       SET fullname = $1, phone = $2, designation = $3, department = $4, 
-           adhar_path = $5, address_path = $6, account_number = $7, pan_number = $8,
-           basic_salary = $9, hra = $10, epf_amount = $11, pt_amount = $12,
-           police_certificate = $13, medical_certificate = $14, assigned_admin_id = $15
-       WHERE user_id = $16`,
+       SET title = $1, fullname = $2, phone = $3, designation = $4, department = $5, 
+           adhar_path = $6, address_path = $7, account_number = $8, ifsc_code = $9,
+           bank_name = $10, branch_name = $11, pan_number = $12,
+           basic_salary = $13, hra = $14, epf_amount = $15, pt_amount = $16,
+           police_certificate = $17, medical_certificate = $18,
+           offer_letter_path = $19, nda_path = $20, hr_docs_path = $21,
+           assigned_admin_id = $22,
+           experiences = $23,
+           custom_fields = $24
+       WHERE user_id = $25`,
       [
-        fullname, phone, designation, department,
-        adhar_path || null, address_path || null, account_number || null, pan_number || null,
+        title || 'Mr.', fullname, phone, designation, department,
+        adhar_path || null, address_path || null, account_number || null, ifsc_code || null,
+        bank_name || null, branch_name || null, pan_number || null,
         parseFloat(basic_salary) || 0, parseFloat(hra) || 0,
         parseFloat(epf_amount) || 0, parseFloat(pt_amount) || 0,
         police_certificate || null, medical_certificate || null,
+        offer_letter_path || null, nda_path || null, hr_docs_path || null,
         assigned_admin_id ? parseInt(assigned_admin_id, 10) : null,
+        JSON.stringify(Array.isArray(experiences) ? experiences : []),
+        JSON.stringify(custom_fields && typeof custom_fields === 'object' ? custom_fields : {}),
         id
       ]
+    );
+
+    // 3. Insert Activity Log
+    await client.query(
+      "INSERT INTO activity_logs (user_id, action) VALUES ($1, $2)",
+      [req.user.id, `Updated employee profile for ${fullname} (${uavId || id})`]
     );
 
     await client.query("COMMIT");

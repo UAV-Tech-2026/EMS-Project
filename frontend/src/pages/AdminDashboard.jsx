@@ -6,7 +6,7 @@ import {
   Users, LogOut, UserPlus,
   Calendar, Download, FileSpreadsheet,
   ClipboardCheck, LayoutDashboard, MessageSquare, Bell, Shield, CalendarCheck, Banknote, ClipboardList, Package, Plane,
-  ArrowDownToLine, ArrowUpFromLine, List, FileBarChart
+  ArrowDownToLine, ArrowUpFromLine, List, FileBarChart, Activity
 } from "lucide-react";
 import AttendanceRecords from "./AttendanceRecords";
 import BulkAttendance from "./BulkAttendance";
@@ -23,6 +23,7 @@ import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
 import DirectoryPanel from "./DirectoryPanel";
 import Departments from "./Departments";
+import SystemActivityLogs from "./SystemActivityLogs";
 
 import "../styles/AdminDashboard.css";
 import "../styles/EmployeeDashboard.css";
@@ -82,10 +83,7 @@ export default function AdminDashboard() {
 
   const todayNotifs = notifications.filter(n => n.created_at && n.created_at.startsWith(todayStr));
 
-  // ── Poll sessionStorage until permissions are populated by DashboardSwitcher ──
-  // DashboardSwitcher does a background /auth/me + /permissions/my and writes to sessionStorage.
-  // We poll every 300ms so AdminDashboard picks up permissions as soon as they land,
-  // instead of reading once at mount time when they may not be there yet.
+
   useEffect(() => {
     const tryLoad = () => {
       try {
@@ -104,7 +102,7 @@ export default function AdminDashboard() {
       return false;
     };
 
-    // Try immediately in case permissions are already in sessionStorage
+
     if (tryLoad()) return;
 
     const interval = setInterval(() => {
@@ -114,7 +112,7 @@ export default function AdminDashboard() {
       }
     }, 300);
 
-    // Give up after 10s — mark loaded so UI isn't blocked forever
+
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setPermsLoaded(true);
@@ -123,7 +121,7 @@ export default function AdminDashboard() {
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, []);
 
-  // ── Fetch notifications separately (network only, not cached) ──
+
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
@@ -188,7 +186,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // navigate is stable — removing it from deps prevents infinite re-fetch loop
 
   useEffect(() => {
@@ -197,8 +195,8 @@ export default function AdminDashboard() {
       return;
     }
     fetchDashboardData();
-  // fetchDashboardData is stable (no deps), navigate is stable — safe to list both once
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchDashboardData is stable (no deps), navigate is stable — safe to list both once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePostBulletin = async () => {
@@ -387,11 +385,18 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          <div
+            className={`stdc-nav-item ${activeView === "activity-logs" ? "stdc-nav-active" : ""}`}
+            onClick={() => setActiveView("activity-logs")}
+          >
+            <Activity size={18} /> Activity Audit Logs
+          </div>
+
           {/* WorkStock Pro — SMS dashboard, permission gated */}
           {(canRead("workstockpro") || canRead("sms_stock_in") || canRead("sms_withdrawal") || canRead("sms_master_list") || canRead("sms_reports")) && (
             <>
               <div className="stdc-nav-label" style={{ marginTop: 10 }}>Stock (SMS)</div>
-              
+
               {canRead("workstockpro") && (
                 <div
                   className={`stdc-nav-item ${activeView === "workstockpro" ? "stdc-nav-active" : ""}`}
@@ -400,7 +405,7 @@ export default function AdminDashboard() {
                   <Package size={18} /> SMS Dashboard
                 </div>
               )}
-              
+
               {canRead("sms_stock_in") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_stock_in" ? "stdc-nav-active" : ""}`}
@@ -409,7 +414,7 @@ export default function AdminDashboard() {
                   <ArrowDownToLine size={18} /> Stock In
                 </div>
               )}
-              
+
               {canRead("sms_withdrawal") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_withdrawal" ? "stdc-nav-active" : ""}`}
@@ -418,7 +423,7 @@ export default function AdminDashboard() {
                   <ArrowUpFromLine size={18} /> Withdrawal
                 </div>
               )}
-              
+
               {canRead("sms_master_list") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_master_list" ? "stdc-nav-active" : ""}`}
@@ -427,7 +432,7 @@ export default function AdminDashboard() {
                   <List size={18} /> Master List
                 </div>
               )}
-              
+
               {canRead("sms_reports") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_reports" ? "stdc-nav-active" : ""}`}
@@ -441,12 +446,12 @@ export default function AdminDashboard() {
 
           {/* Control Panel — super admin only */}
           {isSuperAdmin && (
-          <div
-            className={`stdc-nav-item ${activeView === "control-panel" ? "stdc-nav-active" : ""}`}
-            onClick={() => setActiveView("control-panel")}
-          >
-            <Shield size={18} /> Control Panel
-          </div>
+            <div
+              className={`stdc-nav-item ${activeView === "control-panel" ? "stdc-nav-active" : ""}`}
+              onClick={() => setActiveView("control-panel")}
+            >
+              <Shield size={18} /> Control Panel
+            </div>
           )}
         </nav>
 
@@ -474,7 +479,7 @@ export default function AdminDashboard() {
 
           <div className="stdc-topbar-right">
             {canWrite("bulletins") && (
-              <button 
+              <button
                 onClick={() => setShowBulletinModal(true)}
                 style={{ padding: "6px 14px", height: "34px", display: "flex", alignItems: "center", marginRight: "8px", border: "none", color: "#fff", background: "#4f46e5", borderRadius: "8px", fontWeight: "600", cursor: "pointer", fontSize: "13px" }}
               >
@@ -589,14 +594,17 @@ export default function AdminDashboard() {
               <iframe
                 src={wsUrl(
                   activeView === "sms_master_list" ? "products" :
-                  activeView === "sms_withdrawal" ? "withdraw" :
-                  activeView === "sms_stock_in" ? "add-product" :
-                  activeView === "sms_reports" ? "my-withdrawals" : ""
+                    activeView === "sms_withdrawal" ? "withdraw" :
+                      activeView === "sms_stock_in" ? "add-product" :
+                        activeView === "sms_reports" ? "my-withdrawals" : ""
                 )}
                 style={{ width: "100%", height: "82vh", border: "none", borderRadius: "12px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}
                 title="WorkStockPro"
-                allow="same-origin"
               />
+            </div>
+          ) : activeView === "activity-logs" ? (
+            <div style={{ padding: "24px" }}>
+              <SystemActivityLogs limit={100} />
             </div>
           ) : activeView === "control-panel" ? (
             <ControlPanel />
@@ -903,6 +911,9 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 )}
+              </div>
+              <div style={{ marginTop: "24px" }}>
+                <SystemActivityLogs limit={10} />
               </div>
             </div>
           )}

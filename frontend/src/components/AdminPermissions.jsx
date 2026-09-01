@@ -72,18 +72,44 @@ function Toggle({ checked, onChange, disabled, label }) {
 export default function AdminPermissions() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("id"); // "id" | "name"
   
   const [perms, setPerms] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expandedSmsCard, setExpandedSmsCard] = useState(null);
 
-  useEffect(() => {
-    api.get("/permissions/list").then(res => {
-      
-      const admins = res.data.filter(u => u.role === "admin");
-      setUsers(admins);
+  const sortAdminsList = (list, criteria = sortBy) => {
+    return [...list].sort((a, b) => {
+      if (criteria === "name") {
+        return (a.fullname || "").localeCompare(b.fullname || "", undefined, { sensitivity: "base" });
+      }
+      // Natural ID sort (e.g. UTPLA001, UTPLA002, UTPLA010)
+      const idA = a.employee_uav_id || "";
+      const idB = b.employee_uav_id || "";
+      if (idA && idB) {
+        return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: "base" });
+      }
+      if (idA) return -1;
+      if (idB) return 1;
+      return (a.fullname || "").localeCompare(b.fullname || "", undefined, { sensitivity: "base" });
     });
+  };
+
+  useEffect(() => {
+    api.get("/permissions/list")
+      .then(res => {
+        const admins = (res.data || []).filter(u => u.role === "admin");
+        const sorted = sortAdminsList(admins, "id");
+        setUsers(sorted);
+        if (sorted.length > 0 && !selectedUser) {
+          selectUser(sorted[0]);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load permissions list:", err);
+      });
   }, []);
 
   const selectUser = (user) => {
@@ -379,31 +405,101 @@ export default function AdminPermissions() {
     </div>
   );
 
+  const displayedUsers = sortAdminsList(
+    users.filter(u => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        (u.fullname || "").toLowerCase().includes(q) ||
+        (u.employee_uav_id || "").toLowerCase().includes(q) ||
+        (u.department || "").toLowerCase().includes(q)
+      );
+    }),
+    sortBy
+  );
+
   return (
-    <div style={{ display: "flex", gap: 20, minHeight: 400 }}>
+    <div style={{ display: "flex", gap: 20, minHeight: 450 }}>
       
-      <div style={{ width: 220, flexShrink: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-          Select Admin
-        </div>
-        {users.map(u => (
-          <div
-            key={u.id}
-            onClick={() => selectUser(u)}
-            style={{
-              padding: "10px 14px", borderRadius: 10, cursor: "pointer", marginBottom: 6,
-              background: selectedUser?.id === u.id ? "#eff6ff" : "#f8fafc",
-              border: `1px solid ${selectedUser?.id === u.id ? "#bfdbfe" : "#e2e8f0"}`,
-              transition: "all 0.15s",
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{u.fullname}</div>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
-              {u.department ? `${u.department}` : roleLabel(u.role)}
-              {u.employee_uav_id ? ` (${u.employee_uav_id})` : ""}
-            </div>
+      {/* ── Admin Selector Sidebar ── */}
+      <div style={{ width: 250, flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 1 }}>
+            Admins ({displayedUsers.length})
           </div>
-        ))}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: "2px 6px",
+              borderRadius: 6, border: "1px solid #cbd5e1",
+              background: "#fff", color: "#475569", cursor: "pointer"
+            }}
+            title="Sort order"
+          >
+            <option value="id">Sort by ID</option>
+            <option value="name">Sort A-Z</option>
+          </select>
+        </div>
+
+        {/* Search filter */}
+        <div style={{ marginBottom: 10 }}>
+          <input
+            type="text"
+            placeholder="Search admin, ID, dept..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%", padding: "6px 10px", borderRadius: 8,
+              border: "1px solid #e2e8f0", fontSize: 12, outline: "none",
+              background: "#f8fafc", boxSizing: "border-box"
+            }}
+          />
+        </div>
+
+        <div style={{ maxHeight: "72vh", overflowY: "auto", paddingRight: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+          {displayedUsers.length === 0 ? (
+            <div style={{ padding: "20px 10px", textAlign: "center", color: "#94a3b8", fontSize: 12, background: "#f8fafc", borderRadius: 8 }}>
+              No admins match "{searchQuery}"
+            </div>
+          ) : (
+            displayedUsers.map(u => {
+              const isSelected = selectedUser?.id === u.id;
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => selectUser(u)}
+                  style={{
+                    padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                    background: isSelected ? "#eff6ff" : "#fff",
+                    border: `1.5px solid ${isSelected ? "#3b82f6" : "#e2e8f0"}`,
+                    boxShadow: isSelected ? "0 2px 8px rgba(59,130,246,0.12)" : "0 1px 2px rgba(0,0,0,0.02)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, fontWeight: isSelected ? 700 : 600, color: isSelected ? "#1d4ed8" : "#1e293b" }}>
+                      {u.fullname}
+                    </span>
+                    {u.employee_uav_id && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        background: isSelected ? "#dbeafe" : "#f1f5f9",
+                        color: isSelected ? "#1d4ed8" : "#475569",
+                        padding: "1px 5px", borderRadius: 4, fontFamily: "monospace"
+                      }}>
+                        {u.employee_uav_id}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: isSelected ? "#3b82f6" : "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{u.department || "No Department"}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       
