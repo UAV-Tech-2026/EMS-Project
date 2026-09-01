@@ -73,7 +73,11 @@ router.get("/list", async (req, res) => {
           WHEN u.role = 'admin' THEN 2
           ELSE 3
         END,
-        NULLIF(regexp_replace(COALESCE(e.employee_uav_id, ''), '\D', '', 'g'), '')::numeric ASC NULLS LAST,
+        CASE 
+          WHEN regexp_replace(COALESCE(e.employee_uav_id, ''), '[^0-9]', '', 'g') ~ '^[0-9]+$' 
+          THEN regexp_replace(COALESCE(e.employee_uav_id, ''), '[^0-9]', '', 'g')::bigint 
+          ELSE 99999999 
+        END ASC,
         e.employee_uav_id ASC NULLS LAST,
         LOWER(COALESCE(u.fullname, '')) ASC
     `;
@@ -108,7 +112,11 @@ router.get("/list-employees", async (req, res) => {
       LEFT JOIN employees e ON u.id = e.user_id
       WHERE u.role IN ('employee', 'intern')
       ORDER BY
-        NULLIF(regexp_replace(COALESCE(e.employee_uav_id, ''), '\D', '', 'g'), '')::numeric ASC NULLS LAST,
+        CASE 
+          WHEN regexp_replace(COALESCE(e.employee_uav_id, ''), '[^0-9]', '', 'g') ~ '^[0-9]+$' 
+          THEN regexp_replace(COALESCE(e.employee_uav_id, ''), '[^0-9]', '', 'g')::bigint 
+          ELSE 99999999 
+        END ASC,
         e.employee_uav_id ASC NULLS LAST,
         LOWER(COALESCE(u.fullname, '')) ASC
     `;
