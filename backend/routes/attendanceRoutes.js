@@ -4,6 +4,7 @@ import multer from "multer";
 import ExcelJS from "exceljs";
 import { verifyToken, isAdminOrSuper, canReadFeature } from "../middleware/authMiddleware.js";
 import axios from "axios";
+import { parseAttendanceExcel } from "../utils/excelParser.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -592,38 +593,22 @@ router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"),
   try {
     if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
 
-    const workbook = new ExcelJS.Workbook();
-   await workbook.xlsx.load(req.file.buffer);
-    const worksheet = workbook.worksheets[0];
-
     const usersRes = await pool.query(
       "SELECT u.id, u.fullname, e.employee_uav_id FROM users u JOIN employees e ON u.id = e.user_id"
     );
     const users = usersRes.rows;
 
-    const records = [];
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const empId = row.getCell(1).value?.toString()?.trim();
-      const name = row.getCell(2).value?.toString()?.trim();
-      let date = row.getCell(3).value;
-      const status = row.getCell(4).value?.toString()?.trim();
-      const checkIn = row.getCell(5).value?.toString()?.trim() || null;
-      const checkOut = row.getCell(6).value?.toString()?.trim() || null;
-      if (!status) return;
-      let formattedDate; if (date instanceof Date && !isNaN(date.getTime())) { formattedDate = date.toISOString().split("T")[0]; } else { const parsed = new Date(date); if (!isNaN(parsed.getTime())) { formattedDate = parsed.toISOString().split("T")[0]; } else { return; } } date = formattedDate;
-      const user = users.find(
-        (u) => u.employee_uav_id === empId || u.fullname?.toLowerCase() === name?.toLowerCase()
-      );
-      if (!user) return;
-      records.push({ userId: user.id, empId: user.employee_uav_id, date, status, checkIn, checkOut });
-    });
+    const records = await parseAttendanceExcel(req.file.buffer, users);
+
+    if (!records.length) {
+      return res.status(400).json({ msg: "No matching employee records found in Excel sheet." });
+    }
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       for (const rec of records) {
-        const hoursWorked = calcHours(rec.checkIn, rec.checkOut);
+        const hoursWorked = rec.hoursWorked || calcHours(rec.checkIn, rec.checkOut);
         await client.query(
           `INSERT INTO attendance
              (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked)
@@ -639,7 +624,7 @@ router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"),
         );
       }
       await client.query("COMMIT");
-      res.json({ msg: `Successfully uploaded ${records.length} attendance records!` });
+      res.json({ msg: `Successfully uploaded & synced ${records.length} attendance records!` });
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
@@ -669,38 +654,22 @@ router.post("/upload-from-drive", verifyToken, isAdminOrSuper, async (req, res) 
     const response = await axios.get(downloadUrl, { responseType: "arraybuffer", timeout: 15000 });
     const buffer = Buffer.from(response.data);
 
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
-    const worksheet = workbook.worksheets[0];
-
     const usersRes = await pool.query(
       "SELECT u.id, u.fullname, e.employee_uav_id FROM users u JOIN employees e ON u.id = e.user_id"
     );
     const users = usersRes.rows;
 
-    const records = [];
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const empId = row.getCell(1).value?.toString()?.trim();
-      const name = row.getCell(2).value?.toString()?.trim();
-      let date = row.getCell(3).value;
-      const status = row.getCell(4).value?.toString()?.trim();
-      const checkIn = row.getCell(5).value?.toString()?.trim() || null;
-      const checkOut = row.getCell(6).value?.toString()?.trim() || null;
-      if (!status) return;
-      let formattedDate; if (date instanceof Date && !isNaN(date.getTime())) { formattedDate = date.toISOString().split("T")[0]; } else { const parsed = new Date(date); if (!isNaN(parsed.getTime())) { formattedDate = parsed.toISOString().split("T")[0]; } else { return; } } date = formattedDate;
-      const user = users.find(
-        (u) => u.employee_uav_id === empId || u.fullname?.toLowerCase() === name?.toLowerCase()
-      );
-      if (!user) return;
-      records.push({ userId: user.id, empId: user.employee_uav_id, date, status, checkIn, checkOut });
-    });
+    const records = await parseAttendanceExcel(buffer, users);
+
+    if (!records.length) {
+      return res.status(400).json({ msg: "No matching employee records found in Excel sheet." });
+    }
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       for (const rec of records) {
-        const hoursWorked = calcHours(rec.checkIn, rec.checkOut);
+        const hoursWorked = rec.hoursWorked || calcHours(rec.checkIn, rec.checkOut);
         await client.query(
           `INSERT INTO attendance
              (user_id, employee_uav_id, attendance_date, status, check_in, check_out, marked_by, hours_worked)
@@ -716,7 +685,7 @@ router.post("/upload-from-drive", verifyToken, isAdminOrSuper, async (req, res) 
         );
       }
       await client.query("COMMIT");
-      res.json({ msg: `Successfully imported ${records.length} records from Google Drive!` });
+      res.json({ msg: `Successfully imported & synced ${records.length} records from Google Drive!` });
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;

@@ -156,33 +156,65 @@ export default function AttendanceUpload({ readOnly }) {
         </div>
       )}
 
-      {/* Expected format */}
+      {/* Expected formats */}
       <div className="au-format">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-          <p className="au-format-label" style={{ margin: 0 }}>Expected Excel Format</p>
-          <button 
-            type="button"
-            className="au-btn au-btn-blue" 
-            style={{ padding: "4px 8px", fontSize: "11px", width: "auto", margin: 0 }}
-            onClick={() => {
-              const ws = XLSX.utils.aoa_to_sheet([
-                ["Employee ID", "Name", "Date", "Status", "Check In", "Check Out"],
-                ["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00", "18:00"]
-              ]);
-              const wb = XLSX.utils.book_new();
-              XLSX.utils.book_append_sheet(wb, ws, "Template");
-              XLSX.writeFile(wb, "Attendance_Template.xlsx");
-            }}
-          >
-            <Download size={14} /> Download Template
-          </button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+          <p className="au-format-label" style={{ margin: 0, fontWeight: "600" }}>Supported Excel Formats</p>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button 
+              type="button"
+              className="au-btn au-btn-blue" 
+              style={{ padding: "4px 8px", fontSize: "11px", width: "auto", margin: 0 }}
+              onClick={() => {
+                const ws = XLSX.utils.aoa_to_sheet([
+                  ["Dept. Name", "Default", "", "", "", "", "", "", "", "", "", "", "CompName", "", "", "UAV TECH PVT LTD", "", "", "", "", "", "", "", "", "", "", "Report Month", "", "", "September-2026"],
+                  ["Empcode", "0026", "Name", "Sravan", "", "", "", "", "", "", "", "", "Present", "3", "WO", "0", "HL", "0", "LV", "0", "Absent", "27", "Tot. Work+OT", "21:25", "Total OT", "0:00"],
+                  ["", "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"],
+                  ["", "", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"],
+                  ["IN", "", "11:30", "11:02", "--:--", "10:26", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--"],
+                  ["OUT", "", "17:45", "18:25", "--:--", "18:13", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--", "--:--"],
+                  ["WORK", "", "06:15", "07:23", "00:00", "07:47", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00"],
+                  ["Break", "", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00"],
+                  ["OT", "", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00", "00:00"],
+                  ["Status", "", "P", "P", "A", "P", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]
+                ]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Biometric Report");
+                XLSX.writeFile(wb, "Biometric_Attendance_Template.xlsx");
+              }}
+            >
+              <Download size={14} /> Biometric Template
+            </button>
+            <button 
+              type="button"
+              className="au-btn au-btn-blue" 
+              style={{ padding: "4px 8px", fontSize: "11px", width: "auto", margin: 0 }}
+              onClick={() => {
+                const ws = XLSX.utils.aoa_to_sheet([
+                  ["Employee ID", "Name", "Date", "Status", "Check In", "Check Out"],
+                  ["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00", "18:00"]
+                ]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Template");
+                XLSX.writeFile(wb, "Standard_Attendance_Template.xlsx");
+              }}
+            >
+              <Download size={14} /> Standard Template
+            </button>
+          </div>
         </div>
+        <p style={{ fontSize: "12px", color: "var(--au-text-subtle)", margin: "0 0 8px 0" }}>
+          ✅ Auto-detects both <strong>Biometric Monthly Export Reports</strong> (Multi-employee Matrix format) and <strong>Standard Tabular Excel</strong>.
+        </p>
         <div className="au-format-grid">
-          {["Employee ID", "Name", "Date", "Status", "Check In", "Check Out"].map(h => (
+          {["Format", "Identified By", "Employee ID / Code", "Dates Handled", "Status Map"].map(h => (
             <div key={h} className="au-format-cell header" style={{ padding: "4px 2px" }}>{h}</div>
           ))}
-          {["UAV-001", "Ravi Kumar", "2025-03-31", "Present", "09:00", "18:00"].map(v => (
-            <div key={v} className="au-format-cell data">{v}</div>
+          {[
+            "Biometric Monthly Matrix", "Empcode & Report Month headers", "0026 / UTPLA0026 / Name", "Days 1 to 31 in columns", "P -> Present, A -> Absent, WO -> Off",
+            "Standard Tabular", "6-Column headers", "Employee ID column", "Date column (YYYY-MM-DD)", "Present / Absent / Half Day"
+          ].map((v, i) => (
+            <div key={i} className="au-format-cell data">{v}</div>
           ))}
         </div>
       </div>
