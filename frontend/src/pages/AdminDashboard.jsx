@@ -226,10 +226,10 @@ export default function AdminDashboard() {
 
   const isSuperAdmin = user?.role?.toLowerCase() === "super_admin";
 
-  // ── WorkStockPro base URL ──
-  const workstockToken = sessionStorage.getItem("token");
-  const wsBase = import.meta.env.VITE_WORKSTOCK_URL || `http://${window.location.hostname}:3001`;
-  // Keep old workstockUrl for backward compat on this component
+  const wsUrlEnv = import.meta.env.VITE_WORKSTOCK_URL;
+  const wsBase = (wsUrlEnv && wsUrlEnv.startsWith("http"))
+    ? wsUrlEnv
+    : `${window.location.protocol}//${window.location.hostname}:3001`;
   const workstockUrl = `${wsBase}?token=${workstockToken}`;
 
   // ── Permission helpers ──────────────────────────────────────────────────────

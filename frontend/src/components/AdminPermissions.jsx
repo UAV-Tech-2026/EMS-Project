@@ -405,11 +405,20 @@ export default function AdminPermissions() {
     </div>
   );
 
+  const getAdminLabel = (user) => {
+    if (!user) return "";
+    const rawDept = user.designation || user.department || "Admin";
+    if (rawDept.startsWith("Admin-") || rawDept.startsWith("ADMIN-")) return rawDept;
+    return `Admin-${rawDept}`;
+  };
+
   const displayedUsers = sortAdminsList(
     users.filter(u => {
       const q = searchQuery.toLowerCase().trim();
       if (!q) return true;
+      const adminLbl = getAdminLabel(u).toLowerCase();
       return (
+        adminLbl.includes(q) ||
         (u.fullname || "").toLowerCase().includes(q) ||
         (u.employee_uav_id || "").toLowerCase().includes(q) ||
         (u.department || "").toLowerCase().includes(q)
@@ -465,6 +474,7 @@ export default function AdminPermissions() {
           ) : (
             displayedUsers.map(u => {
               const isSelected = selectedUser?.id === u.id;
+              const displayLabel = getAdminLabel(u);
               return (
                 <div
                   key={u.id}
@@ -477,23 +487,20 @@ export default function AdminPermissions() {
                     transition: "all 0.15s ease",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                    <span style={{ fontSize: 13, fontWeight: isSelected ? 700 : 600, color: isSelected ? "#1d4ed8" : "#1e293b" }}>
-                      {u.fullname}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 600, color: isSelected ? "#1d4ed8" : "#1e293b", lineHeight: 1.3 }}>
+                      {displayLabel}
                     </span>
                     {u.employee_uav_id && (
                       <span style={{
                         fontSize: 10, fontWeight: 700,
                         background: isSelected ? "#dbeafe" : "#f1f5f9",
                         color: isSelected ? "#1d4ed8" : "#475569",
-                        padding: "1px 5px", borderRadius: 4, fontFamily: "monospace"
+                        padding: "1px 5px", borderRadius: 4, fontFamily: "monospace", flexShrink: 0, marginLeft: 6
                       }}>
                         {u.employee_uav_id}
                       </span>
                     )}
-                  </div>
-                  <div style={{ fontSize: 11, color: isSelected ? "#3b82f6" : "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{u.department || "No Department"}</span>
                   </div>
                 </div>
               );
@@ -512,9 +519,9 @@ export default function AdminPermissions() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{selectedUser.fullname}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{getAdminLabel(selectedUser)}</div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
-                  {selectedUser.email} · {selectedUser.department ? `${selectedUser.department} · ` : ""}{selectedUser.employee_uav_id || roleLabel(selectedUser.role)}
+                  {selectedUser.department ? `${selectedUser.department} · ` : ""}{selectedUser.employee_uav_id || roleLabel(selectedUser.role)}
                 </div>
               </div>
               <button

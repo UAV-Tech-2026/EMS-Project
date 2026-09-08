@@ -20,7 +20,7 @@ router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
    
     
    
-    const usersRes = await pool.query("SELECT id, fullname, role FROM users");
+    const usersRes = await pool.query("SELECT id, fullname, role FROM users WHERE LOWER(COALESCE(status, 'active')) = 'active'");
     const users = usersRes.rows;
 
     worksheet.eachRow((row, rowNumber) => {
@@ -246,6 +246,39 @@ router.put("/edit/:id", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(`TASK EDIT ERROR [ID=${req.params.id}]:`, err.stack);
     res.status(500).json({ msg: "Failed to update task", error: err.message });
+  }
+});
+
+router.delete("/delete/:id", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Nullify depends_on references so no FK violation
+    await pool.query("UPDATE tasks SET depends_on = NULL WHERE depends_on = $1", [id]);
+
+    // 2. Nullify recurring_template_id references (ON DELETE SET NULL should handle this,
+    //    but being explicit in case of older schema versions)
+    await pool.query("UPDATE tasks SET recurring_template_id = NULL WHERE recurring_template_id = $1", [id]);
+
+    // 3. Delete comments on child tasks first, then child tasks themselves
+    const childRes = await pool.query("SELECT id FROM tasks WHERE parent_id = $1", [id]);
+    for (const child of childRes.rows) {
+      await pool.query("DELETE FROM task_comments WHERE task_id = $1", [child.id]);
+    }
+    await pool.query("DELETE FROM tasks WHERE parent_id = $1", [id]);
+
+    // 4. Delete comments on the task itself
+    await pool.query("DELETE FROM task_comments WHERE task_id = $1", [id]);
+
+    // 5. Finally delete the task
+    const result = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id", [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ msg: "Task not found" });
+    }
+    res.json({ msg: "Task deleted successfully", id: result.rows[0].id });
+  } catch (err) {
+    console.error(`TASK DELETE ERROR [ID=${req.params.id}]:`, err.message);
+    res.status(500).json({ msg: "Failed to delete task", error: err.message });
   }
 });
 

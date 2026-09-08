@@ -10,11 +10,21 @@ const router = express.Router();
 const storage = multer.diskStorage({
   destination: "uploads/",
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    const safeOriginal = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    cb(null, `${Date.now()}-${safeOriginal}`);
   }
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only JPEG, PNG, GIF, or WebP images are allowed."), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter, limits: { fileSize: 2 * 1024 * 1024 } });
 
 router.get("/stats", verifyToken, async (req, res) => {
   try {
@@ -202,14 +212,22 @@ router.get("/list", verifyToken, async (req, res) => {
 
 router.get("/my-profile", verifyToken, async (req, res) => {
   try {
+    // Use LEFT JOIN so super_admin users who have no employees row still get their data
     const result = await pool.query(`
       SELECT 
-        e.*,
+        COALESCE(e.fullname, u.fullname) AS fullname,
+        COALESCE(e.phone,    u.phone)    AS phone,
         u.email,
-        u.profile_pic
-      FROM employees e
-      INNER JOIN users u ON e.user_id = u.id
-      WHERE e.user_id = $1
+        u.profile_pic,
+        u.role,
+        e.designation,
+        e.department,
+        e.employee_uav_id,
+        e.adhar_path,
+        e.address_path
+      FROM users u
+      LEFT JOIN employees e ON e.user_id = u.id
+      WHERE u.id = $1
     `, [req.user.id]);
 
     if (result.rows.length === 0) return res.status(404).json({ msg: "Profile not found" });
@@ -266,12 +284,34 @@ router.put("/update-profile", verifyToken, async (req, res) => {
 });
 
 
-router.post("/upload-profile-pic", verifyToken, isSuperAdmin, upload.single("profile_pic"), async (req, res) => {
+// Wrap multer in a helper to properly catch multer errors (file type/size)
+function runUpload(req, res) {
+  return new Promise((resolve, reject) => {
+    upload.single("profile_pic")(req, res, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+router.post("/upload-profile-pic", verifyToken, async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ msg: "No image uploaded" });
+    await runUpload(req, res);
+  } catch (multerErr) {
+    return res.status(400).json({ msg: multerErr.message });
+  }
+
+  try {
+    if (!req.file) return res.status(400).json({ msg: "No image uploaded. Please select a JPEG or PNG file." });
 
     const imageUrl = `/uploads/${req.file.filename}`;
-    const targetUserId = req.body.target_user_id || req.user.id;
+
+    // Only super_admin may update another user's photo via target_user_id
+    const role = req.user.role?.toLowerCase().replace(/[^a-z]/g, "");
+    const targetUserId =
+      role === "superadmin" && req.body.target_user_id
+        ? req.body.target_user_id
+        : req.user.id;
 
     await pool.query(
       "UPDATE users SET profile_pic = $1 WHERE id = $2",
@@ -279,12 +319,12 @@ router.post("/upload-profile-pic", verifyToken, isSuperAdmin, upload.single("pro
     );
 
     res.json({
-      msg: targetUserId === req.user.id ? "Your photo updated!" : "User photo updated!",
+      msg: String(targetUserId) === String(req.user.id) ? "Your photo updated!" : "User photo updated!",
       profilePic: imageUrl
     });
   } catch (err) {
     console.error("UPLOAD PIC ERROR:", err.message);
-    res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ msg: "Server error: " + err.message });
   }
 });
 
@@ -322,6 +362,7 @@ router.get("/admin-list", verifyToken, async (req, res) => {
       SELECT u.id, u.fullname, u.username, u.role, u.department
       FROM users u
       WHERE u.role IN ('super_admin', 'admin')
+        AND LOWER(COALESCE(u.status, 'active')) = 'active'
       ORDER BY
         CASE u.role WHEN 'super_admin' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
         u.fullname ASC
@@ -342,6 +383,8 @@ router.get("/all-assignable", verifyToken, async (req, res) => {
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
       WHERE u.role IN ('employee', 'intern', 'admin', 'super_admin')
+        AND LOWER(COALESCE(u.status, 'active')) = 'active'
+        AND LOWER(COALESCE(e.status, 'active')) = 'active'
     `;
     const params = [];
 

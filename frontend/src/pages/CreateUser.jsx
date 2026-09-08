@@ -120,11 +120,17 @@ export default function CreateUser({ onClose, onSuccess, readOnly }) {
         setDepartments([...seen.values()]);
       })
       .catch(() => setDepartments([
-        "Product Research Department (PRD)", "Product Engineering Department (PED)",
-        "Product Development Department - Software", "Product Development Department - I&TT",
-        "Product Development Department - FT&T", "Product Development Department - PTI",
-        "Project Management Team (PMT)", "Business Management Department (BMD)",
-        "Quality Assurance (QA)", "Human Resources (HR)", "Operations",
+        "BMD (Business Management Department)",
+        "PDD - Systems Integration and Testing",
+        "PDD - Flight Tuning and Testing",
+        "PED (Product Engineering Department)",
+        "QAD (Quality Assurance Department)",
+        "HRD (Human Resources Department)",
+        "PDD - Software Department",
+        "PRD (Product Research Department)",
+        "OD (Operations Department)",
+        "PMD (Product Manufacturing Department)",
+        "PDD - Prototype Development",
       ]));
   }, [user?.role]);
 
@@ -461,35 +467,20 @@ export default function CreateUser({ onClose, onSuccess, readOnly }) {
                       <select value={selectedAdminId}
                         onChange={e => setSelectedAdminId(e.target.value)}
                         style={{ ...inp, borderColor: "#bbf7d0" }}>
-                        <option value="">— No specific admin —</option>
+                        <option value="">— N/A —</option>
                         {deptAdmins
-                          .filter(a => selectedDepartment && (a.department || "").toLowerCase().includes(selectedDepartment.toLowerCase()))
-                          .length > 0 && (
-                          <optgroup label={`Department Admins (${selectedDepartment})`}>
-                            {deptAdmins
-                              .filter(a => selectedDepartment && (a.department || "").toLowerCase().includes(selectedDepartment.toLowerCase()))
-                              .sort((a, b) => (a.employee_uav_id || "").localeCompare(b.employee_uav_id || "", undefined, { numeric: true }))
-                              .map(a => (
-                                <option key={a.id} value={a.id}>
-                                  {a.fullname} ({a.employee_uav_id || "Admin"}) {a.department ? `[${a.department}]` : ""}
-                                </option>
-                              ))}
-                          </optgroup>
-                        )}
-                        {deptAdmins
-                          .filter(a => !selectedDepartment || !(a.department || "").toLowerCase().includes(selectedDepartment.toLowerCase()))
-                          .length > 0 && (
-                          <optgroup label="Other Available Admins">
-                            {deptAdmins
-                              .filter(a => !selectedDepartment || !(a.department || "").toLowerCase().includes(selectedDepartment.toLowerCase()))
-                              .sort((a, b) => (a.employee_uav_id || "").localeCompare(b.employee_uav_id || "", undefined, { numeric: true }))
-                              .map(a => (
-                                <option key={a.id} value={a.id}>
-                                  {a.fullname} ({a.employee_uav_id || "Admin"}) {a.department ? `[${a.department}]` : ""}
-                                </option>
-                              ))}
-                          </optgroup>
-                        )}
+                          .sort((a, b) => (a.employee_uav_id || "").localeCompare(b.employee_uav_id || "", undefined, { numeric: true }))
+                          .map(a => {
+                            const roleLower = (a.role || "").toLowerCase();
+                            const isAdmin = roleLower === "admin" || roleLower === "super_admin";
+                            const dept = a.department ? (a.department.startsWith("Admin-") ? a.department : `Admin-${a.department}`) : "Admin";
+                            const uavId = a.employee_uav_id ? ` (${a.employee_uav_id})` : "";
+                            return (
+                              <option key={a.id} value={a.id}>
+                                {isAdmin ? `${dept}${uavId}` : `${a.fullname}${uavId}`}
+                              </option>
+                            );
+                          })}
                       </select>
                     )}
                     <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>

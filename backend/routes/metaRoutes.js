@@ -24,37 +24,50 @@ const ALL_FEATURES = [
 const EMPLOYEE_FEATURES = ["attendance", "bulletins", "tasks", "dpr"];
 
 const DEFAULT_DEPARTMENTS = [
-  "Product Research Department (PRD)", 
-  "Product Engineering Department (PED)",
-  "Product Development Department - Software", 
-  "Product Development Department - Integration & Test Team", 
-  "Product Development Department - Flight Test & Trials", 
-  "Product Development Department - Production, Test & Inspection",
-  "Project Management Team (PMT)", 
-  "Business Management Department (BMD)", 
-  "Quality Assurance (QA)",
-  "Human Resources (HR)", 
-  "Operations",
+  "BMD (Business Management Department)",
+  "PDD - Systems Integration and Testing",
+  "PDD - Flight Tuning and Testing",
+  "PED (Product Engineering Department)",
+  "QAD (Quality Assurance Department)",
+  "HRD (Human Resources Department)",
+  "PDD - Software Department",
+  "PRD (Product Research Department)",
+  "OD (Operations Department)",
+  "PMD (Product Manufacturing Department)",
+  "PDD - Prototype Development",
 ];
 
 
 const DEPT_MAPPING = {
-  // Old PDD- prefix names → full names
-  "PRD-Product Research Department": "Product Research Department (PRD)",
-  "PED-Product Engineering Department": "Product Engineering Department (PED)",
-  "PDD-Software": "Product Development Department - Software",
-  "PDD-I&TT": "Product Development Department - Integration & Test Team",
-  "PDD-FT&T": "Product Development Department - Flight Test & Trials",
-  "PDD-PTI": "Product Development Department - Production, Test & Inspection",
-  "PMT": "Project Management Team (PMT)",
-  "BMD": "Business Management Department (BMD)",
-  "QA":  "Quality Assurance (QA)",
-  "HR":  "Human Resources (HR)",
-  // Intermediate abbreviated names → full names (these appear as duplicates)
-  "Product Development Department - FT&T":  "Product Development Department - Flight Test & Trials",
-  "Product Development Department - I&TT":  "Product Development Department - Integration & Test Team",
-  "Product Development Department - PTI":   "Product Development Department - Production, Test & Inspection",
-  "Product Development Department - I&TT (PDD)": "Product Development Department - Integration & Test Team",
+  // Old full-name style → new abbreviated style
+  "Business Management Department (BMD)": "BMD (Business Management Department)",
+  "Product Engineering Department (PED)": "PED (Product Engineering Department)",
+  "Product Research Department (PRD)":    "PRD (Product Research Department)",
+  "Quality Assurance (QA)":               "QAD (Quality Assurance Department)",
+  "Human Resources (HR)":                 "HRD (Human Resources Department)",
+  "Operations":                           "OD (Operations Department)",
+  "Project Management Team (PMT)":        "PMD (Product Manufacturing Department)",
+  // Old PDD sub-department names → new names
+  "Product Development Department - Software":                     "PDD - Software Department",
+  "Product Development Department - Integration & Test Team":      "PDD - Systems Integration and Testing",
+  "Product Development Department - Flight Test & Trials":         "PDD - Flight Tuning and Testing",
+  "Product Development Department - Production, Test & Inspection": "PDD - Prototype Development",
+  // Abbreviated legacy names
+  "PDD-Software":  "PDD - Software Department",
+  "PDD-I&TT":      "PDD - Systems Integration and Testing",
+  "PDD-FT&T":      "PDD - Flight Tuning and Testing",
+  "PDD-PTI":       "PDD - Prototype Development",
+  "PRD-Product Research Department": "PRD (Product Research Department)",
+  "PED-Product Engineering Department": "PED (Product Engineering Department)",
+  "PMT": "PMD (Product Manufacturing Department)",
+  "BMD": "BMD (Business Management Department)",
+  "QA":  "QAD (Quality Assurance Department)",
+  "HR":  "HRD (Human Resources Department)",
+  // Intermediate abbreviated names
+  "Product Development Department - FT&T":  "PDD - Flight Tuning and Testing",
+  "Product Development Department - I&TT":  "PDD - Systems Integration and Testing",
+  "Product Development Department - PTI":   "PDD - Prototype Development",
+  "Product Development Department - I&TT (PDD)": "PDD - Systems Integration and Testing",
 };
 
 

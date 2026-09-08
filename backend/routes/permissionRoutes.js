@@ -25,6 +25,7 @@ router.get("/admins", verifyToken, async (req, res) => {
       `SELECT id, fullname, username, role 
        FROM users 
        WHERE role IN ('super_admin', 'superadmin', 'admin')
+         AND LOWER(COALESCE(status, 'active')) = 'active'
        ORDER BY fullname ASC`
     );
     res.json(result.rows);

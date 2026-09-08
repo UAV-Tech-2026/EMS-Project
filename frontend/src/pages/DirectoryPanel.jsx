@@ -797,6 +797,7 @@ export default function DirectoryPanel({ filterRole = null }) {
                     style={inp}
                     required
                   >
+                    <option value="">— N/A —</option>
                     {departments.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
@@ -813,27 +814,18 @@ export default function DirectoryPanel({ filterRole = null }) {
                     onChange={e => setEditForm({ ...editForm, assigned_admin_id: e.target.value })}
                     style={inp}
                   >
-                    <option value="">— No assigned admin —</option>
-
-                    {deptAdmins.length > 0 && (
-                      <optgroup label={`Department Admins (${editForm.department || "Current"})`}>
-                        {deptAdmins.map(adm => (
-                          <option key={adm.id} value={String(adm.id)}>
-                            {adm.fullname} ({adm.employee_uav_id || "Admin"}) {adm.department ? `[${adm.department}]` : ""}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-
-                    {otherAdmins.length > 0 && (
-                      <optgroup label="Other Available Admins">
-                        {otherAdmins.map(adm => (
-                          <option key={adm.id} value={String(adm.id)}>
-                            {adm.fullname} ({adm.employee_uav_id || "Admin"}) {adm.department ? `[${adm.department}]` : ""}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
+                    <option value="">— N/A —</option>
+                    {adminsList.map(adm => {
+                      const roleLower = (adm.role || "").toLowerCase();
+                      const isAdmin = roleLower === "admin" || roleLower === "super_admin";
+                      const dept = adm.department ? (adm.department.startsWith("Admin-") ? adm.department : `Admin-${adm.department}`) : "Admin";
+                      const uavId = adm.employee_uav_id ? ` (${adm.employee_uav_id})` : "";
+                      return (
+                        <option key={adm.id} value={String(adm.id)}>
+                          {isAdmin ? `${dept}${uavId}` : `${adm.fullname}${uavId}`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -1456,7 +1448,14 @@ export default function DirectoryPanel({ filterRole = null }) {
                         {isEmp ? "Employee" : isIntern ? "Intern" : "Admin"}
                       </span>
                     </td>
-                    <td className="dp-td-dept">{p.designation || "—"}</td>
+                    <td className="dp-td-dept">
+                      {isAdmin
+                        ? (p.designation
+                            ? (p.designation.startsWith("Admin-") ? p.designation : `Admin-${p.designation}`)
+                            : (p.department ? `Admin-${p.department}` : "Admin"))
+                        : (p.designation || "—")
+                      }
+                    </td>
                     <td>
                       <span className={`dp-status ${isActive ? "dp-status-active" : "dp-status-inactive"}`}>
                         {isActive ? "Active" : "Inactive"}
@@ -1492,47 +1491,42 @@ export default function DirectoryPanel({ filterRole = null }) {
                             <input type="file" accept="image/*" style={{ display: "none" }} disabled={uploadingId === p.id} onChange={(e) => handleFileChange(e, p.id)} />
                           </label>
 
-                          {/* Password Reset + Status Toggle — admin rows only */}
-                          {isAdmin && (
-                            <>
-                              {/* Reset Password */}
-                              <button
-                                onClick={() => { setPwModal({ userId: p.id, name: p.fullname }); setNewPassword(""); setShowPw(false); }}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", gap: "4px",
-                                  padding: "5px 10px", background: "#ede9fe", borderRadius: "6px",
-                                  fontSize: "11px", fontWeight: 700, color: "#7c3aed",
-                                  border: "1px solid #ddd6fe", cursor: "pointer", transition: "all 0.2s"
-                                }}
-                              >
-                                <Key size={11} /> Password
-                              </button>
+                          {/* Reset Password */}
+                          <button
+                            onClick={() => { setPwModal({ userId: p.id, name: p.fullname }); setNewPassword(""); setShowPw(false); }}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: "4px",
+                              padding: "5px 10px", background: "#ede9fe", borderRadius: "6px",
+                              fontSize: "11px", fontWeight: 700, color: "#7c3aed",
+                              border: "1px solid #ddd6fe", cursor: "pointer", transition: "all 0.2s"
+                            }}
+                          >
+                            <Key size={11} /> Password
+                          </button>
 
-                              {/* Active / Deactivate Toggle */}
-                              <button
-                                onClick={() => handleToggleStatus(p)}
-                                disabled={togglingId === p.id}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", gap: "4px",
-                                  padding: "5px 10px", borderRadius: "6px",
-                                  fontSize: "11px", fontWeight: 700, cursor: "pointer",
-                                  border: isActive ? "1px solid #fecaca" : "1px solid #bbf7d0",
-                                  background: isActive ? "#fee2e2" : "#dcfce7",
-                                  color: isActive ? "#b91c1c" : "#15803d",
-                                  opacity: togglingId === p.id ? 0.6 : 1,
-                                  transition: "all 0.2s"
-                                }}
-                              >
-                                {togglingId === p.id
-                                  ? <Loader2 size={11} className="animate-spin" />
-                                  : isActive
-                                    ? <ToggleRight size={11} />
-                                    : <ToggleLeft size={11} />
-                                }
-                                {togglingId === p.id ? "..." : isActive ? "Deactivate" : "Activate"}
-                              </button>
-                            </>
-                          )}
+                          {/* Active / Deactivate Toggle for Employees, Interns & Admins */}
+                          <button
+                            onClick={() => handleToggleStatus(p)}
+                            disabled={togglingId === p.id}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: "4px",
+                              padding: "5px 10px", borderRadius: "6px",
+                              fontSize: "11px", fontWeight: 700, cursor: "pointer",
+                              border: isActive ? "1px solid #fecaca" : "1px solid #bbf7d0",
+                              background: isActive ? "#fee2e2" : "#dcfce7",
+                              color: isActive ? "#b91c1c" : "#15803d",
+                              opacity: togglingId === p.id ? 0.6 : 1,
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            {togglingId === p.id
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : isActive
+                                ? <ToggleRight size={11} />
+                                : <ToggleLeft size={11} />
+                            }
+                            {togglingId === p.id ? "..." : isActive ? "Deactivate" : "Activate"}
+                          </button>
 
                         </div>
                       </td>

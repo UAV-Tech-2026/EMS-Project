@@ -13,7 +13,9 @@ const STATUS_COLORS = {
   "In Progress": { bg: "#dbeafe", color: "#1d4ed8" },
   "On Hold":     { bg: "#fee2e2", color: "#b91c1c" },
   "Completed":   { bg: "#dcfce7", color: "#15803d" },
-  "Review":      { bg: "#f3e8ff", color: "#7c3aed" },
+  "Review":      { label: "REVIEW",       bg: "#f3e8ff", color: "#7c3aed" },
+  "Yet to Start":{ bg: "#e0f2fe", color: "#0369a1" },
+  "Terminated":  { bg: "#f1f5f9", color: "#475569" },
 };
 
 const today   = new Date().toISOString().split("T")[0];

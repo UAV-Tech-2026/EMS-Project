@@ -168,26 +168,18 @@ export default function SuperAdminProfile({ onClose }) {
           <h2 className="pm-title">Edit Profile</h2>
           <p className="pm-subtitle">Update your account information</p>
 
-          {(() => {
-            let pic = user?.profilePic || user?.profile_pic;
-            const baseUrl = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:5000`;
-            if (pic && pic.startsWith("/uploads")) {
-              pic = `${baseUrl}${pic}`;
-            }
-            return (
-              <div className="pm-avatar-row">
-                {pic ? (
-                  <img src={pic} alt="Avatar" style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }} />
-                ) : (
-                  <div className="pm-avatar">{initials}</div>
-                )}
-                <div>
-                  <div className="pm-avatar-name">{formData.name || "Super Admin"}</div>
-                  <div className="pm-avatar-role">Administrator · {user?.email?.split("@")[1] || "uavtech.ai"}</div>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="pm-avatar-row">
+            <img
+              src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
+              alt="Logo"
+              style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+              onError={(e) => { if (e.target.src !== window.location.origin + "/logo.jpg") e.target.src = "/logo.jpg"; }}
+            />
+            <div>
+              <div className="pm-avatar-name">{formData.name || "Super Admin"}</div>
+              <div className="pm-avatar-role">Administrator · {user?.email?.split("@")[1] || "uavtech.ai"}</div>
+            </div>
+          </div>
 
           <div className="pm-fields">
             <div className="pm-field">

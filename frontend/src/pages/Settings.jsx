@@ -172,6 +172,7 @@ export default function Settings() {
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       showToast("error", "File too large. Max 2MB allowed.");
+      e.target.value = "";
       return;
     }
     const formData = new FormData();
@@ -186,9 +187,11 @@ export default function Settings() {
       syncsessionStorage({ profilePic: newPic, profile_pic: res.data.profilePic });
       showToast("success", "Profile photo updated!");
     } catch (err) {
-      showToast("error", "Failed to upload photo.");
+      const msg = err.response?.data?.msg || err.message || "Failed to upload photo.";
+      showToast("error", msg);
     } finally {
       setPhotoUploading(false);
+      e.target.value = ""; // reset so the same file can be re-selected if needed
     }
   };
 

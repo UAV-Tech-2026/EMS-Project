@@ -206,7 +206,11 @@ export default function SuperAdminDashboard() {
 
   // ── WorkStockPro iframe URL ──
   const workstockToken = sessionStorage.getItem("token");
-  const workstockUrl = `${import.meta.env.VITE_WORKSTOCK_URL || `http://${window.location.hostname}:3001`}?token=${workstockToken}`;
+  const wsUrlEnv = import.meta.env.VITE_WORKSTOCK_URL;
+  const wsBase = (wsUrlEnv && wsUrlEnv.startsWith("http"))
+    ? wsUrlEnv
+    : `${window.location.protocol}//${window.location.hostname}:3001`;
+  const workstockUrl = `${wsBase}?token=${workstockToken}`;
 
   return (
     <div className="sad-shell">
@@ -411,19 +415,31 @@ export default function SuperAdminDashboard() {
             </div>
 
             {(() => {
-              let pic = user?.profilePic || user?.profile_pic;
-              if (pic && pic.startsWith("/uploads")) {
-                pic = `${API_URL}${pic}`;
-              }
+              const logoSrc = import.meta.env.VITE_LOGO_URL || "/logo.jpg";
               return (
                 <div className="sad-profile-pill" onClick={() => navigate("/settings")}>
-                  {pic ? (
-                    <img src={pic} alt="Avatar" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    <div className="sad-avatar">{initials(user?.fullname)}</div>
-                  )}
+                  <div style={{
+                    width: 32, height: 32,
+                    borderRadius: "50%",
+                    background: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    padding: 3,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+                    flexShrink: 0
+                  }}>
+                    <img
+                      src={logoSrc}
+                      alt="Logo"
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      onError={(e) => { if (e.target.src !== window.location.origin + "/logo.jpg") e.target.src = "/logo.jpg"; }}
+                    />
+                  </div>
                   <span className="sad-avatar-name">{user?.fullname || "Super Admin"}</span>
                 </div>
+
               );
             })()}
           </div>

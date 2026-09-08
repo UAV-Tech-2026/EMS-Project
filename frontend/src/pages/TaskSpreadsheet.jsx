@@ -6,9 +6,17 @@ import { Save, Plus, Trash2, ArrowLeft, Download, Search, X } from "lucide-react
 import TaskCommentBox from "../components/TaskCommentBox";
 
 const DEPARTMENTS_LIST = [
-  "PRD-Product Research Department", "PED-Product Engineering Department",
-  "PDD-Software", "PDD-I&TT", "PDD-FT&T", "PDD-PTI",
-  "PMT", "BMD", "QA", "HR", "Operations"
+  "BMD (Business Management Department)",
+  "PDD - Systems Integration and Testing",
+  "PDD - Flight Tuning and Testing",
+  "PED (Product Engineering Department)",
+  "QAD (Quality Assurance Department)",
+  "HRD (Human Resources Department)",
+  "PDD - Software Department",
+  "PRD (Product Research Department)",
+  "OD (Operations Department)",
+  "PMD (Product Manufacturing Department)",
+  "PDD - Prototype Development",
 ];
 
 const STATUS_MAP = {
@@ -18,6 +26,18 @@ const STATUS_MAP = {
   "Completed":   { label: "DONE",         bg: "#dcfce7", color: "#15803d", border: "#86efac" },
   "Review":      { label: "REVIEW",       bg: "#f3e8ff", color: "#7c3aed", border: "#d8b4fe" },
   "Yet to Start":{ label: "YET-TO-START", bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc" },
+  "Terminated":  { label: "TERMINATED",   bg: "#f1f5f9", color: "#475569", border: "#cbd5e1" },
+};
+
+export const getEmpLabel = (emp) => {
+  if (!emp) return "";
+  const roleLower = (emp.role || "").toLowerCase();
+  const isAdmin = roleLower === "admin" || roleLower === "super_admin";
+  const rawDept = emp.department || emp.designation || (isAdmin ? "Admin" : "Employee");
+  const dept = rawDept.replace(/^Admin-|^ADMIN-/, "").trim();
+  const prefix = isAdmin ? `Admin-${dept}` : dept;
+  const uavId = emp.employee_uav_id ? ` (${emp.employee_uav_id})` : "";
+  return `${prefix}${uavId}`;
 };
 
 export default function TaskSpreadsheet() {
@@ -54,8 +74,8 @@ export default function TaskSpreadsheet() {
       setEmployees(allAssignable.filter(e => e.role !== "super_admin"));
 
       const mapped = fetchedTasks.map(t => {
-        const assignedEmp = allAssignable.find(e => e.fullname === t.assigned_to_name);
-        const reviewedEmp = allAssignable.find(e => e.fullname === t.reviewed_by);
+        const assignedEmp = allAssignable.find(e => String(e.id) === String(t.assigned_to) || e.fullname === t.assigned_to_name);
+        const reviewedEmp = allAssignable.find(e => String(e.id) === String(t.reviewed_by) || e.fullname === t.reviewed_by);
         return {
           id:                 t.id,
           task_code:          t.task_code || `#${t.id}`,
@@ -64,12 +84,12 @@ export default function TaskSpreadsheet() {
           output_format_type: t.output_format_type || "",
           costing:            t.costing || "",
           man_hours:          t.man_hours || "",
-          assigned_to:        assignedEmp?.id || "",
-          assigned_to_name:   t.assigned_to_name || "",
+          assigned_to:        assignedEmp?.id || t.assigned_to || "",
+          assigned_to_name:   assignedEmp ? getEmpLabel(assignedEmp) : (t.assigned_to_name || ""),
           assigned_to_uav_id: t.assigned_to_uav_id || assignedEmp?.employee_uav_id || "",
           department:         t.assigned_dept || assignedEmp?.department || "",
-          reviewed_by:        reviewedEmp?.id || "",
-          reviewed_by_uav_id: reviewedEmp?.employee_uav_id || "",
+          reviewed_by:        reviewedEmp?.id || t.reviewed_by || "",
+          reviewed_by_uav_id: reviewedEmp?.employee_uav_id || t.reviewed_by_uav_id || "",
           start_date: t.start_date ? t.start_date.split("T")[0] : "",
           due_date:   t.due_date   ? t.due_date.split("T")[0]   : "",
           end_date:   t.end_date   ? t.end_date.split("T")[0]   : "",
@@ -166,7 +186,7 @@ export default function TaskSpreadsheet() {
       const u = { ...t, [field]: value };
       if (field === "assigned_to") {
         const emp = employees.find(e => String(e.id) === String(value));
-        u.assigned_to_name   = emp?.fullname || "";
+        u.assigned_to_name   = emp ? getEmpLabel(emp) : "";
         u.department         = emp?.department || "";
         u.assigned_to_uav_id = emp?.employee_uav_id || "";
       }
@@ -177,10 +197,19 @@ export default function TaskSpreadsheet() {
       return u;
     }));
 
-  const handleDeleteRow = (id, isNew) => {
+  const handleDeleteRow = async (id, isNew) => {
     if (!window.confirm("Remove this row?")) return;
     setTasks(prev => prev.filter(t => t.id !== id));
-    if (!isNew) setDeletedTaskIds(prev => [...prev, id]);
+    if (!isNew) {
+      try {
+        await api.delete(`/tasks/delete/${id}`);
+        setMessage({ type: "success", text: "Task deleted successfully" });
+      } catch (err) {
+        console.error("Delete error:", err);
+        setMessage({ type: "error", text: "Failed to delete task from server" });
+        await fetchInitialData();
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -190,10 +219,9 @@ export default function TaskSpreadsheet() {
       const upserts = tasks
         .filter(t => t.title?.trim())
         .map(t => t.isNew ? api.post("/tasks/assign", t) : api.put(`/tasks/edit/${t.id}`, t));
-      const deletes = deletedTaskIds.map(id => api.delete(`/tasks/delete/${id}`));
-      await Promise.all([...upserts, ...deletes]);
+      await Promise.all(upserts);
       setMessage({ type: "success", text: "✓ Saved successfully!" });
-      fetchInitialData();
+      await fetchInitialData();
     } catch (err) {
       console.error(err);
       setMessage({ type: "error", text: "Error saving. Some changes may not have been recorded." });
@@ -373,10 +401,10 @@ export default function TaskSpreadsheet() {
                   <td style={TD}>
                     <select style={INPUT} value={task.assigned_to}
                       onChange={e => handleChange(task.id,"assigned_to",e.target.value)}>
-                      <option value="">— Select —</option>
+                      <option value="">— N/A —</option>
                       {employees.map(emp => (
                         <option key={emp.id} value={emp.id}>
-                          {emp.fullname} {emp.employee_uav_id ? `(${emp.employee_uav_id})` : `(${emp.role || "unknown"})`}
+                          {getEmpLabel(emp)}
                         </option>
                       ))}
                     </select>
@@ -387,10 +415,10 @@ export default function TaskSpreadsheet() {
                   <td style={TD}>
                     <select style={INPUT} value={task.reviewed_by}
                       onChange={e => handleChange(task.id,"reviewed_by",e.target.value)}>
-                      <option value="">— Select —</option>
+                      <option value="">— N/A —</option>
                       {employees.filter(e => (e.role||"").includes("admin")).map(emp => (
                         <option key={emp.id} value={emp.id}>
-                          {emp.fullname} {emp.employee_uav_id ? `(${emp.employee_uav_id})` : `(${emp.role || "admin"})`}
+                          {getEmpLabel(emp)}
                         </option>
                       ))}
                     </select>
