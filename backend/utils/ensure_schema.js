@@ -105,6 +105,7 @@ export const ensureSchema = async () => {
         description TEXT,
         status VARCHAR(50) DEFAULT 'Pending',
         days_taken VARCHAR(50),
+        priority VARCHAR(20) DEFAULT 'Normal',
         link TEXT,
         assignment_date DATE DEFAULT CURRENT_DATE,
         created_at TIMESTAMP DEFAULT NOW()
@@ -526,6 +527,10 @@ export const ensureSchema = async () => {
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS output_format_type VARCHAR(200)`);
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS costing NUMERIC DEFAULT 0`);
     await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS man_hours NUMERIC DEFAULT 0`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'Normal'`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_by INTEGER REFERENCES users(id)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewed_by INTEGER REFERENCES users(id)`);
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS depends_on INTEGER REFERENCES tasks(id)`);
 
     // tasks — recurring-task columns (from add_recurring_columns.js, integrated here so
     //          they are created automatically on every server start, even after a DB reset)

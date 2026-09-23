@@ -1,302 +1,370 @@
-/* ============================================================
-   AttendanceUpload.css
-   Light-mode stylesheet — replaces all inline dark styles
-   ============================================================ */
-
-/* ── CSS Variables ─────────────────────────────────────────── */
 :root {
-  --au-font:          'DM Sans', sans-serif;
+  --au-font: 'DM Sans', sans-serif;
 
   /* Surfaces */
-  --au-bg-page:       #f8fafc;
-  --au-bg-card:       #ffffff;
-  --au-bg-input:      #f1f5f9;
+  --au-bg-page: #f8fafc;
+  --au-bg-card: #ffffff;
+  --au-bg-input: #f1f5f9;
   --au-bg-tab-active: #ffffff;
-  --au-bg-tab-bar:    #e2e8f0;
-  --au-bg-hint:       #f0fdf4;
-  --au-bg-dropzone:   #f8fafc;
+  --au-bg-tab-bar: #e2e8f0;
+  --au-bg-hint: #f0fdf4;
+  --au-bg-dropzone: #f8fafc;
   --au-bg-dropzone-active: #ecfdf5;
-  --au-bg-format:     #f8fafc;
-  --au-bg-header-cell:#dbeafe;
-  --au-bg-data-cell:  #f1f5f9;
+  --au-bg-format: #f8fafc;
+  --au-bg-header-cell: #dbeafe;
+  --au-bg-data-cell: #f1f5f9;
 
   /* Borders */
-  --au-border:        #e2e8f0;
-  --au-border-focus:  #10b981;
-  --au-border-drop:   #cbd5e1;
+  --au-border: #e2e8f0;
+  --au-border-focus: #10b981;
+  --au-border-drop: #cbd5e1;
   --au-border-drop-active: #10b981;
 
   /* Text */
-  --au-text-primary:  #0f172a;
-  --au-text-secondary:#64748b;
-  --au-text-muted:    #94a3b8;
+  --au-text-primary: #0f172a;
+  --au-text-secondary: #64748b;
+  --au-text-muted: #94a3b8;
   --au-text-header-cell: #1d4ed8;
-  --au-text-data-cell:#475569;
+  --au-text-data-cell: #475569;
 
   /* Brand */
-  --au-green:         #10b981;
-  --au-green-dark:    #059669;
-  --au-green-text:    #065f46;
-  --au-blue:          #3b82f6;
-  --au-blue-dark:     #2563eb;
-  --au-blue-link:     #3b82f6;
+  --au-green: #10b981;
+  --au-green-dark: #059669;
+  --au-green-text: #065f46;
+  --au-blue: #3b82f6;
+  --au-blue-dark: #2563eb;
+  --au-blue-link: #3b82f6;
 
   /* States */
-  --au-success-bg:    #f0fdf4;
-  --au-success-border:#10b981;
-  --au-success-text:  #065f46;
-  --au-error-bg:      #fef2f2;
-  --au-error-border:  #ef4444;
-  --au-error-text:    #991b1b;
+  --au-success-bg: #f0fdf4;
+  --au-success-border: #10b981;
+  --au-success-text: #065f46;
+  --au-error-bg: #fef2f2;
+  --au-error-border: #ef4444;
+  --au-error-text: #991b1b;
 
   /* Disabled */
-  --au-disabled-bg:   #f1f5f9;
+  --au-disabled-bg: #f1f5f9;
   --au-disabled-text: #94a3b8;
 
   /* Misc */
-  --au-radius-sm:     6px;
-  --au-radius-md:     8px;
-  --au-radius-lg:     10px;
-  --au-shadow:        0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --au-shadow-card:   0 4px 16px rgba(0,0,0,.06);
+  --au-radius-sm: 6px;
+  --au-radius-md: 8px;
+  --au-radius-lg: 10px;
+  --au-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 1px 2px rgba(0, 0, 0, .04);
+  --au-shadow-card: 0 4px 16px rgba(0, 0, 0, .06);
 }
 
 /* ── Wrapper ─────────────────────────────────────────────────── */
 .au-root {
-  font-family:    var(--au-font);
-  color:          var(--au-text-primary);
-  background:     var(--au-bg-page);
-  padding:        1.5rem;
-  border-radius:  var(--au-radius-lg);
-  max-width:      480px;
+  font-family: var(--au-font);
+  color: var(--au-text-primary);
+  background: var(--au-bg-page);
+  padding: 1.5rem;
+  border-radius: var(--au-radius-lg);
+  max-width: 480px;
 }
 
 /* ── Title block ─────────────────────────────────────────────── */
 .au-title-block {
   margin-bottom: 1.25rem;
 }
+
 .au-title-block h3 {
-  margin:       0 0 4px;
-  font-size:    16px;
-  font-weight:  700;
-  color:        var(--au-text-primary);
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--au-text-primary);
 }
+
 .au-title-block p {
-  margin:       0;
-  font-size:    12px;
-  color:        var(--au-text-secondary);
+  margin: 0;
+  font-size: 12px;
+  color: var(--au-text-secondary);
 }
 
 /* ── Tab switcher ────────────────────────────────────────────── */
 .au-tabs {
-  display:        flex;
-  background:     var(--au-bg-tab-bar);
-  border:         1px solid var(--au-border);
-  border-radius:  var(--au-radius-md);
-  overflow:       hidden;
-  margin-bottom:  1.25rem;
-  width:          fit-content;
+  display: flex;
+  background: var(--au-bg-tab-bar);
+  border: 1px solid var(--au-border);
+  border-radius: var(--au-radius-md);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  width: fit-content;
 }
+
 .au-tab-btn {
-  padding:        8px 20px;
-  font-size:      12px;
-  font-weight:    600;
-  background:     transparent;
-  color:          var(--au-text-secondary);
-  border:         none;
-  cursor:         pointer;
-  font-family:    var(--au-font);
-  transition:     all 0.15s ease;
+  padding: 8px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--au-text-secondary);
+  border: none;
+  cursor: pointer;
+  font-family: var(--au-font);
+  transition: all 0.15s ease;
 }
+
 .au-tab-btn.active {
-  background:     var(--au-bg-tab-active);
-  color:          var(--au-green);
-  box-shadow:     var(--au-shadow);
+  background: var(--au-bg-tab-active);
+  color: var(--au-green);
+  box-shadow: var(--au-shadow);
 }
+
 .au-tab-btn:hover:not(.active) {
-  color:          var(--au-text-primary);
+  color: var(--au-text-primary);
 }
 
 /* ── Drop zone ───────────────────────────────────────────────── */
 .au-dropzone {
-  display:          flex;
-  flex-direction:   column;
-  align-items:      center;
-  justify-content:  center;
-  border:           2px dashed var(--au-border-drop);
-  border-radius:    var(--au-radius-lg);
-  padding:          2rem;
-  cursor:           pointer;
-  background:       var(--au-bg-dropzone);
-  transition:       all 0.2s ease;
-  margin-bottom:    1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--au-border-drop);
+  border-radius: var(--au-radius-lg);
+  padding: 2rem;
+  cursor: pointer;
+  background: var(--au-bg-dropzone);
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
 }
+
 .au-dropzone.has-file {
-  background:       var(--au-bg-dropzone-active);
-  border-color:     var(--au-border-drop-active);
+  background: var(--au-bg-dropzone-active);
+  border-color: var(--au-border-drop-active);
 }
+
 .au-dropzone input[type="file"] {
   display: none;
 }
+
 .au-dropzone-label {
-  margin-top:   10px;
-  font-size:    13px;
-  color:        var(--au-text-secondary);
-  font-weight:  500;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--au-text-secondary);
+  font-weight: 500;
 }
+
 .au-dropzone.has-file .au-dropzone-label {
   color: var(--au-green);
 }
+
 .au-dropzone-size {
-  font-size:  11px;
-  color:      var(--au-text-muted);
+  font-size: 11px;
+  color: var(--au-text-muted);
   margin-top: 4px;
 }
 
 /* ── Buttons ─────────────────────────────────────────────────── */
 .au-btn {
-  width:          100%;
-  padding:        11px;
-  border:         none;
-  border-radius:  var(--au-radius-md);
-  font-size:      13px;
-  font-weight:    700;
-  cursor:         pointer;
-  font-family:    var(--au-font);
-  display:        flex;
-  align-items:    center;
-  justify-content:center;
-  gap:            8px;
-  transition:     all 0.15s ease;
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: var(--au-radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--au-font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s ease;
 }
+
 .au-btn-green {
   background: var(--au-green);
-  color:      #ffffff;
+  color: #ffffff;
 }
+
 .au-btn-green:hover:not(:disabled) {
   background: var(--au-green-dark);
 }
+
 .au-btn-blue {
   background: var(--au-blue);
-  color:      #ffffff;
+  color: #ffffff;
 }
+
 .au-btn-blue:hover:not(:disabled) {
   background: var(--au-blue-dark);
 }
+
 .au-btn:disabled,
 .au-btn-disabled {
   background: var(--au-disabled-bg);
-  color:      var(--au-disabled-text);
-  cursor:     not-allowed;
+  color: var(--au-disabled-text);
+  cursor: not-allowed;
 }
 
 /* ── Google Drive panel ──────────────────────────────────────── */
 .au-drive-info {
-  background:     var(--au-bg-card);
-  border:         1px solid var(--au-border);
-  border-radius:  var(--au-radius-lg);
-  padding:        14px;
-  margin-bottom:  1rem;
-  box-shadow:     var(--au-shadow);
+  background: var(--au-bg-card);
+  border: 1px solid var(--au-border);
+  border-radius: var(--au-radius-lg);
+  padding: 14px;
+  margin-bottom: 1rem;
+  box-shadow: var(--au-shadow);
 }
+
 .au-drive-info p {
-  margin:       0 0 10px;
-  font-size:    12px;
-  color:        var(--au-text-secondary);
-  line-height:  1.6;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--au-text-secondary);
+  line-height: 1.6;
 }
+
 .au-drive-info a {
-  font-size:        11px;
-  color:            var(--au-blue-link);
-  display:          flex;
-  align-items:      center;
-  gap:              4px;
-  text-decoration:  none;
+  font-size: 11px;
+  color: var(--au-blue-link);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
 }
+
 .au-drive-info a:hover {
   text-decoration: underline;
 }
 
 /* ── Text input ──────────────────────────────────────────────── */
 .au-input {
-  width:          100%;
-  padding:        10px 14px;
-  background:     var(--au-bg-input);
-  border:         1px solid var(--au-border);
-  border-radius:  var(--au-radius-md);
-  color:          var(--au-text-primary);
-  font-size:      13px;
-  font-family:    var(--au-font);
-  outline:        none;
-  margin-bottom:  1rem;
-  box-sizing:     border-box;
-  transition:     border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--au-bg-input);
+  border: 1px solid var(--au-border);
+  border-radius: var(--au-radius-md);
+  color: var(--au-text-primary);
+  font-size: 13px;
+  font-family: var(--au-font);
+  outline: none;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+
 .au-input::placeholder {
   color: var(--au-text-muted);
 }
+
 .au-input:focus {
   border-color: var(--au-border-focus);
-  box-shadow:   0 0 0 3px rgba(16,185,129,.12);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, .12);
 }
 
 /* ── Result banner ───────────────────────────────────────────── */
 .au-result {
-  margin-top:     1rem;
-  padding:        12px 14px;
-  border-radius:  var(--au-radius-md);
-  display:        flex;
-  align-items:    center;
-  gap:            10px;
+  margin-top: 1rem;
+  padding: 12px 14px;
+  border-radius: var(--au-radius-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+
 .au-result.success {
   background: var(--au-success-bg);
-  border:     1px solid var(--au-success-border);
-  color:      var(--au-success-text);
+  border: 1px solid var(--au-success-border);
+  color: var(--au-success-text);
 }
+
 .au-result.error {
   background: var(--au-error-bg);
-  border:     1px solid var(--au-error-border);
-  color:      var(--au-error-text);
+  border: 1px solid var(--au-error-border);
+  color: var(--au-error-text);
 }
+
 .au-result span {
-  font-size:    13px;
-  font-weight:  500;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* ── Expected format table ───────────────────────────────────── */
 .au-format {
-  margin-top:     1.25rem;
-  background:     var(--au-bg-format);
-  border:         1px solid var(--au-border);
-  border-radius:  var(--au-radius-md);
-  padding:        12px 14px;
+  margin-top: 1.25rem;
+  background: var(--au-bg-format);
+  border: 1px solid var(--au-border);
+  border-radius: var(--au-radius-md);
+  padding: 12px 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
+
 .au-format-label {
-  margin:           0 0 8px;
-  font-size:        11px;
-  font-weight:      600;
-  color:            var(--au-text-muted);
-  text-transform:   uppercase;
-  letter-spacing:   0.05em;
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--au-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
+
 .au-format-grid {
-  display:               grid;
+  display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap:                   4px;
-  font-size:             11px;
+  gap: 4px;
+  font-size: 11px;
+  min-width: 320px;
 }
+
 .au-format-cell {
-  padding:        4px 6px;
-  border-radius:  var(--au-radius-sm);
-  text-align:     center;
+  padding: 4px 6px;
+  border-radius: var(--au-radius-sm);
+  text-align: center;
 }
+
 .au-format-cell.header {
-  background:   var(--au-bg-header-cell);
-  color:        var(--au-text-header-cell);
-  font-weight:  600;
+  background: var(--au-bg-header-cell);
+  color: var(--au-text-header-cell);
+  font-weight: 600;
 }
+
 .au-format-cell.data {
   background: var(--au-bg-data-cell);
-  color:      var(--au-text-data-cell);
+  color: var(--au-text-data-cell);
+}
+
+@media (max-width: 480px) {
+  .au-root {
+    padding: 1rem;
+    max-width: 100%;
+  }
+}
+
+/* ── Excel Live Preview Table Styling ── */
+.excel-preview-container {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 580px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.excel-preview-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.excel-preview-container th,
+.excel-preview-container td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 6px 10px !important;
+  text-align: center !important;
+  color: #1e293b;
+}
+
+.excel-preview-container tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.excel-preview-container tr:hover td {
+  background: #e0f2fe;
 }

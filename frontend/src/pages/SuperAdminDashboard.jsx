@@ -5,7 +5,8 @@ import { api, API_URL } from "../utils/api";
 import {
   Users, LogOut, UserPlus,
   Calendar, Download, ClipboardList,
-  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote, Building2, Activity
+  ClipboardCheck, Shield, LayoutDashboard, MessageSquare, CalendarCheck, Bell, Package, Briefcase, FileSpreadsheet, Banknote, Building2, Activity,
+  Menu, X, TrendingUp
 } from "lucide-react";
 import ControlPanel from "./ControlPanel";
 import AttendanceRecords from "./AttendanceRecords";
@@ -18,6 +19,7 @@ import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
 import Departments from "./Departments";
 import MeetingCalendar from "./MeetingCalendar";
+import PerformanceIndex from "./PerformanceIndex";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
@@ -82,6 +84,7 @@ export default function SuperAdminDashboard() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(true);
   const notifRef = useRef(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [pendingRequests, setPendingRequests] = useState([]);
 
@@ -215,8 +218,17 @@ export default function SuperAdminDashboard() {
   return (
     <div className="sad-shell">
 
+      {/* ── MOBILE OVERLAY ── */}
+      {mobileSidebarOpen && (
+        <div
+          className="sad-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close sidebar"
+        />
+      )}
+
       {/* ── SIDEBAR ── */}
-      <aside className="sad-sidebar">
+      <aside className={`sad-sidebar ${mobileSidebarOpen ? "sad-sidebar-open" : ""}`}>
         <div className="sad-logo-area">
           <div className="sad-logo-mark">
             <div style={{
@@ -249,6 +261,13 @@ export default function SuperAdminDashboard() {
               <div className="sad-logo-text">WorkStockPro</div>
               <div className="sad-logo-sub">Super Admin</div>
             </div>
+            <button
+              className="sad-sidebar-close-btn"
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -257,14 +276,14 @@ export default function SuperAdminDashboard() {
 
           <div
             className={`sad-nav-item ${activeView === "dashboard" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => { setActiveView("dashboard"); setMobileSidebarOpen(false); }}
           >
             <LayoutDashboard size={18} /> Dashboard
           </div>
 
           <div
             className={`sad-nav-item ${activeView === "request-panel" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("request-panel")}
+            onClick={() => { setActiveView("request-panel"); setMobileSidebarOpen(false); }}
             style={{ position: "relative" }}
           >
             <MessageSquare size={18} /> Request Panel
@@ -288,36 +307,42 @@ export default function SuperAdminDashboard() {
 
           <div
             className={`sad-nav-item ${activeView === "control-panel" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("control-panel")}
+            onClick={() => { setActiveView("control-panel"); setMobileSidebarOpen(false); }}
           >
             <Shield size={18} /> Control Panel
           </div>
 
           <div
             className={`sad-nav-item ${activeView === "directory" ? "sad-active" : ""}`}
-            onClick={() => { setDirectoryFilter(null); setActiveView("directory"); }}
+            onClick={() => { setDirectoryFilter(null); setActiveView("directory"); setMobileSidebarOpen(false); }}
           >
             <Users size={18} /> Directory
           </div>
 
           {/* <div
             className={`sad-nav-item ${activeView === "permissions" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("permissions")}
+            onClick={() => { setActiveView("permissions"); setMobileSidebarOpen(false); }}
           >
             <Shield size={18} /> User Permissions
           </div> */}
 
-          {/* ── WorkStockPro Sidebar Item ── */}
+          <div
+            className={`sad-nav-item ${activeView === "performance-index" ? "sad-active" : ""}`}
+            onClick={() => { setActiveView("performance-index"); setMobileSidebarOpen(false); }}
+          >
+            <TrendingUp size={18} /> Performance Index
+          </div>
+
           <div
             className={`sad-nav-item ${activeView === "workstockpro" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("workstockpro")}
+            onClick={() => { setActiveView("workstockpro"); setMobileSidebarOpen(false); }}
           >
             <Package size={18} /> WorkStockPro
           </div>
 
           <div
             className={`sad-nav-item ${activeView === "activity-logs" ? "sad-active" : ""}`}
-            onClick={() => setActiveView("activity-logs")}
+            onClick={() => { setActiveView("activity-logs"); setMobileSidebarOpen(false); }}
           >
             <Activity size={18} /> Activity Audit Logs
           </div>
@@ -337,6 +362,13 @@ export default function SuperAdminDashboard() {
 
         <div className="sad-topbar">
           <div className="sad-topbar-left">
+            <button
+              className="sad-mobile-menu-btn"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu size={22} />
+            </button>
             <div className="sad-page-title">Super Admin Dashboard</div>
           </div>
 
@@ -488,6 +520,8 @@ export default function SuperAdminDashboard() {
                 title="WorkStockPro"
               />
             </div>
+          ) : activeView === "performance-index" ? (
+            <PerformanceIndex />
           ) : activeView === "activity-logs" ? (
             <div style={{ padding: "24px" }}>
               <SystemActivityLogs limit={100} />
@@ -554,6 +588,7 @@ export default function SuperAdminDashboard() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginTop: "24px" }}>
                 {[
+                  { label: "Performance Index", desc: "View task analytics & metrics", icon: <TrendingUp size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setActiveView("performance-index") },
                   { label: "Enroll Member", desc: "Add new Admin/Employee", icon: <UserPlus size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setShowCreateUser(true) },
                   { label: "Upload Attendance", desc: "Excel or Google Drive", icon: <FileSpreadsheet size={22} />, color: "#f59e0b", bg: "#fffbeb", action: () => setShowUpload(true) },
                   { label: "Leave Management", desc: "Approve / Track Leaves", icon: <CalendarCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowLeaveManagement(true) },

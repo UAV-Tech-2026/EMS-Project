@@ -19,7 +19,8 @@
 
 .stdc-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--stdc-bg);
   font-family: 'DM Sans', sans-serif;
   color: var(--stdc-text-main);
@@ -482,8 +483,8 @@
 
 .stdc-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
   margin-bottom: 24px;
 }
 
@@ -777,23 +778,177 @@
 .stdc-dl-confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 
+/* ── Mobile Sidebar Drawer & Overlay ── */
+.stdc-mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: #0f172a;
+  margin-right: 10px;
+  transition: all 0.2s ease;
+}
+
+.stdc-mobile-menu-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.stdc-sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: #ffffff;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+.stdc-sidebar-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.stdc-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 998;
+  animation: stdcTickerScroll 0.2s ease;
+}
+
 @media (max-width: 1100px) {
   .stdc-stats-row   { grid-template-columns: repeat(2, 1fr); }
   .stdc-actions-grid { grid-template-columns: repeat(2, 1fr); }
   .stdc-bottom-row  { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 700px) {
-  .stdc-sidebar { width: 60px; }
+@media (max-width: 768px), (max-width: 700px), (max-width: 680px) {
+  .stdc-mobile-menu-btn {
+    display: flex;
+  }
+
+  .stdc-sidebar-close-btn {
+    display: flex;
+  }
+
+  .stdc-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 280px;
+    max-width: 85vw;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+    display: flex !important;
+  }
+
+  .stdc-sidebar.stdc-sidebar-open {
+    transform: translateX(0);
+  }
+
   .stdc-logo-text,
   .stdc-logo-sub,
-  .stdc-nav-label,
-  .stdc-avatar-name { display: none; }
-  .stdc-content { padding: 16px; }
-  .stdc-stats-row { grid-template-columns: 1fr 1fr; }
-  .stdc-actions-grid { grid-template-columns: 1fr; }
-  .stdc-attendance-banner { flex-direction: column; align-items: flex-start; }
+  .stdc-nav-label {
+    display: block !important;
+  }
+
+  .stdc-avatar-name {
+    display: none;
+  }
+
+  .stdc-topbar {
+    padding: 0 12px;
+    height: 56px;
+    gap: 8px;
+  }
+
+  .stdc-topbar-left {
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .stdc-page-title {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stdc-date-chip {
+    display: none;
+  }
+
+  .stdc-content {
+    padding: 12px 8px;
+  }
+
+  .stdc-stats-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stdc-actions-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stdc-attendance-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .stdc-table-wrapper,
+  .stdc-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .stdc-modal-box {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    padding: 16px !important;
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 16px;
+  }
 }
+
+@media (max-width: 480px) {
+  .stdc-topbar-right {
+    gap: 4px;
+  }
+
+  .stdc-stat-card {
+    padding: 12px;
+  }
+
+  .stdc-action-card {
+    padding: 10px 12px;
+  }
+
+  .stdc-user-btn {
+    padding: 4px 8px;
+  }
+}
+
 
 
 .stdc-top-ticker {

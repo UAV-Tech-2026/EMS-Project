@@ -247,8 +247,29 @@
 }
 
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-width: 680px) {
+  .leave-container {
+    padding: 14px 10px;
+  }
+
+  .leave-scroll-content {
+    padding: 14px 10px 30px;
+  }
+
+  .leave-card {
+    padding: 16px 14px;
+  }
+
   .leave-date-row {
     grid-template-columns: 1fr;
+  }
+
+  .leave-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .leave-table th, .leave-table td {
+    padding: 12px 14px;
   }
 }

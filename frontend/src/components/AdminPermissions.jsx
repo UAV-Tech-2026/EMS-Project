@@ -18,6 +18,7 @@ const EMS_FEATURES = [
   { name: "enroll",             label: "Enroll Member",      desc: "Onboard new employees, admins or interns" },
   { name: "meetings",           label: "Meetings",           desc: "Schedule and coordinate team syncs" },
   { name: "request_panel",      label: "Request Panel",      desc: "Manage and submit administrative requests" },
+  { name: "performance_index",  label: "Performance Index",  desc: "View employee performance dashboard, task details, time taken, and pie chart metrics" },
 ];
 
 

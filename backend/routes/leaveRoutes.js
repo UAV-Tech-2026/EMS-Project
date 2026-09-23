@@ -130,8 +130,9 @@ router.post("/apply", verifyToken, async (req, res) => {
       }
     }
 
+    // Employees → routed to dept admin; Admins → routed to super admin
     const target_approver_role = (role?.toLowerCase() === "admin" || (role && role.toLowerCase().replace(/[^a-z]/g, '') === "superadmin")) ? "super_admin" : "dept_admin";
-    
+
     await pool.query(`
       INSERT INTO leaves
         (user_id, employee_uav_id, name, leave_type, from_date, to_date,
@@ -143,11 +144,35 @@ router.post("/apply", verifyToken, async (req, res) => {
       reason || "", certificate_path || null, target_approver_role
     ]);
 
+    // ── Notify all relevant approvers ──────────────────────────────────────
+    // 1. Super Admins  — always notified
+    // 2. HR Admins     — admins whose department is 'HR'
+    // 3. Dept Admins   — admins in the same department as the applicant
+    try {
+      const approversRes = await pool.query(`
+        SELECT DISTINCT id FROM users
+        WHERE
+          LOWER(role) IN ('super_admin', 'superadmin')
+          OR (LOWER(role) = 'admin' AND LOWER(department) = 'hr')
+          OR (LOWER(role) = 'admin' AND department = $1)
+      `, [department]);
+
+      const notifMessage = `📋 New ${leave_type} leave request from ${fullname}${department ? ` (${department})` : ""} — ${total_days} day(s) [${from_date} to ${to_date}]. Pending your approval.`;
+
+      await Promise.all(
+        approversRes.rows.map(({ id }) => createNotification(id, notifMessage, "info"))
+      );
+    } catch (notifErr) {
+      // Non-fatal — leave was saved, just log the notification error
+      console.error("⚠️ Failed to notify approvers:", notifErr.message);
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     res.status(201).json({
       msg: "Leave applied successfully",
       routed_to: target_approver_role === "super_admin"
         ? "Super Admin"
-        : "Department Admin or Super Admin"
+        : "HR Admin, Department Admin & Super Admin"
     });
   } catch (err) {
     console.error("❌ LEAVE APPLY ERROR:", err.message);

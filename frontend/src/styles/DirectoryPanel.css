@@ -149,12 +149,15 @@
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dp-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
+  min-width: 520px;
 }
 
 .dp-table thead th {

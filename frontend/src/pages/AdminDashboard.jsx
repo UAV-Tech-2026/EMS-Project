@@ -6,7 +6,8 @@ import {
   Users, LogOut, UserPlus,
   Calendar, Download, FileSpreadsheet,
   ClipboardCheck, LayoutDashboard, MessageSquare, Bell, Shield, CalendarCheck, Banknote, ClipboardList, Package, Plane,
-  ArrowDownToLine, ArrowUpFromLine, List, FileBarChart, Activity
+  ArrowDownToLine, ArrowUpFromLine, List, FileBarChart, Activity,
+  Menu, X, TrendingUp
 } from "lucide-react";
 import AttendanceRecords from "./AttendanceRecords";
 import BulkAttendance from "./BulkAttendance";
@@ -18,6 +19,7 @@ import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
 import ControlPanel from "./ControlPanel";
 import MeetingCalendar from "./MeetingCalendar";
+import PerformanceIndex from "./PerformanceIndex";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
@@ -70,6 +72,7 @@ export default function AdminDashboard() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(true);
   const notifRef = useRef(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [pendingRequests, setPendingRequests] = useState([]);
 
@@ -226,6 +229,7 @@ export default function AdminDashboard() {
 
   const isSuperAdmin = user?.role?.toLowerCase() === "super_admin";
 
+  const workstockToken = sessionStorage.getItem("token");
   const wsUrlEnv = import.meta.env.VITE_WORKSTOCK_URL;
   const wsBase = (wsUrlEnv && wsUrlEnv.startsWith("http"))
     ? wsUrlEnv
@@ -274,8 +278,17 @@ export default function AdminDashboard() {
   return (
     <div className="stdc-shell">
 
+      {/* ── MOBILE OVERLAY ── */}
+      {mobileSidebarOpen && (
+        <div
+          className="stdc-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close sidebar"
+        />
+      )}
+
       {/* ── Sidebar ── */}
-      <aside className="stdc-sidebar">
+      <aside className={`stdc-sidebar ${mobileSidebarOpen ? "stdc-sidebar-open" : ""}`}>
         <div className="stdc-logo-area">
           <div className="stdc-logo-mark">
             <div style={{
@@ -306,6 +319,13 @@ export default function AdminDashboard() {
               <div className="stdc-logo-text">WorkStockPro</div>
               <div className="stdc-logo-sub" title={user?.department || "Admin Portal"}>{user?.department || "Admin Portal"}</div>
             </div>
+            <button
+              className="stdc-sidebar-close-btn"
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -315,7 +335,7 @@ export default function AdminDashboard() {
           {/* Dashboard — always visible */}
           <div
             className={`stdc-nav-item ${activeView === "dashboard" ? "stdc-nav-active" : ""}`}
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => { setActiveView("dashboard"); setMobileSidebarOpen(false); }}
           >
             <LayoutDashboard size={18} /> Dashboard
           </div>
@@ -324,7 +344,7 @@ export default function AdminDashboard() {
           {canRead("request_panel") && (
             <div
               className={`stdc-nav-item ${activeView === "request-panel" ? "stdc-nav-active" : ""}`}
-              onClick={() => setActiveView("request-panel")}
+              onClick={() => { setActiveView("request-panel"); setMobileSidebarOpen(false); }}
               style={{ position: "relative" }}
             >
               <MessageSquare size={18} /> Request Panel
@@ -351,7 +371,7 @@ export default function AdminDashboard() {
           {canRead("leaves") && (
             <div
               className={`stdc-nav-item ${activeView === "leaves" ? "stdc-nav-active" : ""}`}
-              onClick={() => setActiveView("leaves")}
+              onClick={() => { setActiveView("leaves"); setMobileSidebarOpen(false); }}
             >
               <ClipboardCheck size={18} /> Leave Management
             </div>
@@ -360,7 +380,7 @@ export default function AdminDashboard() {
           {/* My Leave — always visible (personal) */}
           <div
             className={`stdc-nav-item ${activeView === "my-leave" ? "stdc-nav-active" : ""}`}
-            onClick={() => setActiveView("my-leave")}
+            onClick={() => { setActiveView("my-leave"); setMobileSidebarOpen(false); }}
           >
             <Plane size={18} /> My Leave
           </div>
@@ -369,7 +389,7 @@ export default function AdminDashboard() {
           {canRead("directory") && (
             <div
               className={`stdc-nav-item ${activeView === "directory" ? "stdc-nav-active" : ""}`}
-              onClick={() => setActiveView("directory")}
+              onClick={() => { setActiveView("directory"); setMobileSidebarOpen(false); }}
             >
               <Users size={18} /> Directory
             </div>
@@ -379,15 +399,25 @@ export default function AdminDashboard() {
           {canRead("dpr") && (
             <div
               className={`stdc-nav-item ${activeView === "dpr" ? "stdc-nav-active" : ""}`}
-              onClick={() => setActiveView("dpr")}
+              onClick={() => { setActiveView("dpr"); setMobileSidebarOpen(false); }}
             >
               <ClipboardList size={18} /> DPR Overview
             </div>
           )}
 
+          {/* Performance Index — permission gated */}
+          {canRead("performance_index") && (
+            <div
+              className={`stdc-nav-item ${activeView === "performance-index" ? "stdc-nav-active" : ""}`}
+              onClick={() => { setActiveView("performance-index"); setMobileSidebarOpen(false); }}
+            >
+              <TrendingUp size={18} /> Performance Index
+            </div>
+          )}
+
           <div
             className={`stdc-nav-item ${activeView === "activity-logs" ? "stdc-nav-active" : ""}`}
-            onClick={() => setActiveView("activity-logs")}
+            onClick={() => { setActiveView("activity-logs"); setMobileSidebarOpen(false); }}
           >
             <Activity size={18} /> Activity Audit Logs
           </div>
@@ -400,7 +430,7 @@ export default function AdminDashboard() {
               {canRead("workstockpro") && (
                 <div
                   className={`stdc-nav-item ${activeView === "workstockpro" ? "stdc-nav-active" : ""}`}
-                  onClick={() => setActiveView("workstockpro")}
+                  onClick={() => { setActiveView("workstockpro"); setMobileSidebarOpen(false); }}
                 >
                   <Package size={18} /> SMS Dashboard
                 </div>
@@ -409,7 +439,7 @@ export default function AdminDashboard() {
               {canRead("sms_stock_in") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_stock_in" ? "stdc-nav-active" : ""}`}
-                  onClick={() => setActiveView("sms_stock_in")}
+                  onClick={() => { setActiveView("sms_stock_in"); setMobileSidebarOpen(false); }}
                 >
                   <ArrowDownToLine size={18} /> Stock In
                 </div>
@@ -418,7 +448,7 @@ export default function AdminDashboard() {
               {canRead("sms_withdrawal") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_withdrawal" ? "stdc-nav-active" : ""}`}
-                  onClick={() => setActiveView("sms_withdrawal")}
+                  onClick={() => { setActiveView("sms_withdrawal"); setMobileSidebarOpen(false); }}
                 >
                   <ArrowUpFromLine size={18} /> Withdrawal
                 </div>
@@ -427,7 +457,7 @@ export default function AdminDashboard() {
               {canRead("sms_master_list") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_master_list" ? "stdc-nav-active" : ""}`}
-                  onClick={() => setActiveView("sms_master_list")}
+                  onClick={() => { setActiveView("sms_master_list"); setMobileSidebarOpen(false); }}
                 >
                   <List size={18} /> Master List
                 </div>
@@ -436,7 +466,7 @@ export default function AdminDashboard() {
               {canRead("sms_reports") && (
                 <div
                   className={`stdc-nav-item ${activeView === "sms_reports" ? "stdc-nav-active" : ""}`}
-                  onClick={() => setActiveView("sms_reports")}
+                  onClick={() => { setActiveView("sms_reports"); setMobileSidebarOpen(false); }}
                 >
                   <FileBarChart size={18} /> All Withdrawals
                 </div>
@@ -448,7 +478,7 @@ export default function AdminDashboard() {
           {isSuperAdmin && (
             <div
               className={`stdc-nav-item ${activeView === "control-panel" ? "stdc-nav-active" : ""}`}
-              onClick={() => setActiveView("control-panel")}
+              onClick={() => { setActiveView("control-panel"); setMobileSidebarOpen(false); }}
             >
               <Shield size={18} /> Control Panel
             </div>
@@ -470,6 +500,13 @@ export default function AdminDashboard() {
 
         <div className="stdc-topbar">
           <div className="stdc-topbar-left">
+            <button
+              className="stdc-mobile-menu-btn"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu size={22} />
+            </button>
             <div className="stdc-page-title">
               {user?.department ? `${user.department} Dashboard` : "Admin Dashboard"}
             </div>
@@ -602,6 +639,8 @@ export default function AdminDashboard() {
                 title="WorkStockPro"
               />
             </div>
+          ) : activeView === "performance-index" && canRead("performance_index") ? (
+            <PerformanceIndex />
           ) : activeView === "activity-logs" ? (
             <div style={{ padding: "24px" }}>
               <SystemActivityLogs limit={100} />
@@ -678,6 +717,17 @@ export default function AdminDashboard() {
               </div>
 
               <div className="stdc-actions-grid">
+
+                {/* Performance Index */}
+                {canRead("performance_index") && (
+                  <div className="stdc-action-card" onClick={() => setActiveView("performance-index")}>
+                    <div className="stdc-action-icon"><TrendingUp size={20} /></div>
+                    <div>
+                      <div className="stdc-action-label">Performance Index</div>
+                      <div className="stdc-action-desc">View task analytics & metrics</div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Enroll Member */}
                 {canRead("enroll") && (

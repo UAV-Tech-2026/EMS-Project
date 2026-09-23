@@ -20,7 +20,7 @@ router.post("/upload", verifyToken, upload.single("file"), async (req, res) => {
    
     
    
-    const usersRes = await pool.query("SELECT id, fullname, role FROM users WHERE LOWER(COALESCE(status, 'active')) = 'active'");
+    const usersRes = await pool.query("SELECT id, fullname, role FROM users");
     const users = usersRes.rows;
 
     worksheet.eachRow((row, rowNumber) => {
@@ -246,39 +246,6 @@ router.put("/edit/:id", verifyToken, async (req, res) => {
   } catch (err) {
     console.error(`TASK EDIT ERROR [ID=${req.params.id}]:`, err.stack);
     res.status(500).json({ msg: "Failed to update task", error: err.message });
-  }
-});
-
-router.delete("/delete/:id", verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // 1. Nullify depends_on references so no FK violation
-    await pool.query("UPDATE tasks SET depends_on = NULL WHERE depends_on = $1", [id]);
-
-    // 2. Nullify recurring_template_id references (ON DELETE SET NULL should handle this,
-    //    but being explicit in case of older schema versions)
-    await pool.query("UPDATE tasks SET recurring_template_id = NULL WHERE recurring_template_id = $1", [id]);
-
-    // 3. Delete comments on child tasks first, then child tasks themselves
-    const childRes = await pool.query("SELECT id FROM tasks WHERE parent_id = $1", [id]);
-    for (const child of childRes.rows) {
-      await pool.query("DELETE FROM task_comments WHERE task_id = $1", [child.id]);
-    }
-    await pool.query("DELETE FROM tasks WHERE parent_id = $1", [id]);
-
-    // 4. Delete comments on the task itself
-    await pool.query("DELETE FROM task_comments WHERE task_id = $1", [id]);
-
-    // 5. Finally delete the task
-    const result = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id", [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ msg: "Task not found" });
-    }
-    res.json({ msg: "Task deleted successfully", id: result.rows[0].id });
-  } catch (err) {
-    console.error(`TASK DELETE ERROR [ID=${req.params.id}]:`, err.message);
-    res.status(500).json({ msg: "Failed to delete task", error: err.message });
   }
 });
 
@@ -823,6 +790,163 @@ router.patch("/:id/reviewer", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("RECURRING REVIEWER ERROR:", err.message);
     res.status(500).json({ msg: "Failed to update reviewer" });
+  }
+});
+
+router.get("/performance-index", verifyToken, async (req, res) => {
+  try {
+    const { employee_id, from_date, to_date, assigned_by, reviewed_by } = req.query;
+
+    const employeesRes = await pool.query(`
+      SELECT u.id, u.fullname, u.username, u.role, e.employee_uav_id, COALESCE(u.department, e.department, '') AS department
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.role IN ('employee', 'intern', 'admin')
+        AND LOWER(COALESCE(u.status, 'active')) = 'active'
+      ORDER BY u.fullname ASC
+    `);
+
+    const adminsRes = await pool.query(`
+      SELECT u.id, u.fullname, u.username, u.role, e.employee_uav_id
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.role IN ('super_admin', 'superadmin', 'admin')
+        AND LOWER(COALESCE(u.status, 'active')) = 'active'
+      ORDER BY u.fullname ASC
+    `);
+
+    let query = `
+      SELECT
+        t.id,
+        t.title,
+        t.assignment_date,
+        t.start_date,
+        t.due_date,
+        t.end_date,
+        t.target_date,
+        t.status,
+        t.days_taken,
+        t.assigned_to,
+        t.assigned_by,
+        t.reviewed_by,
+        assigned_emp.fullname AS assigned_to_name,
+        emp_det.employee_uav_id AS assigned_to_uav_id,
+        assigner.fullname AS assigned_by_name,
+        reviewer.fullname AS reviewed_by_name
+      FROM tasks t
+      LEFT JOIN users assigned_emp ON t.assigned_to = assigned_emp.id
+      LEFT JOIN employees emp_det ON t.assigned_to = emp_det.user_id
+      LEFT JOIN users assigner ON t.assigned_by = assigner.id
+      LEFT JOIN users reviewer ON t.reviewed_by = reviewer.id
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (employee_id && employee_id !== "all") {
+      params.push(parseInt(employee_id));
+      query += ` AND t.assigned_to = $${params.length}`;
+    }
+
+    if (from_date) {
+      params.push(from_date);
+      query += ` AND (t.assignment_date >= $${params.length}::date OR t.start_date >= $${params.length}::date OR t.due_date >= $${params.length}::date)`;
+    }
+
+    if (to_date) {
+      params.push(to_date);
+      query += ` AND (t.assignment_date <= $${params.length}::date OR t.start_date <= $${params.length}::date OR t.due_date <= $${params.length}::date OR t.end_date <= $${params.length}::date)`;
+    }
+
+    if (assigned_by && assigned_by !== "all") {
+      params.push(parseInt(assigned_by));
+      query += ` AND t.assigned_by = $${params.length}`;
+    }
+
+    if (reviewed_by && reviewed_by !== "all") {
+      params.push(parseInt(reviewed_by));
+      query += ` AND t.reviewed_by = $${params.length}`;
+    }
+
+    query += ` ORDER BY t.assignment_date DESC NULLS LAST, t.id DESC`;
+
+    const tasksRes = await pool.query(query, params);
+    const rawTasks = tasksRes.rows;
+
+    let completedCount = 0;
+    let incompletedCount = 0;
+    let availableCount = 0;
+    let totalDaysTakenSum = 0;
+    let completedWithDaysCount = 0;
+
+    const formattedTasks = rawTasks.map((task, idx) => {
+      const statusLower = (task.status || "Pending").toLowerCase();
+      
+      let durationStr = "N/A";
+      if (task.start_date && task.due_date) {
+        const start = new Date(task.start_date);
+        const due = new Date(task.due_date);
+        const diffTime = due - start;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        durationStr = diffDays >= 0 ? `${diffDays + 1} day(s)` : `${diffDays} day(s)`;
+      } else if (task.target_date) {
+        durationStr = task.target_date;
+      } else if (task.due_date) {
+        durationStr = `Due ${task.due_date.toISOString().split("T")[0]}`;
+      }
+
+      let actualTimeTaken = "—";
+      if (task.days_taken !== null && task.days_taken !== undefined) {
+        actualTimeTaken = `${task.days_taken} day(s)`;
+        totalDaysTakenSum += Number(task.days_taken);
+        completedWithDaysCount++;
+      } else if (task.end_date && (task.start_date || task.assignment_date)) {
+        const startDate = new Date(task.start_date || task.assignment_date);
+        const endDate = new Date(task.end_date);
+        const diffTime = endDate - startDate;
+        const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        actualTimeTaken = `${diffDays} day(s)`;
+        totalDaysTakenSum += diffDays;
+        completedWithDaysCount++;
+      }
+
+      if (statusLower === "completed") {
+        completedCount++;
+      } else if (statusLower === "pending" || statusLower === "available") {
+        availableCount++;
+      } else {
+        incompletedCount++;
+      }
+
+      return {
+        ...task,
+        s_no: idx + 1,
+        duration_display: durationStr,
+        time_taken_display: actualTimeTaken
+      };
+    });
+
+    const totalTasks = rawTasks.length;
+    const completionRate = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+    const avgDaysTaken = completedWithDaysCount > 0 ? (totalDaysTakenSum / completedWithDaysCount).toFixed(1) : "0";
+
+    res.json({
+      employees: employeesRes.rows,
+      admins: adminsRes.rows,
+      tasks: formattedTasks,
+      metrics: {
+        total: totalTasks,
+        completed: completedCount,
+        incompleted: incompletedCount,
+        available: availableCount,
+        completion_rate: completionRate,
+        avg_days_taken: avgDaysTaken
+      }
+    });
+
+  } catch (err) {
+    console.error("PERFORMANCE INDEX FETCH ERROR:", err);
+    res.status(500).json({ msg: "Failed to fetch performance index data", error: err.message });
   }
 });
 

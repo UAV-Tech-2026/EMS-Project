@@ -39,8 +39,6 @@ export default function Login() {
 
 
     const timer = setTimeout(checkSession, 0);
-    return () => clearTimeout(timer);
-
 
     const handlePageShow = (e) => {
       if (e.persisted) {
@@ -191,7 +189,9 @@ export default function Login() {
                     />
                     <button
                       type="button"
+                      className="emslogin__eye-btn"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       style={{
                         position: "absolute",
                         right: "12px",
@@ -203,7 +203,11 @@ export default function Login() {
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        padding: "4px"
+                        justifyContent: "center",
+                        width: "36px",
+                        height: "36px",
+                        padding: "0",
+                        zIndex: 2
                       }}
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

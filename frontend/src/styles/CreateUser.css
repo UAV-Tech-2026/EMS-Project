@@ -433,3 +433,53 @@ input[type="date"]::-moz-focus-inner {
 .text-input-field::placeholder {
   color: #94a3b8;
 }
+
+@media (max-width: 680px) {
+  .create-user-wrapper {
+    padding: 10px 8px 30px;
+  }
+
+  .create-form {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+
+  .create-top-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+  }
+
+  .salary-fixed-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .experience-card {
+    grid-template-columns: 1fr;
+  }
+
+  .salary-preview {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .sp-sep {
+    display: none;
+  }
+
+  .form-buttons {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  .submit-btn, .back-btn {
+    width: 100%;
+  }
+}
+

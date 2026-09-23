@@ -327,8 +327,16 @@ export default function CreateUser({ onClose, onSuccess, readOnly }) {
                 borderRadius: 12, padding: 24,
               }}>
                 <div style={fld}>
-                  <label style={lbl}>Full Name *</label>
-                  <input name="fullname" placeholder="e.g. Ravi Kumar" required style={inp} />
+                  <label style={lbl}>Title & Full Name *</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select name="title" style={{ ...inp, width: 85, flexShrink: 0 }}>
+                      <option value="Mr.">Mr.</option>
+                      <option value="Mrs.">Mrs.</option>
+                      <option value="Ms.">Ms.</option>
+                      <option value="Dr.">Dr.</option>
+                    </select>
+                    <input name="fullname" placeholder="e.g. Ravi Kumar" required style={inp} />
+                  </div>
                 </div>
                 <div style={fld}>
                   <label style={lbl}>Phone *</label>

@@ -989,3 +989,50 @@
 .tcmt-send-btn.tcmt-send-handoff:hover:not(:disabled) {
   background: linear-gradient(135deg, #d97706, #b45309);
 }
+
+/* ── Responsive Styles ── */
+@media (max-width: 768px), (max-width: 680px) {
+  .tm-wrap {
+    padding: 14px 10px;
+  }
+
+  .tm-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tm-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tm-bulk-editor-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .tm-be-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tm-table-wrap,
+  .tm-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+
+  .tm-modal-box,
+  .tm-modal {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 16px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}

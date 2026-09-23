@@ -9,7 +9,8 @@ import {
   GitBranch, User, Settings as SettingsIcon,
   FileText, Plane,
   MessageSquare,
-  ShieldAlert, Package, FolderOpen
+  ShieldAlert, Package, FolderOpen,
+  Menu, X
 } from "lucide-react";
 import ApplyLeave from "./ApplyLeave";
 import MeetingCalendar from "./MeetingCalendar";
@@ -42,6 +43,9 @@ const changeView = (view) => {
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
   const [leaveCount, setLeaveCount] = useState(0);
+  const [clStats, setClStats] = useState({ used: 0, total: 12, balance: 12 });
+  const [mlStats, setMlStats] = useState({ used: 0, total: 12, balance: 12 });
+  const [lopCount, setLopCount] = useState(0);
 
   const [activity, setActivity] = useState([]);
   const [eodTasks, setEodTasks] = useState([]);
@@ -81,6 +85,7 @@ const changeView = (view) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(true);
   const notifRef = useRef(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -158,6 +163,17 @@ const changeView = (view) => {
         setPresentCount(res.data.presentCount ?? 0);
         setAbsentCount(res.data.absentCount ?? 0);
         setLeaveCount(res.data.leaveCount ?? 0);
+        setClStats({
+          used: res.data.clUsed ?? 0,
+          total: res.data.clTotal ?? 12,
+          balance: res.data.clBalance ?? 12
+        });
+        setMlStats({
+          used: res.data.mlUsed ?? 0,
+          total: res.data.mlTotal ?? 12,
+          balance: res.data.mlBalance ?? 12
+        });
+        setLopCount(res.data.lopCount ?? 0);
       } catch (err) {
         console.error("Failed to fetch attendance stats:", err);
       } finally {
@@ -349,8 +365,17 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
   return (
     <>
     <div className="emp-shell">
+      {/* ── MOBILE OVERLAY ── */}
+      {mobileSidebarOpen && (
+        <div
+          className="emp-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Close sidebar"
+        />
+      )}
+
       {/* ── SIDEBAR ── */}
-      <aside className="emp-sidebar">
+      <aside className={`emp-sidebar ${mobileSidebarOpen ? "emp-sidebar-open" : ""}`}>
         <div className="emp-logo-area">
           <div className="emp-logo-mark">
             <div style={{
@@ -380,6 +405,13 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
               <div className="emp-logo-text">WorkStockPro</div>
               <div className="emp-logo-sub">Employee Portal</div>
             </div>
+            <button
+              className="emp-sidebar-close-btn"
+              onClick={() => setMobileSidebarOpen(false)}
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -387,7 +419,7 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
           <div className="emp-nav-label">MAIN</div>
           <div
             className={`emp-nav-item ${activeView === "dashboard" ? "emp-nav-active" : ""}`}
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => { setActiveView("dashboard"); setMobileSidebarOpen(false); }}
           >
             <LayoutDashboard size={18} /> Dashboard
           </div>
@@ -396,16 +428,16 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
 
           <div
             className={`emp-nav-item ${showWorkStock ? "emp-nav-active" : ""}`}
-            onClick={() => { setActiveView("dashboard"); setShowWorkStock(true); }}
+            onClick={() => { setActiveView("dashboard"); setShowWorkStock(true); setMobileSidebarOpen(false); }}
           >
             <Package size={18} /> WorkStock Pro
           </div>
 
-          <div className="emp-nav-item" onClick={() => navigate("/task-management")}>
+          <div className="emp-nav-item" onClick={() => { navigate("/task-management"); setMobileSidebarOpen(false); }}>
             <GitBranch size={18} /> {isLead ? "Team Tasks" : "My Tasks"}
           </div>
 
-          <div className="emp-nav-item" onClick={() => navigate("/settings")}>
+          <div className="emp-nav-item" onClick={() => { navigate("/settings"); setMobileSidebarOpen(false); }}>
             <SettingsIcon size={18} /> Settings
           </div>
         </nav>
@@ -421,7 +453,14 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
       <div className="emp-main">
       
         <div className="emp-topbar">
-          <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              className="emp-mobile-menu-btn"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu size={22} />
+            </button>
             <div className="emp-page-sub">
               Welcome  <strong>{user?.fullname || "Employee"}</strong>
             </div>
@@ -550,18 +589,25 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
                   <div className="emp-stat-label">Absent</div>
                 </div>
 
-                <div className="emp-stat-card emp-stat-green">
-                  <span className="emp-stat-badge">Live</span>
-                  <div className="emp-stat-icon"><Plane size={20} /></div>
-                  <div className="emp-stat-number">{statsLoading ? "…" : leaveCount}</div>
-                  <div className="emp-stat-label">Leaves Taken</div>
+                <div className="emp-stat-card emp-stat-orange" style={{ background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", border: "1px solid #fed7aa" }}>
+                  <span className="emp-stat-badge" style={{ background: "#ea580c", color: "#fff" }}>CL Balance: {clStats.balance}</span>
+                  <div className="emp-stat-icon" style={{ color: "#c2410c" }}><Plane size={20} /></div>
+                  <div className="emp-stat-number" style={{ color: "#c2410c" }}>{statsLoading ? "…" : `${clStats.used} / ${clStats.total}`}</div>
+                  <div className="emp-stat-label" style={{ color: "#9a3412" }}>Casual Leave (CL)</div>
                 </div>
 
-                <div className="emp-stat-card emp-stat-purple">
-                  <span className="emp-stat-badge">Today</span>
-                  <div className="emp-stat-icon"><BarChart3 size={20} /></div>
+                <div className="emp-stat-card emp-stat-purple" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", border: "1px solid #e9d5ff" }}>
+                  <span className="emp-stat-badge" style={{ background: "#9333ea", color: "#fff" }}>ML Balance: {mlStats.balance}</span>
+                  <div className="emp-stat-icon" style={{ color: "#7e22ce" }}><FileText size={20} /></div>
+                  <div className="emp-stat-number" style={{ color: "#7e22ce" }}>{statsLoading ? "…" : `${mlStats.used} / ${mlStats.total}`}</div>
+                  <div className="emp-stat-label" style={{ color: "#6b21a8" }}>Medical Leave (ML)</div>
+                </div>
 
-                  <div className="emp-stat-label">Efficiency</div>
+                <div className="emp-stat-card emp-stat-green">
+                  <span className="emp-stat-badge">Synced</span>
+                  <div className="emp-stat-icon"><Plane size={20} /></div>
+                  <div className="emp-stat-number">{statsLoading ? "…" : leaveCount}</div>
+                  <div className="emp-stat-label">Total Leaves</div>
                 </div>
               </div>
 

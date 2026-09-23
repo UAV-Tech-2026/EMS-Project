@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   --ems-primary: #10b981;
   --ems-accent: #3b82f6;
@@ -12,16 +18,31 @@
   --ems-input-border: #cbd5e1;
 }
 
+html,
 body {
   background-color: var(--ems-bg);
   color: var(--ems-text);
   margin: 0;
   padding: 0;
+  width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
-input, select, textarea {
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+select,
+textarea {
   background-color: var(--ems-input-bg);
   color: var(--ems-input-text);
   caret-color: var(--ems-input-text);
@@ -29,6 +50,7 @@ input, select, textarea {
   padding: 8px 12px;
   border-radius: 6px;
   font-family: inherit;
+  max-width: 100%;
 }
 
 input:-webkit-autofill,
@@ -39,25 +61,132 @@ input:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-input:focus, select:focus {
+input:focus,
+select:focus {
   outline: 2px solid var(--ems-accent);
   background-color: var(--ems-input-bg);
   color: var(--ems-input-text);
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+
+.table-responsive,
+[class*="-table-wrapper"],
+[class*="-table-container"],
+[class*="-table-wrap"] {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 20px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
+}
+
+
+@media (min-width: 1440px) {
+
+  .app-container,
+  .main-content,
+  .dashboard-container {
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+}
+
+/* 2. Standard Laptops & Desktop Displays (1025px - 1439px) */
+@media (max-width: 1439px) and (min-width: 1025px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+/* 3. Tablets & Compact Screens (769px - 1024px) */
+@media (max-width: 1024px) {
+  body {
+    font-size: 15px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .sidebar {
+    width: 220px;
+  }
+}
+
+/* 4. Mobile Devices & Vertical Displays (< 768px) */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+
+  .form-row,
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .form-row > button,
+  .button-group > button,
+  .btn-full,
+  .ems-btn-full,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  select {
+    width: 100%;
+  }
+}
+
+/* 5. Extra Small Mobile Screens (< 480px) */
+@media (max-width: 480px) {
+
+  html,
+  body {
+    padding: 0;
+  }
+
+  .card,
+  .panel {
+    padding: 0.875rem;
+  }
+}
+
+/* 6. Touch Screen / Kiosk Mode Optimization (Coarse Pointer) */
+@media (pointer: coarse) {
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+}
+
+/* 7. Fullscreen Display Mode */
+:fullscreen,
+:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
 }

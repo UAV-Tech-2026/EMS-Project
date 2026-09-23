@@ -24,7 +24,8 @@
 
 .sad-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--sad-surface2);
   color: var(--sad-text);
   font-family: 'DM Sans', sans-serif;
@@ -682,8 +683,8 @@
 
 .sad-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
   margin-bottom: 24px;
   animation: sadFadeUp .5s ease .15s both;
 }
@@ -1441,6 +1442,54 @@
 }
 
 
+/* ── Mobile Sidebar Drawer & Overlay ── */
+.sad-mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--sad-border);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--sad-text);
+  margin-right: 10px;
+  transition: all 0.2s ease;
+}
+
+.sad-mobile-menu-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.sad-sidebar-close-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: #ffffff;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+.sad-sidebar-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sad-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 998;
+  animation: sadFadeOverlay 0.2s ease forwards;
+}
+
 @media (max-width: 1200px) {
   .sad-stats-row {
     grid-template-columns: repeat(2, 1fr);
@@ -1448,16 +1497,12 @@
 }
 
 @media (max-width: 900px) {
-  .sad-sidebar {
-    width: 200px;
-  }
-
   .sad-content {
-    padding: 20px 22px;
+    padding: 18px;
   }
 
   .sad-topbar {
-    padding: 0 22px;
+    padding: 0 18px;
   }
 
   .sad-actions-grid {
@@ -1469,28 +1514,127 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 768px), (max-width: 680px) {
+  .sad-mobile-menu-btn {
+    display: flex;
+  }
+
+  .sad-sidebar-close-btn {
+    display: flex;
+  }
+
   .sad-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 280px;
+    max-width: 85vw;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+    display: flex !important;
+  }
+
+  .sad-sidebar.sad-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sad-topbar {
+    padding: 0 12px;
+    height: 56px;
+    gap: 8px;
+  }
+
+  .sad-topbar-left {
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .sad-page-title {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sad-date-chip {
+    display: none;
+  }
+
+  .sad-post-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .sad-avatar-name {
     display: none;
   }
 
   .sad-stats-row {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .sad-actions-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .sad-att-hero {
     flex-direction: column;
-    gap: 20px;
+    gap: 14px;
+    padding: 14px;
   }
 
   .sad-ah-right {
-    justify-content: center;
+    justify-content: flex-start;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .sad-content {
+    padding: 12px 8px;
+  }
+
+  .sad-table-wrapper,
+  .sad-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .sad-modal-box {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    padding: 16px !important;
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 16px;
   }
 }
+
+@media (max-width: 480px) {
+  .sad-topbar-right {
+    gap: 4px;
+  }
+
+  .sad-stat-card {
+    padding: 12px;
+  }
+
+  .sad-stat-num {
+    font-size: 22px;
+  }
+
+  .sad-action-btn {
+    padding: 12px 14px;
+  }
+}
+
 
 
 
