@@ -718,16 +718,6 @@ export default function AdminDashboard() {
 
               <div className="stdc-actions-grid">
 
-                {/* Performance Index */}
-                {canRead("performance_index") && (
-                  <div className="stdc-action-card" onClick={() => setActiveView("performance-index")}>
-                    <div className="stdc-action-icon"><TrendingUp size={20} /></div>
-                    <div>
-                      <div className="stdc-action-label">Performance Index</div>
-                      <div className="stdc-action-desc">View task analytics & metrics</div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Enroll Member */}
                 {canRead("enroll") && (
@@ -855,6 +845,17 @@ export default function AdminDashboard() {
                     <div>
                       <div className="stdc-action-label">Meetings</div>
                       <div className="stdc-action-desc">Meeting Calendar</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Performance Index */}
+                {canRead("performance_index") && (
+                  <div className="stdc-action-card" onClick={() => setActiveView("performance-index")}>
+                    <div className="stdc-action-icon"><TrendingUp size={20} /></div>
+                    <div>
+                      <div className="stdc-action-label">Performance Index</div>
+                      <div className="stdc-action-desc">View task analytics & metrics</div>
                     </div>
                   </div>
                 )}

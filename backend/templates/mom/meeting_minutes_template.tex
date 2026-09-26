@@ -1,0 +1,106 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{array}
+
+% Color Definitions
+\definecolor{primary}{RGB}{79, 70, 229}       % Indigo
+\definecolor{secondary}{RGB}{15, 23, 42}     % Dark Slate
+\definecolor{accent}{RGB}{99, 102, 241}       % Light Indigo
+\definecolor{tableheader}{RGB}{238, 242, 255} % Indigo Tint
+\definecolor{bordercolor}{RGB}{226, 232, 240} % Light Gray
+
+% Header & Footer Configuration
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{secondary}{\small \textbf{WorkStockPro} | EMS Document System}}
+\lhead{\textcolor{primary}{\small \textbf{MINUTES OF MEETING}}}
+\rfoot{\textcolor{secondary}{\small Page \thepage}}
+\lfoot{\textcolor{secondary}{\small Confidential -- Internal Use Only}}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+% Section Title Formatting
+\titleformat{\section}
+  {\color{primary}\normalfont\Large\bfseries}
+  {}{0em}{}[\color{primary}\titlerule]
+
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% Top Header Block
+\begin{center}
+    {\huge \textbf{\textcolor{primary}{MINUTES OF MEETING (MOM)}}} \\[0.2cm]
+    {\large \textbf{\textcolor{secondary}{{{MEETING_TITLE}}}}} \\[0.4cm]
+\end{center}
+
+\vspace{0.2cm}
+
+% Key Details Box / Table
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{|>{\columncolor{tableheader}\bfseries}l|X|>{\columncolor{tableheader}\bfseries}l|X|}
+\hline
+Document Type & Minutes of Meeting (MOM) & Ref ID & MOM-{{MOM_ID}} \\ \hline
+Date \& Time  & {{MEETING_DATE}}          & Duration & {{MEETING_DURATION}} \\ \hline
+Organizer    & {{ORGANIZER}}             & Generated On & {{GENERATED_DATE}} \\ \hline
+\end{tabularx}
+\end{table}
+
+\vspace{0.3cm}
+
+% Attendees Section
+\section*{1. Attendees}
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{|c|X|}
+\hline
+\rowcolor{tableheader} \textbf{\#} & \textbf{Attendee Name / Designation} \\ \hline
+{{ATTENDEES_ROWS}}
+\end{tabularx}
+\end{table}
+
+\vspace{0.3cm}
+
+% Agenda Section
+\section*{2. Meeting Agenda}
+{{AGENDA_CONTENT}}
+
+\vspace{0.3cm}
+
+% Discussion Summary Section
+\section*{3. Discussion Summary}
+{{SUMMARY_CONTENT}}
+
+\vspace{0.3cm}
+
+% Action Items Section
+\section*{4. Action Items \& Decisions}
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{|c|X|l|l|}
+\hline
+\rowcolor{tableheader} \textbf{\#} & \textbf{Task / Decision Description} & \textbf{Assignee} & \textbf{Target Date} \\ \hline
+{{ACTION_ITEMS_ROWS}}
+\end{tabularx}
+\end{table}
+
+\vspace{0.8cm}
+
+% Sign-off Section
+\begin{table}[h!]
+\centering
+\begin{tabularx}{\linewidth}{X X}
+\textbf{Prepared By:} {{ORGANIZER}} & \textbf{Approved Status:} {{STATUS}} \\
+\end{tabularx}
+\end{table}
+
+\end{document}

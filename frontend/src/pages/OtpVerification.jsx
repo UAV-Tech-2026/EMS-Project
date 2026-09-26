@@ -35,14 +35,40 @@ export default function OtpVerification({ tempToken, setupRequired, qrCode, onBa
 
   return (
     <div className="emslogin__form">
-      <div style={{ textAlign: "center", marginBottom: "24px" }}>
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
         <h2 className="emslogin__title" style={{ fontSize: "20px", marginBottom: "8px" }}>
-          Two-Factor Authentication
+          {setupRequired ? "Set Up Two-Factor Authentication" : "Two-Factor Authentication"}
         </h2>
         <p style={{ fontSize: "14px", color: "var(--lg-muted)" }}>
-          Enter the code from your authenticator app
+          {setupRequired
+            ? "Scan this QR code with Google Authenticator, then enter the 6-digit code below."
+            : "Enter the code from your authenticator app"}
         </p>
       </div>
+
+      {setupRequired && qrCode && (
+        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+          <div
+            style={{
+              display: "inline-block",
+              padding: "12px",
+              background: "#ffffff",
+              border: "2px solid #e2e8f0",
+              borderRadius: "16px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+            }}
+          >
+            <img
+              src={qrCode}
+              alt="2FA QR Code"
+              style={{ width: "180px", height: "180px", display: "block" }}
+            />
+          </div>
+          <p style={{ fontSize: "12px", color: "#64748b", marginTop: "8px" }}>
+            Open Google Authenticator &rarr; Scan QR code
+          </p>
+        </div>
+      )}
 
 
 

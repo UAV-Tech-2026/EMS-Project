@@ -17,6 +17,7 @@ import MeetingCalendar from "./MeetingCalendar";
 import EmployeeRequestForm from "../components/EmployeeRequestForm";
 import Documents from "./Documents";
 import DPRCard from "./DPRCard";
+import MomPage from "./MomPage";
 
 import "../styles/EmployeeDashboard.css";
 
@@ -569,6 +570,10 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
               <button onClick={() => setActiveView("dashboard")} style={{ marginBottom: 16, padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>← Back to Dashboard</button>
               <Documents />
             </div>
+          ) : activeView === "mom" ? (
+            <div style={{ padding: "10px 0" }}>
+              <MomPage onClose={() => setActiveView("dashboard")} />
+            </div>
           ) : (
             <>
               {/* ── KPI Stat Cards ── */}
@@ -664,6 +669,13 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
                   desc="View your files & docs"
                   accent="blue"
                   onClick={() => setActiveView("documents")}
+                />
+                <EmpActionCard
+                  icon={<FileText size={20} />}
+                  name="MOM"
+                  desc="Minutes of Meeting"
+                  accent="purple"
+                  onClick={() => setActiveView("mom")}
                 />
                 {/* DPR trigger card — matches other action cards */}
                 <button
