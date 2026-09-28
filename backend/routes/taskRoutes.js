@@ -791,5 +791,6 @@ router.patch("/:id/reviewer", verifyToken, async (req, res) => {
     console.error("RECURRING REVIEWER ERROR:", err.message);
     res.status(500).json({ msg: "Failed to update reviewer" });
   }
+});
 
 export default router;
