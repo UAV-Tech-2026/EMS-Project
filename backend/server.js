@@ -35,6 +35,7 @@ import momRoutes from "./routes/momRoutes.js";
 import reimbursementRoutes from "./routes/reimbursementRoutes.js";
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 
 

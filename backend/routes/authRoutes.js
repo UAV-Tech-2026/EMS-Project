@@ -5,14 +5,11 @@ import speakeasy from "speakeasy";
 import qrcode from "qrcode";
 import pool from "../db.js";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
-import { rateLimiter } from "../middleware/securityMiddleware.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key_change_this";
 
 
-const loginLimiter = rateLimiter(10, 10 * 60 * 1000);
-const otpLimiter = rateLimiter(10, 10 * 60 * 1000);
 
 
 function generateTotpSecret(label) {
@@ -53,7 +50,7 @@ export async function generateUavId(role) {
 
 
 
-router.post("/login", loginLimiter, async (req, res) => {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
   const identifier = (username || "").trim().toUpperCase();
 
@@ -210,7 +207,7 @@ router.post("/verify-phone", async (req, res) => {
 
 
 
-router.post("/verify-otp", otpLimiter, async (req, res) => {
+router.post("/verify-otp", async (req, res) => {
   const { tempToken, otp, isSetup } = req.body;
   try {
     const decoded = jwt.verify(tempToken, JWT_SECRET);
