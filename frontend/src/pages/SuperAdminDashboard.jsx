@@ -315,7 +315,7 @@ export default function SuperAdminDashboard() {
             className={`sad-nav-item ${activeView === "directory" ? "sad-active" : ""}`}
             onClick={() => { setDirectoryFilter(null); setActiveView("directory"); setMobileSidebarOpen(false); }}
           >
-            <Users size={18} /> Directory
+            <Users size={18} /> Employees Directory
           </div>
 
           {/* <div

@@ -14,6 +14,7 @@ export default function OtpVerification({ tempToken, setupRequired, qrCode, onBa
 
     setLoading(true);
     setError("");
+
     try {
       const res = await authApi.post("/verify-otp", {
         tempToken,

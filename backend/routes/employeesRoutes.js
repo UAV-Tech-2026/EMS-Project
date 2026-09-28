@@ -417,4 +417,104 @@ router.get("/all-activity-logs", verifyToken, isAdminOrSuper, async (req, res) =
   }
 });
 
+// GET /employees/get/:id — fetch full employee details for edit modal
+router.get("/get/:id", verifyToken, isAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(`
+      SELECT
+        u.id, u.fullname, u.email, u.role, u.phone, u.profile_pic, u.status,
+        e.employee_uav_id, e.designation, e.department, e.phone AS emp_phone,
+        e.adhar_path, e.address_path,
+        e.account_number, e.ifsc_code, e.bank_name, e.branch_name, e.pan_number,
+        e.basic_salary, e.hra, e.epf_amount, e.pt_amount,
+        e.police_certificate, e.medical_certificate,
+        e.offer_letter_path, e.nda_path, e.hr_docs_path,
+        e.assigned_admin_id, e.experiences, e.custom_fields,
+        e.title
+      FROM users u
+      LEFT JOIN employees e ON u.id = e.user_id
+      WHERE u.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ msg: "Employee not found" });
+    }
+
+    const row = result.rows[0];
+    // Merge phone — prefer employees table phone if available
+    const merged = {
+      ...row,
+      phone: row.emp_phone || row.phone || "",
+      experiences: row.experiences || [],
+      custom_fields: row.custom_fields || {}
+    };
+    res.json(merged);
+  } catch (err) {
+    console.error("GET EMPLOYEE BY ID ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+// PUT /employees/edit/:id — update full employee details from edit modal
+router.put("/edit/:id", verifyToken, isAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  const {
+    title, fullname, phone, email, role, department, designation,
+    adhar_path, address_path,
+    account_number, ifsc_code, bank_name, branch_name, pan_number,
+    basic_salary, hra, epf_amount, pt_amount,
+    police_certificate, medical_certificate,
+    offer_letter_path, nda_path, hr_docs_path,
+    assigned_admin_id, experiences, custom_fields
+  } = req.body;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Update users table
+    await client.query(
+      `UPDATE users SET fullname = $1, email = $2, role = $3 WHERE id = $4`,
+      [fullname, email, role, id]
+    );
+
+    // Update employees table (upsert approach — update where user_id matches)
+    await client.query(`
+      UPDATE employees SET
+        title = $1, fullname = $2, phone = $3, department = $4, designation = $5,
+        adhar_path = $6, address_path = $7,
+        account_number = $8, ifsc_code = $9, bank_name = $10, branch_name = $11, pan_number = $12,
+        basic_salary = $13, hra = $14, epf_amount = $15, pt_amount = $16,
+        police_certificate = $17, medical_certificate = $18,
+        offer_letter_path = $19, nda_path = $20, hr_docs_path = $21,
+        assigned_admin_id = $22, experiences = $23, custom_fields = $24
+      WHERE user_id = $25
+    `, [
+      title || "Mr.", fullname, phone, department, designation,
+      adhar_path, address_path,
+      account_number, ifsc_code, bank_name, branch_name, pan_number,
+      parseFloat(basic_salary) || 0,
+      parseFloat(hra) || 0,
+      parseFloat(epf_amount) || 0,
+      parseFloat(pt_amount) || 0,
+      police_certificate, medical_certificate,
+      offer_letter_path, nda_path, hr_docs_path,
+      assigned_admin_id ? parseInt(assigned_admin_id) : null,
+      JSON.stringify(experiences || []),
+      JSON.stringify(custom_fields || {}),
+      id
+    ]);
+
+    await client.query("COMMIT");
+    res.json({ msg: "Employee updated successfully" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("EDIT EMPLOYEE ERROR:", err.message);
+    res.status(500).json({ msg: "Failed to update employee details" });
+  } finally {
+    client.release();
+  }
+});
+
 export default router;
