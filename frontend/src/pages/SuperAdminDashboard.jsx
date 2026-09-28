@@ -19,7 +19,6 @@ import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
 import Departments from "./Departments";
 import MeetingCalendar from "./MeetingCalendar";
-import PerformanceIndex from "./PerformanceIndex";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
@@ -326,12 +325,6 @@ export default function SuperAdminDashboard() {
             <Shield size={18} /> User Permissions
           </div> */}
 
-          <div
-            className={`sad-nav-item ${activeView === "performance-index" ? "sad-active" : ""}`}
-            onClick={() => { setActiveView("performance-index"); setMobileSidebarOpen(false); }}
-          >
-            <TrendingUp size={18} /> Performance Index
-          </div>
 
           <div
             className={`sad-nav-item ${activeView === "workstockpro" ? "sad-active" : ""}`}
@@ -520,8 +513,6 @@ export default function SuperAdminDashboard() {
                 title="WorkStockPro"
               />
             </div>
-          ) : activeView === "performance-index" ? (
-            <PerformanceIndex />
           ) : activeView === "activity-logs" ? (
             <div style={{ padding: "24px" }}>
               <SystemActivityLogs limit={100} />
@@ -597,8 +588,7 @@ export default function SuperAdminDashboard() {
                   { label: "Reports", desc: "Export attendance data", icon: <ClipboardCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowDownloadModal(true) },
                   { label: "DPR Overview", desc: "Review daily progress", icon: <MessageSquare size={22} />, color: "#8b5cf6", bg: "#f5f3ff", action: () => setActiveView("dpr") },
                   { label: "Meetings", desc: "Meeting Calendar", icon: <Calendar size={22} />, color: "#3b82f6", bg: "#eff6ff", action: () => setShowMeeting(true) },
-                  { label: "Departments", desc: "Manage Departments", icon: <Building2 size={22} />, color: "#4f46e5", bg: "#eef2ff", action: () => setShowDepartments(true) },
-                  { label: "Performance Index", desc: "View task analytics & metrics", icon: <TrendingUp size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setActiveView("performance-index") }
+                  { label: "Departments", desc: "Manage Departments", icon: <Building2 size={22} />, color: "#4f46e5", bg: "#eef2ff", action: () => setShowDepartments(true) }
                 ].map((item) => (
                   <div
                     key={item.label}

@@ -19,7 +19,6 @@ import AdminDPR from "./AdminDPR";
 import CreateUser from "./CreateUser";
 import ControlPanel from "./ControlPanel";
 import MeetingCalendar from "./MeetingCalendar";
-import PerformanceIndex from "./PerformanceIndex";
 
 import AttendanceUpload from "./AttendanceUpload";
 import RequestPanelContent from "../components/RequestPanelContent";
@@ -405,15 +404,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Performance Index — permission gated */}
-          {canRead("performance_index") && (
-            <div
-              className={`stdc-nav-item ${activeView === "performance-index" ? "stdc-nav-active" : ""}`}
-              onClick={() => { setActiveView("performance-index"); setMobileSidebarOpen(false); }}
-            >
-              <TrendingUp size={18} /> Performance Index
-            </div>
-          )}
 
           <div
             className={`stdc-nav-item ${activeView === "activity-logs" ? "stdc-nav-active" : ""}`}
@@ -639,8 +629,6 @@ export default function AdminDashboard() {
                 title="WorkStockPro"
               />
             </div>
-          ) : activeView === "performance-index" && canRead("performance_index") ? (
-            <PerformanceIndex />
           ) : activeView === "activity-logs" ? (
             <div style={{ padding: "24px" }}>
               <SystemActivityLogs limit={100} />
@@ -849,16 +837,6 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Performance Index */}
-                {canRead("performance_index") && (
-                  <div className="stdc-action-card" onClick={() => setActiveView("performance-index")}>
-                    <div className="stdc-action-icon"><TrendingUp size={20} /></div>
-                    <div>
-                      <div className="stdc-action-label">Performance Index</div>
-                      <div className="stdc-action-desc">View task analytics & metrics</div>
-                    </div>
-                  </div>
-                )}
 
 
 
