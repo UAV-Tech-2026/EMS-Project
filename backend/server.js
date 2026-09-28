@@ -30,6 +30,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import meetingRoutes from "./routes/meetingRoutes.js";
 import metaRoutes from "./routes/metaRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
+import momRoutes from "./routes/momRoutes.js";
 
 import reimbursementRoutes from "./routes/reimbursementRoutes.js";
 
@@ -76,6 +77,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/meta", metaRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/mom", momRoutes);
 app.use("/uploads", express.static("uploads"));
 
 

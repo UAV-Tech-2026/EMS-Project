@@ -6,6 +6,7 @@ import qrcode from "qrcode";
 import pool from "../db.js";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
 import { rateLimiter } from "../middleware/securityMiddleware.js";
+import { sendOtpEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key_change_this";
@@ -453,9 +454,18 @@ router.post("/forgot-password", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const resetToken = jwt.sign({ id: user.id, otp }, JWT_SECRET, { expiresIn: "10m" });
 
-    console.log(`[AUTH] Password reset OTP for ${email}: ${otp}`);
+    console.log(`[AUTH] Password reset OTP generated for ${email}: ${otp}`);
 
-    return res.json({ msg: "OTP sent", resetToken });
+    // Send email using nodemailer mailer service
+    try {
+      await sendOtpEmail(email, otp);
+    } catch (mailErr) {
+      console.error("[AUTH ERROR] Email sending failed:", mailErr);
+      // If email service fails, still inform user or handle appropriately
+      return res.status(500).json({ msg: "Failed to send OTP email. Please verify mail server configuration." });
+    }
+
+    return res.json({ msg: "OTP sent to email", resetToken });
   } catch (err) {
     console.error("FORGOT PASSWORD ERROR:", err);
     res.status(500).json({ msg: "Server error" });

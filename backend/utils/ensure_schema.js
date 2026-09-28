@@ -213,6 +213,27 @@ export const ensureSchema = async () => {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS moms (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        employee_id VARCHAR(50),
+        document_type VARCHAR(50) DEFAULT 'MOM',
+        meeting_title VARCHAR(255) NOT NULL,
+        meeting_date TIMESTAMP NOT NULL,
+        meeting_duration VARCHAR(100),
+        organizer VARCHAR(150),
+        attendees JSONB DEFAULT '[]'::jsonb,
+        agenda TEXT,
+        summary TEXT,
+        action_items JSONB DEFAULT '[]'::jsonb,
+        status VARCHAR(30) DEFAULT 'Draft',
+        pdf_path TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS user_permissions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

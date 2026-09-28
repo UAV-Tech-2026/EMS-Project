@@ -588,7 +588,6 @@ export default function SuperAdminDashboard() {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", marginTop: "24px" }}>
                 {[
-                  { label: "Performance Index", desc: "View task analytics & metrics", icon: <TrendingUp size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setActiveView("performance-index") },
                   { label: "Enroll Member", desc: "Add new Admin/Employee", icon: <UserPlus size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setShowCreateUser(true) },
                   { label: "Upload Attendance", desc: "Excel or Google Drive", icon: <FileSpreadsheet size={22} />, color: "#f59e0b", bg: "#fffbeb", action: () => setShowUpload(true) },
                   { label: "Leave Management", desc: "Approve / Track Leaves", icon: <CalendarCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowLeaveManagement(true) },
@@ -598,7 +597,8 @@ export default function SuperAdminDashboard() {
                   { label: "Reports", desc: "Export attendance data", icon: <ClipboardCheck size={22} />, color: "#10b981", bg: "#ecfdf5", action: () => setShowDownloadModal(true) },
                   { label: "DPR Overview", desc: "Review daily progress", icon: <MessageSquare size={22} />, color: "#8b5cf6", bg: "#f5f3ff", action: () => setActiveView("dpr") },
                   { label: "Meetings", desc: "Meeting Calendar", icon: <Calendar size={22} />, color: "#3b82f6", bg: "#eff6ff", action: () => setShowMeeting(true) },
-                  { label: "Departments", desc: "Manage Departments", icon: <Building2 size={22} />, color: "#4f46e5", bg: "#eef2ff", action: () => setShowDepartments(true) }
+                  { label: "Departments", desc: "Manage Departments", icon: <Building2 size={22} />, color: "#4f46e5", bg: "#eef2ff", action: () => setShowDepartments(true) },
+                  { label: "Performance Index", desc: "View task analytics & metrics", icon: <TrendingUp size={22} />, color: "#6366f1", bg: "#eef2ff", action: () => setActiveView("performance-index") }
                 ].map((item) => (
                   <div
                     key={item.label}
