@@ -397,8 +397,8 @@ export default function Login() {
                     });
                     alert("Password reset successful");
                     setStep("login");
-                  } catch {
-                    setError("Reset failed");
+                  } catch (err) {
+                    setError(err.response?.data?.msg || "Invalid or expired OTP. Please try again.");
                   } finally {
                     setLoading(false);
                   }

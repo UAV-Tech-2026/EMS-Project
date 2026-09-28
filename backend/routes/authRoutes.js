@@ -5,6 +5,7 @@ import speakeasy from "speakeasy";
 import qrcode from "qrcode";
 import pool from "../db.js";
 import { verifyToken, isAdminOrSuper } from "../middleware/authMiddleware.js";
+import { sendPasswordResetOtp } from "../services/emailService.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key_change_this";
@@ -450,9 +451,16 @@ router.post("/forgot-password", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const resetToken = jwt.sign({ id: user.id, otp }, JWT_SECRET, { expiresIn: "10m" });
 
-    console.log(`[AUTH] Password reset OTP for ${email}: ${otp}`);
+    // Send OTP via Gmail
+    try {
+      await sendPasswordResetOtp(email, otp, user.fullname || user.username);
+      console.log(`[AUTH] Password reset OTP sent to ${email}`);
+    } catch (mailErr) {
+      console.error("[AUTH] Failed to send reset email:", mailErr.message);
+      return res.status(500).json({ msg: "Failed to send OTP email. Please check your email address or try later." });
+    }
 
-    return res.json({ msg: "OTP sent", resetToken });
+    return res.json({ msg: "OTP sent to your email" , resetToken });
   } catch (err) {
     console.error("FORGOT PASSWORD ERROR:", err);
     res.status(500).json({ msg: "Server error" });

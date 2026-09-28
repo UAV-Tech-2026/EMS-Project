@@ -46,9 +46,12 @@ export const api = axios.create({
           url.includes("/auth/me") ||
           url.includes("/permissions/my") ||
           url.includes("/meta/role-defaults") ||
-          
           url.includes("/leave/my") ||
-          url.includes("/notifications/my");
+          url.includes("/notifications/my") ||
+          url.includes("/reset-password") ||
+          url.includes("/forgot-password") ||
+          url.includes("/verify-otp") ||
+          url.includes("/login");
         if (!isAuthCheck) {
           sessionStorage.clear();
           if (!window.location.pathname.includes("/login")) {
