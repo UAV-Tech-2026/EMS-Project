@@ -1,6 +1,6 @@
 import express from "express";
 import pool from "../db.js";
-import verifyToken from "../middleware/verifyToken.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 import { generateDocumentPdf, getSupportedDocumentTypes } from "../services/document/documentRegistry.js";
 import path from "path";
 import fs from "fs";
