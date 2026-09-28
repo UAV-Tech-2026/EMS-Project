@@ -510,10 +510,14 @@ router.put("/change-password", verifyToken, async (req, res) => {
 
 router.post("/reset-password", async (req, res) => {
   const { resetToken, otp, newPassword } = req.body;
+  if (!resetToken) {
+    return res.status(400).json({ msg: "Reset token missing. Please request a new OTP." });
+  }
   try {
     const decoded = jwt.verify(resetToken, JWT_SECRET);
-    if (decoded.otp !== otp)
+    if (String(decoded.otp).trim() !== String(otp || "").trim()) {
       return res.status(401).json({ msg: "Invalid OTP" });
+    }
 
     const hashed = await bcrypt.hash(newPassword, 10);
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashed, decoded.id]);
@@ -521,7 +525,7 @@ router.post("/reset-password", async (req, res) => {
     return res.json({ msg: "Password reset successfully" });
   } catch (err) {
     console.error("RESET PASSWORD ERROR:", err);
-    return res.status(401).json({ msg: "Invalid or expired reset token" });
+    return res.status(401).json({ msg: "Invalid or expired reset token. Please request a new OTP." });
   }
 
 });

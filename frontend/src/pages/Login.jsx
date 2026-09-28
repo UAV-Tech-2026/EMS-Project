@@ -54,6 +54,7 @@ export default function Login() {
   }, [navigate]);
 
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -64,7 +65,7 @@ export default function Login() {
   const [qrCode, setQrCode] = useState(() => sessionStorage.getItem("login_qrCode") || "");
 
   const [email, setEmail] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(() => sessionStorage.getItem("login_resetToken") || "");
   const [newPassword, setNewPassword] = useState("");
   const [resetOtp, setResetOtp] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -83,6 +84,7 @@ export default function Login() {
     sessionStorage.removeItem("login_tempToken");
     sessionStorage.removeItem("login_setupRequired");
     sessionStorage.removeItem("login_qrCode");
+    sessionStorage.removeItem("login_resetToken");
   };
 
   const handleLogin = async (e) => {
@@ -217,6 +219,17 @@ export default function Login() {
 
                 {error && <div className="emslogin__error">{error}</div>}
 
+                {successMsg && (
+                  <div style={{
+                    background: "#ecfdf5", color: "#065f46",
+                    border: "1px solid #a7f3d0", borderRadius: 8,
+                    padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                    marginBottom: 14, display: "flex", alignItems: "center", gap: 8
+                  }}>
+                    ✓ {successMsg}
+                  </div>
+                )}
+
                 {sessionMsg && (
                   <div style={{
                     background: "#fef3c7", color: "#92400e",
@@ -340,6 +353,7 @@ export default function Login() {
                     setLoading(true);
                     const res = await authApi.post("/forgot-password", { email });
                     setResetToken(res.data.resetToken);
+                    sessionStorage.setItem("login_resetToken", res.data.resetToken || "");
                     setStep("reset");
                   } catch (err) {
                     setError("Error sending OTP");
@@ -395,7 +409,8 @@ export default function Login() {
                       otp: resetOtp,
                       newPassword,
                     });
-                    alert("Password reset successful");
+                    clearLoginStep();
+                    setSuccessMsg("Password reset successful. Please sign in with your new password.");
                     setStep("login");
                   } catch {
                     setError("Reset failed");
