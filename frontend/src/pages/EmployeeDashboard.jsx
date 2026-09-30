@@ -594,18 +594,18 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
                   <div className="emp-stat-label">Absent</div>
                 </div>
 
-                <div className="emp-stat-card emp-stat-orange" style={{ background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", border: "1px solid #fed7aa" }}>
-                  <span className="emp-stat-badge" style={{ background: "#ea580c", color: "#fff" }}>CL Balance: {clStats.balance}</span>
-                  <div className="emp-stat-icon" style={{ color: "#c2410c" }}><Plane size={20} /></div>
-                  <div className="emp-stat-number" style={{ color: "#c2410c" }}>{statsLoading ? "…" : `${clStats.used} / ${clStats.total}`}</div>
-                  <div className="emp-stat-label" style={{ color: "#9a3412" }}>Casual Leave (CL)</div>
+                <div className="emp-stat-card emp-stat-orange">
+                  <span className="emp-stat-badge">Balance: {clStats.balance}</span>
+                  <div className="emp-stat-icon"><Plane size={20} /></div>
+                  <div className="emp-stat-number">{statsLoading ? "…" : `${clStats.used} / ${clStats.total}`}</div>
+                  <div className="emp-stat-label">Casual Leave (CL)</div>
                 </div>
 
-                <div className="emp-stat-card emp-stat-purple" style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", border: "1px solid #e9d5ff" }}>
-                  <span className="emp-stat-badge" style={{ background: "#9333ea", color: "#fff" }}>ML Balance: {mlStats.balance}</span>
-                  <div className="emp-stat-icon" style={{ color: "#7e22ce" }}><FileText size={20} /></div>
-                  <div className="emp-stat-number" style={{ color: "#7e22ce" }}>{statsLoading ? "…" : `${mlStats.used} / ${mlStats.total}`}</div>
-                  <div className="emp-stat-label" style={{ color: "#6b21a8" }}>Medical Leave (ML)</div>
+                <div className="emp-stat-card emp-stat-purple">
+                  <span className="emp-stat-badge">Balance: {mlStats.balance}</span>
+                  <div className="emp-stat-icon"><FileText size={20} /></div>
+                  <div className="emp-stat-number">{statsLoading ? "…" : `${mlStats.used} / ${mlStats.total}`}</div>
+                  <div className="emp-stat-label">Medical Leave (ML)</div>
                 </div>
 
                 <div className="emp-stat-card emp-stat-green">

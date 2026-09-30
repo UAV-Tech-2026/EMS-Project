@@ -1,10 +1,12 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || "587"),
+  secure: false, // true for 465, false for 587
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
@@ -16,7 +18,7 @@ const transporter = nodemailer.createTransport({
  */
 export async function sendPasswordResetOtp(toEmail, otp, name = "User") {
   const mailOptions = {
-    from: `"UAV-Tech EMS" <${process.env.GMAIL_USER}>`,
+    from: process.env.EMAIL_FROM || `"WorkStockPro" <${process.env.SMTP_USER}>`,
     to: toEmail,
     subject: "Password Reset OTP — UAV-Tech EMS",
     html: `
