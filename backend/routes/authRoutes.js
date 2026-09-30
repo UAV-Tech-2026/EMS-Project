@@ -520,7 +520,10 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
-    await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashed, decoded.id]);
+    await pool.query(
+      "UPDATE users SET password = $1, totp_secret = NULL, totp_secret_temp = NULL WHERE id = $2",
+      [hashed, decoded.id]
+    );
 
     return res.json({ msg: "Password reset successfully" });
   } catch (err) {

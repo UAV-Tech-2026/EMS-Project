@@ -56,6 +56,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Auto-dismiss success message after 6 seconds
+  useEffect(() => {
+    if (!successMsg) return;
+    const t = setTimeout(() => setSuccessMsg(""), 6000);
+    return () => clearTimeout(t);
+  }, [successMsg]);
   const [showPassword, setShowPassword] = useState(false);
 
 
@@ -90,6 +97,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
     setLoading(true);
 
     const username = e.target.username.value;

@@ -309,7 +309,7 @@ export default function AttendanceUpload({ readOnly }) {
           <div style={{
             background: "#ffffff", borderRadius: "16px",
             width: "100%", maxWidth: "900px", maxHeight: "88vh",
-            display: "flex", flexDirection: "column", overflow: "hidden",
+            display: "flex", flexDirection: "column",
             boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
           }}>
             <div style={{
@@ -333,7 +333,7 @@ export default function AttendanceUpload({ readOnly }) {
               </button>
             </div>
 
-            <div style={{ flex: 1, padding: "16px", overflow: "auto" }}>
+            <div style={{ flex: 1, padding: "16px", overflowX: "auto", overflowY: "auto", minHeight: 0 }}>
               {previewData.type === "pdf" && (
                 <iframe
                   src={previewData.url}
