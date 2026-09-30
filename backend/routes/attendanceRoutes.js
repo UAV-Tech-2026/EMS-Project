@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import { verifyToken, isAdminOrSuper, canReadFeature } from "../middleware/authMiddleware.js";
 import axios from "axios";
 import { parseAttendanceExcel } from "../utils/excelParser.js";
+import { parseAttendancePdf } from "../utils/pdfParser.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -659,16 +660,32 @@ const handleFileUpload = async (req, res) => {
     );
     const users = usersRes.rows;
 
-    const records = await parseAttendanceExcel(req.file.buffer, users);
+    // Auto-detect PDF vs Excel by mimetype or original filename
+    const mimetype = req.file.mimetype || "";
+    const originalName = (req.file.originalname || "").toLowerCase();
+    const isPdf = mimetype === "application/pdf" || originalName.endsWith(".pdf");
+
+    let records = [];
+    if (isPdf) {
+      console.log("[Upload] Detected PDF file — using PDF parser");
+      records = parseAttendancePdf(req.file.buffer, users);
+    } else {
+      console.log("[Upload] Detected Excel file — using Excel parser");
+      records = await parseAttendanceExcel(req.file.buffer, users);
+    }
 
     if (!records.length) {
-      return res.status(400).json({ msg: "No matching employee records found in sheet." });
+      return res.status(400).json({
+        msg: `No matching employee records found in ${isPdf ? "PDF" : "Excel"} sheet. Make sure employee names/codes match the system.`
+      });
     }
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      let inserted = 0;
       for (const rec of records) {
+        if (!rec.userId || !rec.date) continue;
         const hoursWorked = rec.hoursWorked || calcHours(rec.checkIn, rec.checkOut);
         await client.query(
           `INSERT INTO attendance
@@ -680,12 +697,13 @@ const handleFileUpload = async (req, res) => {
              check_out    = EXCLUDED.check_out,
              marked_by    = EXCLUDED.marked_by,
              hours_worked = EXCLUDED.hours_worked`,
-          [rec.userId, rec.empId, rec.date, rec.status,
-          rec.checkIn, rec.checkOut, req.user.id, hoursWorked || null]
+          [rec.userId, rec.empId, rec.date, rec.status || "Present",
+          rec.checkIn || null, rec.checkOut || null, req.user.id, hoursWorked || null]
         );
+        inserted++;
       }
       await client.query("COMMIT");
-      res.json({ msg: `Successfully uploaded & synced ${records.length} attendance records!` });
+      res.json({ msg: `✓ Successfully uploaded & synced ${inserted} attendance records from ${isPdf ? "PDF" : "Excel"}!` });
     } catch (err) {
       await client.query("ROLLBACK");
       throw err;
@@ -694,7 +712,7 @@ const handleFileUpload = async (req, res) => {
     }
   } catch (err) {
     console.error("ATTENDANCE UPLOAD ERROR:", err.message);
-    res.status(500).json({ msg: err.message });
+    res.status(500).json({ msg: `Upload failed: ${err.message}` });
   }
 };
 
