@@ -354,6 +354,36 @@ router.get("/my", verifyToken, async (req, res) => {
   }
 });
 
+router.get("/my-attendance", verifyToken, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const userId = req.user.id;
+
+    let query = `
+      SELECT attendance_date AS date, check_in, check_out, status, hours_worked
+      FROM attendance WHERE user_id = $1
+    `;
+    const params = [userId];
+
+    if (from && to) {
+      query += " AND attendance_date BETWEEN $2 AND $3";
+      params.push(from, to);
+    }
+    query += " ORDER BY attendance_date DESC";
+
+    const result = await pool.query(query, params);
+    const rows = result.rows.map((r) => ({
+      ...r,
+      check_in: to12h(r.check_in),
+      check_out: to12h(r.check_out),
+    }));
+    res.json(rows);
+  } catch (err) {
+    console.error("MY ATTENDANCE ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 
 router.get("/directory", verifyToken, canReadFeature("directory"), async (req, res) => {
   try {
@@ -401,7 +431,7 @@ router.get("/stats/my", verifyToken, async (req, res) => {
       SELECT
         COUNT(*) FILTER (WHERE status = 'Present')::int          AS present_count,
         COUNT(*) FILTER (WHERE status = 'Absent')::int           AS absent_count,
-        COUNT(*) FILTER (WHERE status IN ('CL','SL','CCL','ML'))::int AS leave_count
+        COUNT(*) FILTER (WHERE status IN ('CL','SL','CCL','ML','PL','LOP','Leave','Half Day'))::int AS leave_count
       FROM attendance
       WHERE user_id = $1
     `, [userId]);
@@ -416,21 +446,25 @@ router.get("/stats/my", verifyToken, async (req, res) => {
     const leaveRes = await pool.query(`
       SELECT 
         COALESCE(SUM(total_days) FILTER (WHERE leave_type = 'CL' AND status = 'approved'), 0)::numeric AS cl_used,
-        COALESCE(SUM(total_days) FILTER (WHERE leave_type IN ('ML', 'SL') AND status = 'approved'), 0)::numeric AS ml_used
+        COALESCE(SUM(total_days) FILTER (WHERE leave_type IN ('ML', 'SL') AND status = 'approved'), 0)::numeric AS ml_used,
+        COALESCE(SUM(total_days) FILTER (WHERE status = 'approved'), 0)::numeric AS total_approved_leaves
       FROM leaves
       WHERE user_id = $1
     `, [userId]);
 
     const clUsed = parseFloat(leaveRes.rows[0]?.cl_used || 0);
     const mlUsed = parseFloat(leaveRes.rows[0]?.ml_used || 0);
+    const approvedLeavesTotal = parseFloat(leaveRes.rows[0]?.total_approved_leaves || 0);
 
     const clBalance = Math.max(0, parseFloat((clTotal - clUsed).toFixed(2)));
     const mlBalance = Math.max(0, parseFloat((mlTotal - mlUsed).toFixed(2)));
 
+    const totalLeavesTaken = Math.max(result.rows[0].leave_count, approvedLeavesTotal, clUsed + mlUsed);
+
     res.json({
       presentCount: result.rows[0].present_count,
       absentCount: result.rows[0].absent_count,
-      leaveCount: result.rows[0].leave_count,
+      leaveCount: totalLeavesTaken,
       clUsed,
       clTotal,
       clBalance,
@@ -616,7 +650,7 @@ router.get("/export-excel", verifyToken, isAdminOrSuper, async (req, res) => {
 });
 
 
-router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"), async (req, res) => {
+const handleFileUpload = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
 
@@ -628,7 +662,7 @@ router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"),
     const records = await parseAttendanceExcel(req.file.buffer, users);
 
     if (!records.length) {
-      return res.status(400).json({ msg: "No matching employee records found in Excel sheet." });
+      return res.status(400).json({ msg: "No matching employee records found in sheet." });
     }
 
     const client = await pool.connect();
@@ -659,10 +693,13 @@ router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"),
       client.release();
     }
   } catch (err) {
-    console.error("EXCEL UPLOAD ERROR:", err.message);
+    console.error("ATTENDANCE UPLOAD ERROR:", err.message);
     res.status(500).json({ msg: err.message });
   }
-});
+};
+
+router.post("/upload-excel", verifyToken, isAdminOrSuper, upload.single("file"), handleFileUpload);
+router.post("/upload", verifyToken, isAdminOrSuper, upload.single("file"), handleFileUpload);
 
 
 router.post("/upload-from-drive", verifyToken, isAdminOrSuper, async (req, res) => {
