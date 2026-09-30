@@ -401,15 +401,42 @@ router.get("/stats/my", verifyToken, async (req, res) => {
       SELECT
         COUNT(*) FILTER (WHERE status = 'Present')::int          AS present_count,
         COUNT(*) FILTER (WHERE status = 'Absent')::int           AS absent_count,
-        COUNT(*) FILTER (WHERE status IN ('CL','SL','CCL'))::int AS leave_count
+        COUNT(*) FILTER (WHERE status IN ('CL','SL','CCL','ML'))::int AS leave_count
       FROM attendance
       WHERE user_id = $1
     `, [userId]);
+
+    const empRes = await pool.query(`
+      SELECT total_cl, total_ml FROM employees WHERE user_id = $1
+    `, [userId]);
+
+    const clTotal = empRes.rows[0]?.total_cl != null ? parseFloat(empRes.rows[0].total_cl) : 12;
+    const mlTotal = empRes.rows[0]?.total_ml != null ? parseFloat(empRes.rows[0].total_ml) : 12;
+
+    const leaveRes = await pool.query(`
+      SELECT 
+        COALESCE(SUM(total_days) FILTER (WHERE leave_type = 'CL' AND status = 'approved'), 0)::numeric AS cl_used,
+        COALESCE(SUM(total_days) FILTER (WHERE leave_type IN ('ML', 'SL') AND status = 'approved'), 0)::numeric AS ml_used
+      FROM leaves
+      WHERE user_id = $1
+    `, [userId]);
+
+    const clUsed = parseFloat(leaveRes.rows[0]?.cl_used || 0);
+    const mlUsed = parseFloat(leaveRes.rows[0]?.ml_used || 0);
+
+    const clBalance = Math.max(0, parseFloat((clTotal - clUsed).toFixed(2)));
+    const mlBalance = Math.max(0, parseFloat((mlTotal - mlUsed).toFixed(2)));
 
     res.json({
       presentCount: result.rows[0].present_count,
       absentCount: result.rows[0].absent_count,
       leaveCount: result.rows[0].leave_count,
+      clUsed,
+      clTotal,
+      clBalance,
+      mlUsed,
+      mlTotal,
+      mlBalance,
     });
   } catch (err) {
     console.error("MY STATS ERROR:", err);

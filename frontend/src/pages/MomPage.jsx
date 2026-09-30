@@ -250,7 +250,8 @@ export default function MomPage({ onClose }) {
 
       // Open PDF in new tab
       const token = sessionStorage.getItem("token");
-      const pdfWindowUrl = `${API_URL}/api/mom/${currentId}/pdf?token=${token}`;
+      const baseUrl = API_URL.replace(/\/api$/, "");
+      const pdfWindowUrl = `${baseUrl}/api/mom/${currentId}/pdf?token=${token}`;
       window.open(pdfWindowUrl, "_blank");
 
     } catch (err) {
@@ -276,7 +277,8 @@ export default function MomPage({ onClose }) {
   // Direct PDF Download / View
   const handleViewPdf = (momId) => {
     const token = sessionStorage.getItem("token");
-    window.open(`${API_URL}/api/mom/${momId}/pdf?token=${token}`, "_blank");
+    const baseUrl = API_URL.replace(/\/api$/, "");
+    window.open(`${baseUrl}/api/mom/${momId}/pdf?token=${token}`, "_blank");
   };
 
   return (

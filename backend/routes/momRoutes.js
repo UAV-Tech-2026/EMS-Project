@@ -248,22 +248,20 @@ router.get("/:id/pdf", verifyToken, async (req, res) => {
       }
     }
 
-    if (!mom.pdf_path) {
-      return res.status(404).json({ msg: "PDF not generated yet. Please click 'Generate PDF' first." });
-    }
-
-    const fullPdfPath = path.join(process.cwd(), mom.pdf_path);
-    if (!fs.existsSync(fullPdfPath)) {
-      return res.status(404).json({ msg: "PDF file missing on server." });
+    let fullPdfPath = mom.pdf_path ? path.join(process.cwd(), mom.pdf_path) : null;
+    if (!fullPdfPath || !fs.existsSync(fullPdfPath)) {
+      const pdfInfo = await generateDocumentPdf(mom.document_type || "MOM", mom);
+      fullPdfPath = pdfInfo.fullPath;
+      await pool.query(`UPDATE moms SET status = 'Generated', pdf_path = $1, updated_at = NOW() WHERE id = $2`, [pdfInfo.relativeUrl, id]);
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="MOM_${mom.meeting_title.replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="MOM_${(mom.meeting_title || "document").replace(/[^a-zA-Z0-9_-]/g, "_")}.pdf"`);
     fs.createReadStream(fullPdfPath).pipe(res);
 
   } catch (err) {
     console.error("STREAM MOM PDF ERROR:", err);
-    res.status(500).json({ msg: "Failed to retrieve PDF" });
+    res.status(500).json({ msg: "Failed to retrieve PDF", error: err.message });
   }
 });
 

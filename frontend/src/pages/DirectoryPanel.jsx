@@ -138,6 +138,8 @@ export default function DirectoryPanel({ filterRole = null }) {
         nda_path: res.data.nda_path || "",
         hr_docs_path: res.data.hr_docs_path || "",
         assigned_admin_id: res.data.assigned_admin_id ? String(res.data.assigned_admin_id) : "",
+        total_cl: res.data.total_cl != null ? parseFloat(res.data.total_cl) : 12,
+        total_ml: res.data.total_ml != null ? parseFloat(res.data.total_ml) : 12,
         experiences: rawExp.length > 0 ? rawExp : [],
         custom_fields: rawCust,
         custom_salary_components: customSal,
@@ -1120,6 +1122,37 @@ export default function DirectoryPanel({ filterRole = null }) {
                     onChange={e => setEditForm({ ...editForm, pt_amount: parseFloat(e.target.value) || 0 })}
                     style={inp}
                   />
+                </div>
+
+                {/* LEAVE ALLOTMENT SECTION */}
+                <div style={{ gridColumn: "1 / -1", marginTop: 10, paddingTop: 12, borderTop: "1px dashed #e2e8f0" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", marginBottom: 10 }}>
+                    🌴 Leave Allotment & Balances
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Casual Leave Allotment (CL)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editForm.total_cl ?? 12}
+                        onChange={e => setEditForm({ ...editForm, total_cl: parseFloat(e.target.value) || 0 })}
+                        style={inp}
+                        placeholder="e.g. 2.5 or 12"
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Medical Leave Allotment (ML)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={editForm.total_ml ?? 12}
+                        onChange={e => setEditForm({ ...editForm, total_ml: parseFloat(e.target.value) || 0 })}
+                        style={inp}
+                        placeholder="e.g. 5 or 12"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Global Custom Fields for Salary Breakdown */}

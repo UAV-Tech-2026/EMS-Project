@@ -67,13 +67,12 @@ router.get("/stats", verifyToken, async (req, res) => {
 router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
   const { 
     username, password, fullname, email, role, employee_uav_id, designation, 
-    aadhar_proof, address_proof // links from frontend
+    aadhar_proof, address_proof, total_cl, total_ml
   } = req.body;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const hashedPassword = await bcrypt.hash(password, 10);
-    
     
     // Drop unique constraints on users email/username if present
     try {
@@ -106,9 +105,13 @@ router.post("/enroll", verifyToken, isAdminOrSuper, async (req, res) => {
     const userId = userRes.rows[0].id;
     await client.query(
       `INSERT INTO employees 
-        (user_id, employee_uav_id, fullname, designation, adhar_path, address_path, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
-      [userId, uavIdToUse, fullname, designation, aadhar_proof || null, address_proof || null]
+        (user_id, employee_uav_id, fullname, designation, adhar_path, address_path, status, total_cl, total_ml) 
+       VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8)`,
+      [
+        userId, uavIdToUse, fullname, designation, aadhar_proof || null, address_proof || null,
+        total_cl != null ? parseFloat(total_cl) : 12,
+        total_ml != null ? parseFloat(total_ml) : 12
+      ]
     );
     await client.query("COMMIT");
     res.status(201).json({ msg: "Employee enrolled successfully" });
@@ -466,7 +469,8 @@ router.put("/edit/:id", verifyToken, isAdminOrSuper, async (req, res) => {
     basic_salary, hra, epf_amount, pt_amount,
     police_certificate, medical_certificate,
     offer_letter_path, nda_path, hr_docs_path,
-    assigned_admin_id, experiences, custom_fields
+    assigned_admin_id, experiences, custom_fields,
+    total_cl, total_ml
   } = req.body;
 
   const client = await pool.connect();
@@ -488,7 +492,8 @@ router.put("/edit/:id", verifyToken, isAdminOrSuper, async (req, res) => {
         basic_salary = $13, hra = $14, epf_amount = $15, pt_amount = $16,
         police_certificate = $17, medical_certificate = $18,
         offer_letter_path = $19, nda_path = $20, hr_docs_path = $21,
-        assigned_admin_id = $22, experiences = $23, custom_fields = $24
+        assigned_admin_id = $22, experiences = $23, custom_fields = $24,
+        total_cl = COALESCE($26, total_cl), total_ml = COALESCE($27, total_ml)
       WHERE user_id = $25
     `, [
       title || "Mr.", fullname, phone, department, designation,
@@ -503,7 +508,9 @@ router.put("/edit/:id", verifyToken, isAdminOrSuper, async (req, res) => {
       assigned_admin_id ? parseInt(assigned_admin_id) : null,
       JSON.stringify(experiences || []),
       JSON.stringify(custom_fields || {}),
-      id
+      id,
+      total_cl != null ? parseFloat(total_cl) : null,
+      total_ml != null ? parseFloat(total_ml) : null
     ]);
 
     await client.query("COMMIT");
@@ -514,6 +521,21 @@ router.put("/edit/:id", verifyToken, isAdminOrSuper, async (req, res) => {
     res.status(500).json({ msg: "Failed to update employee details" });
   } finally {
     client.release();
+  }
+});
+
+router.put("/leave-balances/:id", verifyToken, isAdminOrSuper, async (req, res) => {
+  const { id } = req.params;
+  const { total_cl, total_ml } = req.body;
+  try {
+    await pool.query(
+      `UPDATE employees SET total_cl = $1, total_ml = $2 WHERE user_id = $3`,
+      [parseFloat(total_cl) || 0, parseFloat(total_ml) || 0, id]
+    );
+    res.json({ msg: "Leave balances updated successfully" });
+  } catch (err) {
+    console.error("UPDATE LEAVE BALANCES ERROR:", err.message);
+    res.status(500).json({ msg: "Server error" });
   }
 });
 

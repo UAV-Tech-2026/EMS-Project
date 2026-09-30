@@ -42,8 +42,8 @@ async function initialize() {
         hra NUMERIC DEFAULT 0,
         epf_amount NUMERIC DEFAULT 0,
         pt_amount NUMERIC DEFAULT 0,
-        total_cl INTEGER DEFAULT 12,
-        total_ml INTEGER DEFAULT 12,
+        total_cl NUMERIC(5,2) DEFAULT 12,
+        total_ml NUMERIC(5,2) DEFAULT 12,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);

@@ -598,6 +598,34 @@ export const ensureSchema = async () => {
       await client.query(`ALTER TABLE employees RENAME COLUMN total_sl TO total_ml`);
     }
 
+    await client.query(`ALTER TABLE employees ALTER COLUMN total_cl TYPE NUMERIC(5,2) USING total_cl::numeric`);
+    await client.query(`ALTER TABLE employees ALTER COLUMN total_ml TYPE NUMERIC(5,2) USING total_ml::numeric`);
+
+    // Seed/update provided employee leave balances
+    const leaveBalancesSeed = [
+      { name: 'V Siddartha', cl: 2.5, ml: 5 },
+      { name: 'R Sabari Vihar', cl: 7, ml: 7 },
+      { name: 'Surya', cl: 5, ml: 4 },
+      { name: 'Chaitanya', cl: 6, ml: 4 },
+      { name: 'Shabarishan', cl: 0, ml: 0 },
+      { name: 'Harshith', cl: 4, ml: 5 },
+      { name: 'Mudigonda Sindhuja', cl: 5, ml: 5 },
+      { name: 'Padala sai prathyusha', cl: 4, ml: 5 },
+      { name: 'Divya Sree', cl: 6, ml: 7 },
+      { name: 'Sravan kumar', cl: 2, ml: 2 },
+      { name: 'Chiraranjan', cl: 1, ml: 3 },
+      { name: 'Amit', cl: 2.5, ml: 3 },
+      { name: 'Venu gopal', cl: 1, ml: 5 }
+    ];
+
+    for (const item of leaveBalancesSeed) {
+      await client.query(`
+        UPDATE employees e
+        SET total_cl = $1, total_ml = $2
+        FROM users u
+        WHERE e.user_id = u.id AND LOWER(u.fullname) LIKE LOWER($3)
+      `, [item.cl, item.ml, `%${item.name}%`]);
+    }
 
     await client.query(`UPDATE users SET profile_pic = NULL WHERE role != 'super_admin'`);
     console.log("✓ Restricted Profile Photo Policy enforced");
