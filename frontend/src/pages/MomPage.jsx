@@ -22,7 +22,7 @@ export default function MomPage({ onClose }) {
 
   // Document types state
   const [docTypes, setDocTypes] = useState([
-    { id: "MOM", label: "MOM - Minutes of Meeting", available: true },
+    { id: "MOM", label: "Document Template", available: true },
     { id: "PROJECT_REPORT", label: "Project Report (Coming Soon)", available: false },
     { id: "DAILY_REPORT", label: "Daily Report (Coming Soon)", available: false },
     { id: "WEEKLY_REPORT", label: "Weekly Report (Coming Soon)", available: false },

@@ -19,7 +19,7 @@ export async function generateDocumentPdf(docType, docData) {
 
 export function getSupportedDocumentTypes() {
   return [
-    { id: "MOM", label: "MOM - Minutes of Meeting", available: true },
+    { id: "MOM", label: "Document Template", available: true },
     { id: "PROJECT_REPORT", label: "Project Report (Coming Soon)", available: false },
     { id: "DAILY_REPORT", label: "Daily Report (Coming Soon)", available: false },
     { id: "WEEKLY_REPORT", label: "Weekly Report (Coming Soon)", available: false },
