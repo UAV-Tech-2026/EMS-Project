@@ -54,6 +54,7 @@ export default function Login() {
   }, [navigate]);
 
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -216,6 +217,17 @@ export default function Login() {
                 </div>
 
                 {error && <div className="emslogin__error">{error}</div>}
+
+                {successMsg && (
+                  <div style={{
+                    background: "#ecfdf5", color: "#065f46",
+                    border: "1px solid #a7f3d0", borderRadius: 8,
+                    padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                    marginBottom: 14, display: "flex", alignItems: "center", gap: 8
+                  }}>
+                    ✅ {successMsg}
+                  </div>
+                )}
 
                 {sessionMsg && (
                   <div style={{
@@ -393,10 +405,10 @@ export default function Login() {
                     await authApi.post("/reset-password", {
                       resetToken,
                       otp: resetOtp,
-                      newPassword,
-                    });
-                    alert("Password reset successful");
+                    setError(""); // Clear previous error
                     setStep("login");
+                    // Show inline success feedback on login page
+                    setSuccessMsg("Password reset successful! Please log in with your new password.");
                   } catch (err) {
                     setError(err.response?.data?.msg || "Invalid or expired OTP. Please try again.");
                   } finally {

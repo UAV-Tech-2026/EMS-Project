@@ -672,8 +672,8 @@ const STOCK_BASE = import.meta.env.VITE_WORKSTOCK_API_URL
                 />
                 <EmpActionCard
                   icon={<FileText size={20} />}
-                  name="MOM"
-                  desc="Minutes of Meeting"
+                  name="Document Template"
+                  desc="Document Template"
                   accent="purple"
                   onClick={() => setActiveView("mom")}
                 />

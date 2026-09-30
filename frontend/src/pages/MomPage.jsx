@@ -296,9 +296,9 @@ export default function MomPage({ onClose }) {
             <FileText size={26} color="#fff" />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Minutes of Meeting (MOM)</h2>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Document Template</h2>
             <p style={{ margin: "4px 0 0", fontSize: 13, opacity: 0.9 }}>
-              Create, edit, store, and generate PDF MOM documents formatted to company specification
+              Create, edit, store, and generate PDF Document Templates formatted to company specification
             </p>
           </div>
         </div>
@@ -375,7 +375,7 @@ export default function MomPage({ onClose }) {
                   cursor: "pointer", display: "flex", alignItems: "center", gap: 6
                 }}
               >
-                <Plus size={16} /> New MOM
+                <Plus size={16} /> New Template
               </button>
             )}
           </div>
@@ -636,7 +636,7 @@ export default function MomPage({ onClose }) {
         padding: "24px 28px", boxShadow: "0 4px 16px rgba(0,0,0,0.03)"
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>My MOMs</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a" }}>My Saved Templates</h3>
           <button
             onClick={fetchMoms}
             style={{
@@ -652,7 +652,7 @@ export default function MomPage({ onClose }) {
           <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>Loading saved documents...</div>
         ) : moms.length === 0 ? (
           <div style={{ padding: 30, textAlign: "center", color: "#94a3b8", background: "#f8fafc", borderRadius: 10 }}>
-            No MOM documents found. Fill out the form above to create your first MOM!
+            No saved templates found. Fill out the form above to create your first template!
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>

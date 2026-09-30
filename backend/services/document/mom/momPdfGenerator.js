@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { execFile } from "child_process";
 import { fileURLToPath } from "url";
+import { buildDocumentPdfBuffer } from "./simplePdfWriter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,10 +29,31 @@ export async function generateMomPdf(momData) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
 
+  const pdfFileName = `mom_${momData.id || Date.now()}.pdf`;
+  const finalPdfPath = path.join(uploadsDir, pdfFileName);
+  const relativePdfPath = `uploads/moms/${pdfFileName}`;
+
+  // Helper function to write PDF using pure-JS fallback
+  const fallbackGenerate = () => {
+    try {
+      console.log(`[PDF] Using pure-JS PDF generator for document #${momData.id || "draft"}`);
+      const pdfBuffer = buildDocumentPdfBuffer(momData);
+      fs.writeFileSync(finalPdfPath, pdfBuffer);
+      return {
+        fullPath: finalPdfPath,
+        relativeUrl: relativePdfPath,
+        pdfName: pdfFileName
+      };
+    } catch (fallbackErr) {
+      console.error("[PDF] Pure-JS Fallback PDF generation failed:", fallbackErr);
+      throw fallbackErr;
+    }
+  };
+
   const templatePath = path.join(process.cwd(), "templates", "mom", "meeting_minutes_template.tex");
   
   if (!fs.existsSync(templatePath)) {
-    throw new Error(`MOM template file not found at ${templatePath}`);
+    return fallbackGenerate();
   }
 
   let templateContent = fs.readFileSync(templatePath, "utf8");
@@ -99,10 +121,6 @@ export async function generateMomPdf(momData) {
   const texFilePath = path.join(tempDir, "document.tex");
   fs.writeFileSync(texFilePath, templateContent, "utf8");
 
-  const pdfFileName = `mom_${momData.id || Date.now()}.pdf`;
-  const finalPdfPath = path.join(uploadsDir, pdfFileName);
-  const relativePdfPath = `uploads/moms/${pdfFileName}`;
-
   // Check pdflatex paths
   const pdflatexCandidates = [
     "C:\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe",
@@ -110,15 +128,20 @@ export async function generateMomPdf(momData) {
     "pdflatex"
   ];
 
-  let latexBinary = "pdflatex";
+  let latexBinary = null;
   for (const cand of pdflatexCandidates) {
-    if (cand === "pdflatex" || fs.existsSync(cand)) {
+    if (cand !== "pdflatex" && fs.existsSync(cand)) {
       latexBinary = cand;
       break;
     }
   }
 
-  return new Promise((resolve, reject) => {
+  // If pdflatex is not installed on system, immediately use pure-JS fallback
+  if (!latexBinary) {
+    return fallbackGenerate();
+  }
+
+  return new Promise((resolve) => {
     execFile(
       latexBinary,
       ["-interaction=nonstopmode", "-output-directory", tempDir, texFilePath],
@@ -127,9 +150,7 @@ export async function generateMomPdf(momData) {
         const tempPdfPath = path.join(tempDir, "document.pdf");
 
         if (fs.existsSync(tempPdfPath)) {
-          // Move output PDF to uploads/moms/
           fs.copyFileSync(tempPdfPath, finalPdfPath);
-          // Cleanup temp folder asynchronously
           fs.rm(tempDir, { recursive: true, force: true }, () => {});
 
           return resolve({
@@ -139,12 +160,9 @@ export async function generateMomPdf(momData) {
           });
         }
 
-        console.error("pdflatex output stderr:", stderr);
-        console.error("pdflatex stdout:", stdout);
-
-        // Cleanup
+        console.warn("[PDF] pdflatex compilation failed or missing output. Falling back to JS generator:", stderr || error?.message);
         fs.rm(tempDir, { recursive: true, force: true }, () => {});
-        return reject(new Error(`PDF compilation failed. Details: ${error?.message || stderr || "Unknown error"}`));
+        resolve(fallbackGenerate());
       }
     );
   });
