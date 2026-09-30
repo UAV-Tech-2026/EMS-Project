@@ -25,7 +25,8 @@ export const securityHeaders = (req, res, next) => {
 
 export const rateLimiter = (limitCount, windowMs) => {
   return (req, res, next) => {
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || req.ip;
+    const rawIp = req.headers["x-forwarded-for"] || req.ip || req.socket?.remoteAddress || "127.0.0.1";
+    const ip = typeof rawIp === "string" ? rawIp.split(",")[0].trim() : rawIp;
     const now = Date.now();
 
     if (!ipLimits.has(ip)) {
