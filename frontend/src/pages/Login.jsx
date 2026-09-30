@@ -405,9 +405,10 @@ export default function Login() {
                     await authApi.post("/reset-password", {
                       resetToken,
                       otp: resetOtp,
+                      newPassword,
+                    });
                     setError(""); // Clear previous error
                     setStep("login");
-                    // Show inline success feedback on login page
                     setSuccessMsg("Password reset successful! Please log in with your new password.");
                   } catch (err) {
                     setError(err.response?.data?.msg || "Invalid or expired OTP. Please try again.");
