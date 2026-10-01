@@ -1,9 +1,3 @@
-/**
- * regen_2fa.js
- * Regenerates the Super Admin's 2FA QR code WITHOUT touching any other data.
- * Run: node regen_2fa.js
- * Then open superadmin_qr.html in a browser, scan with Google Authenticator, and DELETE the file.
- */
 import 'dotenv/config';
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
