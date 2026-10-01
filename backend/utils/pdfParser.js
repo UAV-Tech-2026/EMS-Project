@@ -203,9 +203,18 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
       const rawDate = dateMatch[1];
       const parts = rawDate.split(/[-/]/);
       if (parts[0].length === 4) {
+        // YYYY-MM-DD
         dateStr = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
       } else if (parts[2]?.length === 4) {
-        dateStr = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        // DD-MM-YYYY or MM-DD-YYYY
+        let day = parts[0].padStart(2, "0");
+        let month = parts[1].padStart(2, "0");
+        if (Number(parts[1]) > 12 && Number(parts[0]) <= 12) {
+          // MM-DD-YYYY format
+          day = parts[1].padStart(2, "0");
+          month = parts[0].padStart(2, "0");
+        }
+        dateStr = `${parts[2]}-${month}-${day}`;
       } else if (parts[2]?.length === 2) {
         const yr = Number(parts[2]) > 50 ? "19" + parts[2] : "20" + parts[2];
         dateStr = `${yr}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
