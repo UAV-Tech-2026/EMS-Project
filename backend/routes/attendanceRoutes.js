@@ -656,9 +656,10 @@ const handleFileUpload = async (req, res) => {
     if (!req.file) return res.status(400).json({ msg: "No file uploaded" });
 
     const usersRes = await pool.query(
-      "SELECT u.id, u.fullname, e.employee_uav_id FROM users u JOIN employees e ON u.id = e.user_id"
+      "SELECT u.id, u.fullname, e.employee_uav_id FROM users u LEFT JOIN employees e ON u.id = e.user_id"
     );
     const users = usersRes.rows;
+    const defaultUser = users.find(u => Number(u.id) === Number(req.user.id)) || users[0];
 
     // Auto-detect PDF vs Excel by mimetype or original filename
     const mimetype = req.file.mimetype || "";
@@ -668,7 +669,7 @@ const handleFileUpload = async (req, res) => {
     let records = [];
     if (isPdf) {
       console.log("[Upload] Detected PDF file — using PDF parser");
-      records = parseAttendancePdf(req.file.buffer, users);
+      records = parseAttendancePdf(req.file.buffer, users, defaultUser);
     } else {
       console.log("[Upload] Detected Excel file — using Excel parser");
       records = await parseAttendanceExcel(req.file.buffer, users);

@@ -145,7 +145,7 @@ function normalizeStatus(rawStatus) {
 /**
  * Parse PDF Buffer into structured Attendance & Leave Records
  */
-export function parseAttendancePdf(buffer, usersList = []) {
+export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
   const extractedText = extractTextFromPdfBuffer(buffer);
   const records = [];
   if (!extractedText) return records;
@@ -156,6 +156,8 @@ export function parseAttendancePdf(buffer, usersList = []) {
   // RegEx patterns
   const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/;
   const statusRegex = /\b(Casual Leave|Medical Leave|Sick Leave|Paid Leave|Loss of Pay|Half Day|Field Work|Present|Absent|CL|ML|SL|PL|LOP|HD|CCL|FW|P|A|0\.5)\b/i;
+
+  let activeMatchedUser = defaultUser || (usersList.length > 0 ? usersList[0] : null);
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -180,13 +182,18 @@ export function parseAttendancePdf(buffer, usersList = []) {
       }
     }
 
-    // Fallback: If lines have dates and status but no explicit user match, try matching any available user or usersList[0]
-    if (!matchedUser && (dateRegex.test(line) || statusRegex.test(line))) {
-      if (usersList.length > 0) {
-        matchedUser = usersList[0];
-      }
+    // If a new user was identified on this line, set them as active user
+    if (matchedUser) {
+      activeMatchedUser = matchedUser;
+    } else {
+      matchedUser = activeMatchedUser;
     }
 
+    // Check if line contains date or status record
+    const hasDate = dateRegex.test(line);
+    const hasStatus = statusRegex.test(line);
+
+    if (!hasDate && !hasStatus) continue;
     if (!matchedUser) continue;
 
     // Parse date from line (handles YYYY-MM-DD, DD-MM-YYYY, DD-MM-YY)
