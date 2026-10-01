@@ -89,6 +89,8 @@ export const ensureSchema = async () => {
       )
     `);
 
+
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,

@@ -409,7 +409,7 @@ export default function Login() {
                     });
                     setError(""); // Clear previous error
                     setStep("login");
-                    setSuccessMsg("Password reset successful! Please log in with your new password.");
+                    setSuccessMsg("Password reset! Log in with your new password. A new QR code will appear for 2FA setup.");
                   } catch (err) {
                     setError(err.response?.data?.msg || "Invalid or expired OTP. Please try again.");
                   } finally {

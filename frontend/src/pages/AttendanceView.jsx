@@ -8,9 +8,19 @@ export default function AttendanceView() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({ present: 0, absent: 0, leaves: 0, total: 0 });
 
-  // Default to September 2026 (or last month to current date)
-  const [from, setFrom] = useState("2026-09-01");
-  const [to, setTo] = useState("2026-09-30");
+  const today = new Date();
+  const fmt = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const lastDayCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  const [from, setFrom] = useState(fmt(firstDayCurrentMonth));
+  const [to, setTo] = useState(fmt(lastDayCurrentMonth));
 
   const fetchAttendance = useCallback(async (overrideFrom, overrideTo) => {
     setLoading(true);
@@ -41,7 +51,7 @@ export default function AttendanceView() {
   }, [from, to]);
 
   useEffect(() => {
-    fetchAttendance("2026-09-01", "2026-09-30");
+    fetchAttendance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,11 +106,11 @@ export default function AttendanceView() {
         {/* Quick Month Filter Buttons */}
         <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Quick Range:</span>
-          <button onClick={() => setMonthRange("2026-09-01", "2026-09-30")} style={{ padding: "4px 12px", background: from === "2026-09-01" && to === "2026-09-30" ? "#2563eb" : "#e2e8f0", color: from === "2026-09-01" && to === "2026-09-30" ? "#fff" : "#334155", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            September 2026 (Full Month)
-          </button>
           <button onClick={() => setMonthRange("2026-10-01", "2026-10-31")} style={{ padding: "4px 12px", background: from === "2026-10-01" ? "#2563eb" : "#e2e8f0", color: from === "2026-10-01" ? "#fff" : "#334155", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            October 2026
+            October 2026 (Current)
+          </button>
+          <button onClick={() => setMonthRange("2026-09-01", "2026-09-30")} style={{ padding: "4px 12px", background: from === "2026-09-01" ? "#2563eb" : "#e2e8f0", color: from === "2026-09-01" ? "#fff" : "#334155", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            September 2026
           </button>
           <button onClick={() => setMonthRange("2026-01-01", "2026-12-31")} style={{ padding: "4px 12px", background: from === "2026-01-01" ? "#2563eb" : "#e2e8f0", color: from === "2026-01-01" ? "#fff" : "#334155", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
             All 2026
@@ -137,8 +147,8 @@ export default function AttendanceView() {
           <button onClick={() => fetchAttendance()} style={{ padding: "7px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
             Apply Filters
           </button>
-          <button onClick={() => setMonthRange("2026-09-01", "2026-09-30")} style={{ padding: "7px 14px", background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
-            Reset (Sept 2026)
+          <button onClick={() => setMonthRange(fmt(firstDayCurrentMonth), fmt(lastDayCurrentMonth))} style={{ padding: "7px 14px", background: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0", borderRadius: 6, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>
+            Reset (Current Month)
           </button>
         </div>
 

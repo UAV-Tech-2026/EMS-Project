@@ -364,7 +364,7 @@ router.get("/my", verifyToken, async (req, res) => {
       }
     }
 
-    // 3. Fallback B: If still 0 rows, check system records matching date range (e.g. single-employee or admin upload)
+    // 3. Fallback B: If 0 rows found, check system records matching date range
     if (result.rows.length === 0 && from && to) {
       const dateRes = await pool.query(
         "SELECT attendance_date AS date, check_in, check_out, status, hours_worked FROM attendance WHERE attendance_date BETWEEN $1 AND $2 ORDER BY attendance_date DESC",
