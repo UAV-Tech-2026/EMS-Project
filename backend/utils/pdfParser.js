@@ -164,22 +164,30 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
     november: "11", nov: "11", december: "12", dec: "12"
   };
 
-  const monthYearMatch = extractedText.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s*[-/,\s]*(\d{4})\b/i);
-  if (monthYearMatch) {
-    const mName = monthYearMatch[1].toLowerCase();
-    if (monthNames[mName]) docMonth = monthNames[mName];
-    docYear = monthYearMatch[2];
+  // 1. Check for any full DD-MM-YYYY or DD/MM/YYYY in extracted text
+  const fullDateMatch = extractedText.match(/\b(\d{1,2})[-/](0[1-9]|1[0-2])[-/](\d{4})\b/);
+  if (fullDateMatch) {
+    docMonth = fullDateMatch[2].padStart(2, "0");
+    docYear = fullDateMatch[3];
   } else {
-    // Check for MM/YYYY or YYYY-MM in header
-    const numMonthMatch = extractedText.match(/\b(0[1-9]|1[0-2])[-/](\d{4})\b/);
-    if (numMonthMatch) {
-      docMonth = numMonthMatch[1];
-      docYear = numMonthMatch[2];
+    // 2. Check for YYYY-MM-DD
+    const isoDateMatch = extractedText.match(/\b(\d{4})[-/](0[1-9]|1[0-2])[-/](\d{1,2})\b/);
+    if (isoDateMatch) {
+      docYear = isoDateMatch[1];
+      docMonth = isoDateMatch[2].padStart(2, "0");
+    } else {
+      // 3. Check for month name and year e.g. "September 2026" or "Sep 2026"
+      const monthYearMatch = extractedText.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\b[\s\S]{0,30}\b(\d{4})\b/i);
+      if (monthYearMatch) {
+        const mName = monthYearMatch[1].toLowerCase();
+        if (monthNames[mName]) docMonth = monthNames[mName];
+        docYear = monthYearMatch[2];
+      }
     }
   }
 
-  // RegEx patterns
-  const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/;
+  // RegEx patterns (supports YYYY-MM-DD, DD-MM-YYYY, DD-MM, DD/MM)
+  const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}[-/]\d{1,2})\b/;
   const statusRegex = /\b(Casual Leave|Medical Leave|Sick Leave|Paid Leave|Loss of Pay|Half Day|Field Work|Present|Absent|CL|ML|SL|PL|LOP|HD|CCL|FW|P|A|0\.5)\b/i;
 
   let activeMatchedUser = defaultUser || (usersList.length > 0 ? usersList[0] : null);
@@ -221,7 +229,7 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
     if (!hasDate && !hasStatus) continue;
     if (!matchedUser) continue;
 
-    // Parse date from line (handles YYYY-MM-DD, DD-MM-YYYY, DD-MM-YY or Day numbers)
+    // Parse date from line (handles YYYY-MM-DD, DD-MM-YYYY, DD-MM, or Day numbers)
     let dateStr = `${docYear}-${docMonth}-01`;
     const dateMatch = line.match(dateRegex);
     if (dateMatch) {
@@ -230,19 +238,23 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
       if (parts[0].length === 4) {
         // YYYY-MM-DD
         dateStr = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
-      } else if (parts[2]?.length === 4) {
+      } else if (parts.length === 3 && parts[2]?.length === 4) {
         // DD-MM-YYYY or MM-DD-YYYY
         let day = parts[0].padStart(2, "0");
         let month = parts[1].padStart(2, "0");
         if (Number(parts[1]) > 12 && Number(parts[0]) <= 12) {
-          // MM-DD-YYYY format
           day = parts[1].padStart(2, "0");
           month = parts[0].padStart(2, "0");
         }
         dateStr = `${parts[2]}-${month}-${day}`;
-      } else if (parts[2]?.length === 2) {
+      } else if (parts.length === 3 && parts[2]?.length === 2) {
         const yr = Number(parts[2]) > 50 ? "19" + parts[2] : "20" + parts[2];
         dateStr = `${yr}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      } else if (parts.length === 2) {
+        // DD-MM format e.g. "01-09" or "03-09"
+        const day = parts[0].padStart(2, "0");
+        const month = parts[1].padStart(2, "0");
+        dateStr = `${docYear}-${month}-${day}`;
       }
     } else {
       // Fallback: check if line starts with day number e.g. "01 Present" or "15 CL"
