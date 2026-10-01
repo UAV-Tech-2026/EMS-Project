@@ -153,6 +153,31 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
   const lines = extractedText.split(/[\r\n]+/);
   const todayStr = new Date().toISOString().split("T")[0];
 
+  // Document-wide Month & Year auto-detection from PDF header text
+  let docYear = new Date().getFullYear().toString();
+  let docMonth = (new Date().getMonth() + 1).toString().padStart(2, "0");
+
+  const monthNames = {
+    january: "01", jan: "01", february: "02", feb: "02", march: "03", mar: "03",
+    april: "04", apr: "04", may: "05", june: "06", jun: "06", july: "07", jul: "07",
+    august: "08", aug: "08", september: "09", sep: "09", sept: "09", october: "10", oct: "10",
+    november: "11", nov: "11", december: "12", dec: "12"
+  };
+
+  const monthYearMatch = extractedText.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec)\s*[-/,\s]*(\d{4})\b/i);
+  if (monthYearMatch) {
+    const mName = monthYearMatch[1].toLowerCase();
+    if (monthNames[mName]) docMonth = monthNames[mName];
+    docYear = monthYearMatch[2];
+  } else {
+    // Check for MM/YYYY or YYYY-MM in header
+    const numMonthMatch = extractedText.match(/\b(0[1-9]|1[0-2])[-/](\d{4})\b/);
+    if (numMonthMatch) {
+      docMonth = numMonthMatch[1];
+      docYear = numMonthMatch[2];
+    }
+  }
+
   // RegEx patterns
   const dateRegex = /\b(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b/;
   const statusRegex = /\b(Casual Leave|Medical Leave|Sick Leave|Paid Leave|Loss of Pay|Half Day|Field Work|Present|Absent|CL|ML|SL|PL|LOP|HD|CCL|FW|P|A|0\.5)\b/i;
@@ -196,8 +221,8 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
     if (!hasDate && !hasStatus) continue;
     if (!matchedUser) continue;
 
-    // Parse date from line (handles YYYY-MM-DD, DD-MM-YYYY, DD-MM-YY)
-    let dateStr = todayStr;
+    // Parse date from line (handles YYYY-MM-DD, DD-MM-YYYY, DD-MM-YY or Day numbers)
+    let dateStr = `${docYear}-${docMonth}-01`;
     const dateMatch = line.match(dateRegex);
     if (dateMatch) {
       const rawDate = dateMatch[1];
@@ -218,6 +243,13 @@ export function parseAttendancePdf(buffer, usersList = [], defaultUser = null) {
       } else if (parts[2]?.length === 2) {
         const yr = Number(parts[2]) > 50 ? "19" + parts[2] : "20" + parts[2];
         dateStr = `${yr}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      }
+    } else {
+      // Fallback: check if line starts with day number e.g. "01 Present" or "15 CL"
+      const dayMatch = line.match(/\b([0-2]?\d|3[01])\b/);
+      if (dayMatch) {
+        const day = dayMatch[1].padStart(2, "0");
+        dateStr = `${docYear}-${docMonth}-${day}`;
       }
     }
 
