@@ -147,7 +147,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
     };
   };
 
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = async () => {
     if (!payslip) return;
     const newAtt = {
       working_days: Number(editAtt.working_days != null ? editAtt.working_days : payslip.attendance.working_days),
@@ -166,6 +166,24 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
     setPayslip(prev => ({ ...prev, attendance: newAtt, salary: newSalary }));
     setEditAttMode(false);
     setEditAtt({});
+
+    // If already approved, sync the updated attendance & salary back into payroll_history
+    if (payslip.is_approved) {
+      try {
+        const month = payslip.period.numMonths > 1 ? payslip.period.startMonth : payslip.period.month;
+        await api.delete(`/payslip/unlock?userId=${payslip.employee.id}&month=${month}`);
+        await api.post("/payslip/approve", {
+          userId: payslip.employee.id,
+          month: month,
+          from: fromDate, to: toDate,
+          salary: newSalary,
+          attendance: newAtt
+        });
+        alert("Attendance updated and payroll re-locked successfully.");
+      } catch (err) {
+        alert("Attendance updated locally but failed to sync with payroll record: " + (err.response?.data?.msg || err.message));
+      }
+    }
   };
 
   const handleApprove = async () => {
@@ -600,8 +618,8 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
               </div>
 
 
-              {/* ── Attendance Override Panel ── */}
-              {isSuperAdmin && !readOnly && !payslip.is_approved && (
+              {/* ── Attendance Override Panel ── always visible for Super Admin ── */}
+              {isSuperAdmin && !readOnly && (
                 <div style={{ marginTop: "20px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "16px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editAttMode ? "14px" : 0 }}>
                     <span style={{ fontWeight: 700, fontSize: "13px", color: "#92400e" }}>✏️ Attendance Override</span>
