@@ -179,9 +179,8 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
           salary: newSalary,
           attendance: newAtt
         });
-        alert("Attendance updated and payroll re-locked successfully.");
       } catch (err) {
-        alert("Attendance updated locally but failed to sync with payroll record: " + (err.response?.data?.msg || err.message));
+        alert("Failed to sync attendance: " + (err.response?.data?.msg || err.message));
       }
     }
   };
