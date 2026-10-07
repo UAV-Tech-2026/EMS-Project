@@ -257,11 +257,25 @@ router.put("/salary/:id", verifyToken, superAdminOnly, async (req, res) => {
     const { id } = req.params;
     const { basic_salary, hra, epf_amount, pt_amount } = req.body;
 
+    const uid = parseInt(id, 10);
+    const b = Number(basic_salary || 0);
+    const h = Number(hra || 0);
+    const ep = Number(epf_amount || 0);
+    const p = Number(pt_amount || 0);
+    const g = b + h;
+
     await pool.query(`
       UPDATE employees
       SET basic_salary = $1, hra = $2, epf_amount = $3, pt_amount = $4
       WHERE user_id = $5
-    `, [basic_salary, hra, epf_amount, pt_amount, id]);
+    `, [b, h, ep, p, uid]);
+
+    await pool.query(`
+      UPDATE payroll_history
+      SET basic = $1, hra = $2, gross = $3, epf = $4, pt = $5,
+          net_salary = GREATEST(($3 + ot_pay) - ($4 + $5 + lop), 0)
+      WHERE user_id = $6
+    `, [b, h, g, ep, p, uid]);
 
     res.json({ msg: "Salary updated successfully" });
   } catch (err) {
