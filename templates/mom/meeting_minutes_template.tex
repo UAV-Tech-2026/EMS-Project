@@ -1,0 +1,99 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{utf8}
+\usepackage[margin=1.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+% Colors matching official document spec
+\definecolor{headerbg}{RGB}{28, 28, 28}
+\definecolor{borderorange}{RGB}{217, 119, 6}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% Top Header Banner
+\begin{tcolorbox}[
+  colback=headerbg,
+  colframe=headerbg,
+  arc=0mm,
+  boxrule=0pt,
+  left=14pt,
+  right=14pt,
+  top=14pt,
+  bottom=14pt
+]
+  \begin{tabularx}{\linewidth}{@{} X r @{}}
+    \raisebox{2pt}{\Huge \bfseries \color{white} Meeting Minutes} &
+    \IfFileExists{logo.png}{%
+      \fboxrule=0.8pt \fboxsep=4pt
+      \fcolorbox{white}{headerbg}{\includegraphics[height=1.0cm,keepaspectratio]{logo.png}}%
+    }{%
+      \fboxrule=0.8pt \fboxsep=6pt
+      \fcolorbox{white}{headerbg}{\color{white}\sffamily\small\bfseries [ YOUR LOGO ]}%
+    }
+  \end{tabularx}
+\end{tcolorbox}
+
+\vspace{0.4cm}
+
+{\large \bfseries \rmfamily Meeting Summary}
+
+\vspace{0.2cm}
+
+% Main Details & Attendees Table Grid
+\setlength{\arrayrulewidth}{0.8pt}
+\arrayrulecolor{borderorange}
+\begin{tabularx}{\textwidth}{|p{4.2cm}|X|}
+\hline
+\textbf{Date and Time} & {{MEETING_DATE}} \\ \hline
+\textbf{Meeting title} & {{MEETING_TITLE}} \\ \hline
+\textbf{Meeting Duration} & {{MEETING_DURATION}} \\ \hline
+\textbf{Meeting Organizer} & {{ORGANIZER}} \\ \hline
+\textbf{Attendees} & 
+\begin{itemize}[leftmargin=1.5em, label=\tiny$\bullet$, nosep, topsep=3pt, bottomsep=3pt]
+{{ATTENDEES_ITEMS}}
+\end{itemize}
+\\ \hline
+\end{tabularx}
+
+\vspace{0.3cm}
+
+% Agenda Box
+\begin{tabularx}{\textwidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Agenda}} \\ \hline
+\begin{itemize}[leftmargin=1.5em, label=\tiny$\bullet$, nosep, topsep=4pt, bottomsep=4pt]
+{{AGENDA_ITEMS}}
+\end{itemize}
+\\ \hline
+\end{tabularx}
+
+\vspace{0.3cm}
+
+% Summary Box
+\begin{tabularx}{\textwidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Summary}} \\ \hline
+\begin{enumerate}[leftmargin=1.5em, nosep, topsep=4pt, bottomsep=4pt]
+{{SUMMARY_ITEMS}}
+\end{enumerate}
+\\ \hline
+\end{tabularx}
+
+\vspace{0.3cm}
+
+% Action Items Box
+\begin{tabularx}{\textwidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{\textbf{Action Items}} \\ \hline
+{{ACTION_ITEMS_CONTENT}}
+\\ \hline
+\end{tabularx}
+
+\end{document}

@@ -20,7 +20,8 @@ function sanitizeLatex(str) {
     .replace(/\{/g, "\\{")
     .replace(/\}/g, "\\}")
     .replace(/~/g, "\\textasciitilde{}")
-    .replace(/\^/g, "\\textasciicircum{}");
+    .replace(/\^/g, "\\textasciicircum{}")
+    .replace(/"([^"]*)"/g, "``$1''");
 }
 
 export async function generateMomPdf(momData) {
@@ -58,64 +59,119 @@ export async function generateMomPdf(momData) {
 
   let templateContent = fs.readFileSync(templatePath, "utf8");
 
+  // Format Date
+  let meetingDateStr = "N/A";
+  if (momData.meeting_date) {
+    try {
+      const d = new Date(momData.meeting_date);
+      if (!isNaN(d.getTime())) {
+        meetingDateStr = d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+      } else {
+        meetingDateStr = String(momData.meeting_date);
+      }
+    } catch {
+      meetingDateStr = String(momData.meeting_date);
+    }
+  }
+
   // Format Attendees
-  const attendeesList = Array.isArray(momData.attendees) ? momData.attendees : [];
-  let attendeesRows = "";
+  let attendeesRaw = momData.attendees;
+  if (typeof attendeesRaw === "string") {
+    try { attendeesRaw = JSON.parse(attendeesRaw); } catch { attendeesRaw = [attendeesRaw]; }
+  }
+  const attendeesList = Array.isArray(attendeesRaw) ? attendeesRaw : [];
+  let attendeesItems = "";
   if (attendeesList.length === 0) {
-    attendeesRows = `1 & N/A \\\\ \\hline`;
+    attendeesItems = "\\item N/A";
   } else {
-    attendeesRows = attendeesList.map((att, idx) => {
-      const name = typeof att === "string" ? att : (att.name || att.fullname || "Participant");
-      return `${idx + 1} & ${sanitizeLatex(name)} \\\\ \\hline`;
+    attendeesItems = attendeesList.map(att => {
+      let name = typeof att === "string" ? att : (att.name || att.fullname || "Participant");
+      let sanitized = sanitizeLatex(name);
+      if (sanitized.includes("(Attended)")) {
+        sanitized = sanitized.replace(/\(Attended\)/g, "(\\textbf{Attended})");
+      }
+      return `\\item ${sanitized}`;
     }).join("\n");
   }
 
   // Format Agenda
-  const agendaRaw = momData.agenda || "No specific agenda specified.";
-  const agendaSanitized = sanitizeLatex(agendaRaw).replace(/\n/g, "\n\n");
-
-  // Format Summary
-  const summaryRaw = momData.summary || "No discussion summary notes recorded.";
-  const summarySanitized = sanitizeLatex(summaryRaw).replace(/\n/g, "\n\n");
-
-  // Format Action Items
-  const actionItemsList = Array.isArray(momData.action_items) ? momData.action_items : [];
-  let actionItemsRows = "";
-  if (actionItemsList.length === 0) {
-    actionItemsRows = `1 & No action items recorded & N/A & N/A \\\\ \\hline`;
+  let agendaRaw = momData.agenda || "No specific agenda specified.";
+  let agendaLines = agendaRaw.split(/\r?\n/).filter(l => l.trim().length > 0);
+  let agendaItems = "";
+  if (agendaLines.length === 0) {
+    agendaItems = "\\item No specific agenda specified.";
   } else {
-    actionItemsRows = actionItemsList.map((item, idx) => {
-      const task = sanitizeLatex(item.task || item.description || "Action Item");
-      const assignee = sanitizeLatex(item.assignee || item.owner || "Unassigned");
-      const dueDate = sanitizeLatex(item.dueDate || item.due_date || "N/A");
-      return `${idx + 1} & ${task} & ${assignee} & ${dueDate} \\\\ \\hline`;
+    agendaItems = agendaLines.map(line => {
+      let cleaned = line.trim().replace(/^[-*•\d+.\s]+/, "");
+      return `\\item ${sanitizeLatex(cleaned)}`;
     }).join("\n");
   }
 
+  // Format Summary
+  let summaryRaw = momData.summary || "No discussion summary notes recorded.";
+  let summaryLines = summaryRaw.split(/\r?\n/).filter(l => l.trim().length > 0);
+  let summaryItems = "";
+  if (summaryLines.length === 0) {
+    summaryItems = "\\item No discussion summary notes recorded.";
+  } else {
+    summaryItems = summaryLines.map(line => {
+      let cleaned = line.trim().replace(/^[-*•\d+.\s]+/, "");
+      return `\\item ${sanitizeLatex(cleaned)}`;
+    }).join("\n");
+  }
+
+  // Format Action Items
+  let actionItemsRaw = momData.action_items;
+  if (typeof actionItemsRaw === "string") {
+    try { actionItemsRaw = JSON.parse(actionItemsRaw); } catch { actionItemsRaw = []; }
+  }
+  let actionItemsContent = "";
+  if (Array.isArray(actionItemsRaw) && actionItemsRaw.length > 0) {
+    const itemsList = actionItemsRaw.map(item => {
+      if (typeof item === "string") return `\\item ${sanitizeLatex(item)}`;
+      const task = sanitizeLatex(item.task || item.description || "Action Item");
+      const assignee = sanitizeLatex(item.assignee || item.owner || "");
+      const dueDate = sanitizeLatex(item.dueDate || item.due_date || "");
+      let meta = [];
+      if (assignee) meta.push(`\\textbf{Assignee}: ${assignee}`);
+      if (dueDate) meta.push(`\\textbf{Due}: ${dueDate}`);
+      const metaStr = meta.length > 0 ? ` (${meta.join(", ")})` : "";
+      return `\\item ${task}${metaStr}`;
+    }).join("\n");
+    actionItemsContent = `\\begin{enumerate}[leftmargin=1.5em, nosep, topsep=4pt, bottomsep=4pt]\n${itemsList}\n\\end{enumerate}`;
+  } else {
+    let rawText = typeof momData.action_items === "string" ? momData.action_items.trim() : "";
+    if (rawText && rawText !== "[]") {
+      actionItemsContent = `\\vspace{2pt} ${sanitizeLatex(rawText)} \\vspace{2pt}`;
+    } else {
+      actionItemsContent = `\\vspace{2pt} No action items recorded for this meeting. \\vspace{2pt}`;
+    }
+  }
+
   // Perform LaTeX Substitutions
-  const meetingDateStr = momData.meeting_date ? new Date(momData.meeting_date).toLocaleString("en-IN", {
-    dateStyle: "medium", timeStyle: "short"
-  }) : "N/A";
-
-  const generatedDateStr = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
-
   templateContent = templateContent
     .replace(/\{\{MEETING_TITLE\}\}/g, sanitizeLatex(momData.meeting_title || "Untitled Meeting"))
-    .replace(/\{\{MOM_ID\}\}/g, sanitizeLatex(String(momData.id || "DRAFT")))
     .replace(/\{\{MEETING_DATE\}\}/g, sanitizeLatex(meetingDateStr))
     .replace(/\{\{MEETING_DURATION\}\}/g, sanitizeLatex(momData.meeting_duration || "1 Hour"))
     .replace(/\{\{ORGANIZER\}\}/g, sanitizeLatex(momData.organizer || "System User"))
-    .replace(/\{\{GENERATED_DATE\}\}/g, sanitizeLatex(generatedDateStr))
-    .replace(/\{\{ATTENDEES_ROWS\}\}/g, attendeesRows)
-    .replace(/\{\{AGENDA_CONTENT\}\}/g, agendaSanitized)
-    .replace(/\{\{SUMMARY_CONTENT\}\}/g, summarySanitized)
-    .replace(/\{\{ACTION_ITEMS_ROWS\}\}/g, actionItemsRows)
-    .replace(/\{\{STATUS\}\}/g, sanitizeLatex(momData.status || "Generated"));
+    .replace(/\{\{ATTENDEES_ITEMS\}\}/g, attendeesItems)
+    .replace(/\{\{AGENDA_ITEMS\}\}/g, agendaItems)
+    .replace(/\{\{SUMMARY_ITEMS\}\}/g, summaryItems)
+    .replace(/\{\{ACTION_ITEMS_CONTENT\}\}/g, actionItemsContent);
 
   // Isolate compilation in temporary scratch folder
   const tempDir = path.join(process.cwd(), "scratch", `mom_${momData.id || Date.now()}`);
   if (!fs.existsSync(tempDir)) {
     fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  // Copy logo into tempDir for LaTeX \includegraphics
+  const rootLogoPath = path.join(process.cwd(), "logo.png");
+  const publicLogoPath = path.join(process.cwd(), "frontend", "public", "logo.jpg");
+  if (fs.existsSync(rootLogoPath)) {
+    fs.copyFileSync(rootLogoPath, path.join(tempDir, "logo.png"));
+  } else if (fs.existsSync(publicLogoPath)) {
+    fs.copyFileSync(publicLogoPath, path.join(tempDir, "logo.png"));
   }
 
   const texFilePath = path.join(tempDir, "document.tex");
@@ -128,17 +184,12 @@ export async function generateMomPdf(momData) {
     "pdflatex"
   ];
 
-  let latexBinary = null;
+  let latexBinary = "pdflatex";
   for (const cand of pdflatexCandidates) {
     if (cand !== "pdflatex" && fs.existsSync(cand)) {
       latexBinary = cand;
       break;
     }
-  }
-
-  // If pdflatex is not installed on system, immediately use pure-JS fallback
-  if (!latexBinary) {
-    return fallbackGenerate();
   }
 
   return new Promise((resolve) => {
