@@ -15,6 +15,7 @@ const superAdminOnly = (req, res, next) => {
 
 router.get("/employees", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
+
     const result = await pool.query(`
       SELECT
         u.id, u.fullname, e.employee_uav_id, e.designation,
@@ -25,8 +26,8 @@ router.get("/employees", verifyToken, isAdminOrSuper, async (req, res) => {
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
       WHERE u.role IN ('employee', 'intern')
-        AND LOWER(COALESCE(u.status, 'active')) = 'active'
-        AND LOWER(COALESCE(e.status, 'active')) = 'active'
+        AND LOWER(COALESCE(u.status, 'active')) != 'inactive'
+        AND LOWER(COALESCE(e.status, 'active')) != 'inactive'
       ORDER BY e.employee_uav_id ASC
     `);
     res.json(result.rows);
@@ -63,13 +64,13 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     `, [from, to, userId]);
     const att = attRes.rows[0];
 
-    const grossFixed      = Number(emp.basic) + Number(emp.hra);
-    const dailyRate       = att.total_calendar_days > 0 ? grossFixed / att.total_calendar_days : 0;
-    const lopDays         = Number(att.unpaid_days) + (Number(att.half_days) * 0.5);
-    const lopDeduction    = Math.round(dailyRate * lopDays);
-    const otPay           = Math.round((grossFixed / 30 / 8) * Number(att.ot_hours));
+    const grossFixed = Number(emp.basic) + Number(emp.hra);
+    const dailyRate = att.total_calendar_days > 0 ? grossFixed / att.total_calendar_days : 0;
+    const lopDays = Number(att.unpaid_days) + (Number(att.half_days) * 0.5);
+    const lopDeduction = Math.round(dailyRate * lopDays);
+    const otPay = Math.round((grossFixed / 30 / 8) * Number(att.ot_hours));
     const totalDeductions = Number(emp.epf) + Number(emp.pt) + lopDeduction;
-    const netSalary       = Math.max((grossFixed + otPay) - totalDeductions, 0);
+    const netSalary = Math.max((grossFixed + otPay) - totalDeductions, 0);
 
     const year = from.substring(0, 4);
     const ytdRes = await pool.query(`
@@ -92,27 +93,27 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
       employee: emp,
       period: { from, to, month },
       salary: {
-        basic:            Number(emp.basic),
-        hra:              Number(emp.hra),
-        gross_salary:     grossFixed,
-        epf_deduction:    Number(emp.epf),
-        pt_deduction:     Number(emp.pt),
-        lop_deduction:    lopDeduction,
-        ot_pay:           otPay,
+        basic: Number(emp.basic),
+        hra: Number(emp.hra),
+        gross_salary: grossFixed,
+        epf_deduction: Number(emp.epf),
+        pt_deduction: Number(emp.pt),
+        lop_deduction: lopDeduction,
+        ot_pay: otPay,
         total_deductions: totalDeductions,
-        net_salary:       netSalary
+        net_salary: netSalary
       },
       attendance: {
         working_days: att.total_calendar_days,
         present_days: att.present_days,
-        half_days:    att.half_days,
-        lop_days:     lopDays,
-        ot_hours:     att.ot_hours
+        half_days: att.half_days,
+        lop_days: lopDays,
+        ot_hours: att.ot_hours
       },
       cumulative: {
-        ytd_gross:      Number(ytd.ytd_gross),
+        ytd_gross: Number(ytd.ytd_gross),
         ytd_deductions: Number(ytd.ytd_deductions),
-        ytd_net:        Number(ytd.ytd_net)
+        ytd_net: Number(ytd.ytd_net)
       },
       is_approved: checkApproved.rows.length > 0
     });

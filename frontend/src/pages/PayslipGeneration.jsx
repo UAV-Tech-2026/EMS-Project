@@ -73,6 +73,10 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
   const [history, setHistory] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
 
+  // ── Attendance override / edit ──
+  const [editAttMode, setEditAttMode] = useState(false);
+  const [editAtt, setEditAtt] = useState({});
+
 
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => today.getFullYear() - 2 + i);
@@ -109,6 +113,44 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
     } catch (err) {
       setError(err.response?.data?.msg || "Failed to generate payslip");
     } finally { setLoading(false); }
+  };
+
+  // ── Recalculate salary from attendance overrides ──
+  const recalcSalary = (att, empBasic, empHra, empEpf, empPt) => {
+    const grossFixed = Number(empBasic) + Number(empHra);
+    const workingDays = att.working_days || 30;
+    const dailyRate = workingDays > 0 ? grossFixed / workingDays : 0;
+    const lopDays = Number(att.lop_days || 0) + Number(att.half_days || 0) * 0.5;
+    const lopDeduction = Math.round(dailyRate * lopDays);
+    const otPay = Math.round((grossFixed / 30 / 8) * Number(att.ot_hours || 0));
+    const totalDed = Number(empEpf) + Number(empPt) + lopDeduction;
+    const netSalary = Math.max((grossFixed + otPay) - totalDed, 0);
+    return {
+      gross_salary: grossFixed, epf_deduction: Number(empEpf), pt_deduction: Number(empPt),
+      lop_deduction: lopDeduction, ot_pay: otPay, total_deductions: totalDed,
+      net_salary: netSalary, basic: Number(empBasic), hra: Number(empHra)
+    };
+  };
+
+  const handleSaveAttendance = () => {
+    if (!payslip) return;
+    const newAtt = {
+      working_days: Number(editAtt.working_days != null ? editAtt.working_days : payslip.attendance.working_days),
+      present_days: Number(editAtt.present_days != null ? editAtt.present_days : payslip.attendance.present_days),
+      half_days: Number(editAtt.half_days != null ? editAtt.half_days : (payslip.attendance.half_days || 0)),
+      lop_days: Number(editAtt.lop_days != null ? editAtt.lop_days : payslip.attendance.lop_days),
+      ot_hours: Number(editAtt.ot_hours != null ? editAtt.ot_hours : (payslip.attendance.ot_hours || 0)),
+    };
+    const newSalary = recalcSalary(
+      newAtt,
+      payslip.salary.basic,
+      payslip.salary.hra,
+      payslip.salary.epf_deduction,
+      payslip.salary.pt_deduction
+    );
+    setPayslip(prev => ({ ...prev, attendance: newAtt, salary: newSalary }));
+    setEditAttMode(false);
+    setEditAtt({});
   };
 
   const handleApprove = async () => {
@@ -183,15 +225,15 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
             border: "1px solid #e2e8f0",
             boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
           }}>
-            <img 
-              src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"} 
-              alt="Logo" 
+            <img
+              src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
+              alt="Logo"
               style={{ width: 36, height: 36, objectFit: "contain" }}
-              onError={(e) => { 
+              onError={(e) => {
                 if (e.target.src !== window.location.origin + "/logo.jpg") {
                   e.target.src = "/logo.jpg";
                 } else {
-                  e.target.style.display = 'none'; 
+                  e.target.style.display = 'none';
                 }
               }}
             />
@@ -203,7 +245,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
         </div>
       </div>
 
-      
+
       <div className="ps-tabs-header">
         <button
           className={`ps-tab-btn ${activeTab === "generate" ? "active" : ""}`}
@@ -221,11 +263,11 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
 
       {activeTab === "generate" ? (
         <>
-          
+
           <div className="ps-controls-card">
             <div className="ps-controls-row">
 
-              
+
               <div className="ps-control-field">
                 <label>Employee</label>
                 <select value={selectedEmp} onChange={e => {
@@ -241,7 +283,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </select>
               </div>
 
-              
+
               <div className="ps-control-field">
                 <label>Month</label>
                 <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setPayslip(null); }}>
@@ -249,7 +291,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </select>
               </div>
 
-              
+
               <div className="ps-control-field">
                 <label>Year</label>
                 <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setPayslip(null); }}>
@@ -266,7 +308,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
               </button>
             </div>
 
-            
+
             <div className="ps-shortcuts">
               {[0, 1, 2].map(offset => {
                 const d = new Date();
@@ -288,7 +330,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
             {error && <div className="ps-error">⚠️ {error}</div>}
           </div>
 
-          
+
           {selectedEmployee && !payslip && !loading && (
             <div className="salary-settings-card">
               <div className="ss-header">
@@ -366,11 +408,11 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
             </div>
           )}
 
-          
+
           {payslip && (
             <div className="payslip-result">
 
-              
+
               <div className="cumulative-stats-grid" style={{
                 display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
                 gap: "15px", marginBottom: "20px"
@@ -395,7 +437,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </div>
               </div>
 
-              
+
               <div className="result-summary-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginBottom: "20px" }}>
                 <div className="result-card net-card" style={{ padding: "20px", background: "#f8fafc", borderRadius: "10px", borderLeft: "5px solid #4f46e5" }}>
                   <span style={{ color: "#64748b", fontSize: "13px" }}>Current Month Net Take Home</span>
@@ -408,7 +450,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </div>
               </div>
 
-              
+
               <div className="breakdown-card" style={{ display: "flex", gap: "20px", background: "#fff", padding: "20px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                 <div className="breakdown-col" style={{ flex: 1 }}>
                   <div className="bc-header earn-h" style={{ fontWeight: "bold", borderBottom: "2px solid #059669", marginBottom: "10px", paddingBottom: "5px" }}>Earnings</div>
@@ -434,7 +476,59 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </div>
               </div>
 
-              
+
+              {/* ── Attendance Override Panel ── */}
+              {isSuperAdmin && !readOnly && !payslip.is_approved && (
+                <div style={{ marginTop: "20px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editAttMode ? "14px" : 0 }}>
+                    <span style={{ fontWeight: 700, fontSize: "13px", color: "#92400e" }}>✏️ Attendance Override</span>
+                    {!editAttMode ? (
+                      <button
+                        onClick={() => {
+                          setEditAtt({
+                            working_days: payslip.attendance.working_days,
+                            present_days: payslip.attendance.present_days,
+                            half_days: payslip.attendance.half_days || 0,
+                            lop_days: payslip.attendance.lop_days,
+                            ot_hours: payslip.attendance.ot_hours || 0,
+                          });
+                          setEditAttMode(true);
+                        }}
+                        style={{ padding: "6px 14px", background: "#f59e0b", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}
+                      >
+                        Edit Attendance Data
+                      </button>
+                    ) : (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => { setEditAttMode(false); setEditAtt({}); }} style={{ padding: "6px 12px", background: "#e2e8f0", border: "none", borderRadius: "6px", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}>Cancel</button>
+                        <button onClick={handleSaveAttendance} style={{ padding: "6px 14px", background: "#059669", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}>✔ Apply & Recalculate</button>
+                      </div>
+                    )}
+                  </div>
+                  {editAttMode && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+                      {[
+                        ["Days in Month", "working_days"],
+                        ["Days Present", "present_days"],
+                        ["Half Days", "half_days"],
+                        ["LOP Days", "lop_days"],
+                        ["OT Hours", "ot_hours"],
+                      ].map(([label, key]) => (
+                        <div key={key}>
+                          <label style={{ fontSize: "11px", fontWeight: 700, color: "#78350f", display: "block", marginBottom: 4 }}>{label}</label>
+                          <input
+                            type="number" min="0" step="0.5"
+                            value={editAtt[key] ?? ""}
+                            onChange={e => setEditAtt(p => ({ ...p, [key]: e.target.value }))}
+                            style={{ width: "100%", padding: "7px 10px", border: "1px solid #fcd34d", borderRadius: 6, fontSize: 13, background: "#fff", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="result-actions" style={{ marginTop: "25px", display: "flex", gap: "10px" }}>
                 {isSuperAdmin && !payslip.is_approved && (
                   <button
@@ -470,7 +564,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
           )}
         </>
       ) : (
-        
+
         <div className="payroll-history-view">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <h3 style={{ margin: 0 }}>Approved Payroll History (Jan - Dec)</h3>
@@ -519,7 +613,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
         </div>
       )}
 
-      
+
       {showPreview && payslip && (
         <div className="modal-overlay" onClick={() => setShowPreview(false)}>
           <div className="payslip-print-wrapper" onClick={e => e.stopPropagation()}>
@@ -529,14 +623,14 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
               <button className="print-action-btn" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
             </div>
 
-            
+
             <div className="payslip-doc" id="payslip-doc" style={{
               fontFamily: "Arial, sans-serif", fontSize: "12px",
               width: "750px", margin: "0 auto", background: "#fff",
               padding: "30px", border: "1px solid #ccc"
             }}>
 
-              
+
               <div style={{ textAlign: "center", marginBottom: "16px" }}>
                 <img
                   src={import.meta.env.VITE_LOGO_URL || "/logo.jpg"}
@@ -552,7 +646,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 <div style={{ fontSize: "12px" }}>Month: {monthLabel()}</div>
               </div>
 
-              
+
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px" }}>
                 <tbody>
                   <tr>
@@ -590,7 +684,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </tbody>
               </table>
 
-              
+
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px" }}>
                 <thead>
                   <tr>
@@ -621,7 +715,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                     <td style={tdL}></td><td style={tdAmt}></td>
                     <td style={tdL}></td><td style={tdAmt}></td>
                   </tr>
-                  
+
                   <tr style={{ background: "#d9d9d9", fontWeight: "bold" }}>
                     <td style={tdL}>Gross</td>
                     <td style={tdAmt}>
@@ -633,7 +727,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </tbody>
               </table>
 
-            
+
               <div style={{ marginBottom: "6px" }}>
                 <strong>Net Pay: </strong>
                 {Number(payslip.salary.net_salary).toLocaleString("en-IN")}
@@ -643,7 +737,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 {numberToWords(Math.round(payslip.salary.net_salary))}
               </div>
 
-              
+
               <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "20px", fontSize: "11px" }}>
                 <thead>
                   <tr>
@@ -672,7 +766,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                 </tbody>
               </table>
 
-              
+
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ borderTop: "1px solid #000", width: "160px", marginBottom: "4px" }}></div>
@@ -692,7 +786,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
         </div>
       )}
 
-      
-    </div> 
+
+    </div>
   );
 }
