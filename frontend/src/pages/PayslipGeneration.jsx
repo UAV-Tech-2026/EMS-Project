@@ -186,6 +186,20 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
     } finally { setSaving(false); }
   };
 
+  const handleUnlock = async () => {
+    if (!payslip || !isSuperAdmin || readOnly) return;
+    const month = payslip.period.numMonths > 1 ? payslip.period.startMonth : payslip.period.month;
+    if (!window.confirm(`Unlock payroll for ${month}? The approval will be removed and you can re-edit attendance.`)) return;
+    setSaving(true);
+    try {
+      await api.delete(`/payslip/unlock?userId=${payslip.employee.id}&month=${month}`);
+      alert("Payroll unlocked. You can now edit attendance and re-approve.");
+      setPayslip({ ...payslip, is_approved: false });
+    } catch (err) {
+      alert(err.response?.data?.msg || "Failed to unlock payroll");
+    } finally { setSaving(false); }
+  };
+
   const handleSaveSalary = async () => {
     if (readOnly) return;
     setSaving(true);
@@ -650,9 +664,20 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                   </button>
                 )}
                 {payslip.is_approved && (
-                  <span className="approved-badge" style={{ background: "#dcfce7", color: "#166534", padding: "10px 15px", borderRadius: "6px", fontWeight: "bold" }}>
-                    ✓ Approved
-                  </span>
+                  <>
+                    <span className="approved-badge" style={{ background: "#dcfce7", color: "#166534", padding: "10px 15px", borderRadius: "6px", fontWeight: "bold" }}>
+                      ✓ Approved
+                    </span>
+                    {isSuperAdmin && !readOnly && (
+                      <button
+                        onClick={handleUnlock}
+                        disabled={saving}
+                        style={{ background: "#dc2626", color: "#fff", border: "none", padding: "10px 18px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
+                      >
+                        {saving ? "Unlocking..." : "🔓 Unlock & Re-Edit"}
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                   className="preview-btn"

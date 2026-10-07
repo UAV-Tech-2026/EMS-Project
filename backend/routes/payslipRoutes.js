@@ -184,6 +184,26 @@ router.post("/approve", verifyToken, superAdminOnly, async (req, res) => {
   }
 });
 
+router.delete("/unlock", verifyToken, superAdminOnly, async (req, res) => {
+  try {
+    const { userId, month } = req.query;
+    if (!userId || !month) return res.status(400).json({ msg: "Missing userId or month" });
+
+    const result = await pool.query(
+      "DELETE FROM payroll_history WHERE user_id = $1 AND month = $2 RETURNING id",
+      [parseInt(userId, 10), month]
+    );
+
+    if (result.rowCount === 0)
+      return res.status(404).json({ msg: "No approved record found for this month" });
+
+    res.json({ msg: `Payroll for ${month} unlocked. You can now re-edit attendance and re-approve.` });
+  } catch (err) {
+    console.error("UNLOCK PAYROLL ERROR:", err);
+    res.status(500).json({ msg: "Failed to unlock payroll" });
+  }
+});
+
 router.get("/history", verifyToken, isAdminOrSuper, async (req, res) => {
   try {
     const { userId, year } = req.query;
