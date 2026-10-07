@@ -51,6 +51,20 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     if (empRes.rows.length === 0) return res.status(404).json({ msg: "Employee not found" });
     const emp = empRes.rows[0];
 
+    const d1 = new Date(from);
+    const d2 = new Date(to);
+    const monthDiff = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth()) + 1;
+    const numMonths = Math.max(1, monthDiff);
+
+    const startMonth = from.substring(0, 7);
+    const endMonth = to.substring(0, 7);
+
+    const approvedRes = await pool.query(`
+      SELECT * FROM payroll_history 
+      WHERE user_id = $1 AND month BETWEEN $2 AND $3
+      ORDER BY month ASC
+    `, [userId, startMonth, endMonth]);
+
     const attRes = await pool.query(`
       SELECT
         COUNT(*) FILTER (WHERE status = 'Present')::int              AS present_days,
@@ -64,12 +78,27 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     `, [from, to, userId]);
     const att = attRes.rows[0];
 
-    const grossFixed = Number(emp.basic) + Number(emp.hra);
+    let basic = Number(emp.basic) * numMonths;
+    let hra = Number(emp.hra) * numMonths;
+    let epf = Number(emp.epf) * numMonths;
+    let pt = Number(emp.pt) * numMonths;
+    let grossFixed = basic + hra;
+
     const dailyRate = att.total_calendar_days > 0 ? grossFixed / att.total_calendar_days : 0;
     const lopDays = Number(att.unpaid_days) + (Number(att.half_days) * 0.5);
     const lopDeduction = Math.round(dailyRate * lopDays);
-    const otPay = Math.round((grossFixed / 30 / 8) * Number(att.ot_hours));
-    const totalDeductions = Number(emp.epf) + Number(emp.pt) + lopDeduction;
+    const otPay = Math.round(((grossFixed / numMonths) / 30 / 8) * Number(att.ot_hours));
+
+    if (approvedRes.rows.length > 0 && approvedRes.rows.length === numMonths) {
+      basic = approvedRes.rows.reduce((sum, r) => sum + Number(r.basic), 0);
+      hra = approvedRes.rows.reduce((sum, r) => sum + Number(r.hra), 0);
+      grossFixed = approvedRes.rows.reduce((sum, r) => sum + Number(r.gross), 0);
+      epf = approvedRes.rows.reduce((sum, r) => sum + Number(r.epf), 0);
+      pt = approvedRes.rows.reduce((sum, r) => sum + Number(r.pt), 0);
+      otPay = approvedRes.rows.reduce((sum, r) => sum + Number(r.ot_pay || 0), 0);
+    }
+
+    const totalDeductions = epf + pt + lopDeduction;
     const netSalary = Math.max((grossFixed + otPay) - totalDeductions, 0);
 
     const year = from.substring(0, 4);
@@ -83,21 +112,18 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     `, [userId, `${year}-%`]);
     const ytd = ytdRes.rows[0];
 
-    const month = from.substring(0, 7);
-    const checkApproved = await pool.query(
-      "SELECT id FROM payroll_history WHERE user_id = $1 AND month = $2",
-      [userId, month]
-    );
+    const monthStr = numMonths > 1 ? `${startMonth} to ${endMonth}` : startMonth;
+    const checkApproved = approvedRes.rows.length > 0 && approvedRes.rows.length === numMonths;
 
     res.json({
       employee: emp,
-      period: { from, to, month },
+      period: { from, to, month: monthStr, numMonths, startMonth, endMonth },
       salary: {
-        basic: Number(emp.basic),
-        hra: Number(emp.hra),
+        basic: basic,
+        hra: hra,
         gross_salary: grossFixed,
-        epf_deduction: Number(emp.epf),
-        pt_deduction: Number(emp.pt),
+        epf_deduction: epf,
+        pt_deduction: pt,
         lop_deduction: lopDeduction,
         ot_pay: otPay,
         total_deductions: totalDeductions,
@@ -115,7 +141,7 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
         ytd_deductions: Number(ytd.ytd_deductions),
         ytd_net: Number(ytd.ytd_net)
       },
-      is_approved: checkApproved.rows.length > 0
+      is_approved: checkApproved
     });
   } catch (err) {
     console.error("GENERATE PAYSLIP ERROR:", err);

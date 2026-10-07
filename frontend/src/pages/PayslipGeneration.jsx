@@ -56,9 +56,24 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
   const [selMonth, setSelMonth] = useState(today.getMonth());
   const [selYear, setSelYear] = useState(today.getFullYear());
 
-  const fromDate = `${selYear}-${String(selMonth + 1).padStart(2, "0")}-01`;
-  const lastDay = new Date(selYear, selMonth + 1, 0).getDate();
-  const toDate = `${selYear}-${String(selMonth + 1).padStart(2, "0")}-${lastDay}`;
+  const [isRangeMode, setIsRangeMode] = useState(false);
+  const [fromMonth, setFromMonth] = useState(6); // July (0-indexed)
+  const [fromYear, setFromYear] = useState(today.getFullYear());
+  const [toMonth, setToMonth] = useState(8);   // September (0-indexed)
+  const [toYear, setToYear] = useState(today.getFullYear());
+  const [showYtdPdf, setShowYtdPdf] = useState(false); // Default off so YTD ₹1,20,000 box won't show
+
+  const fromDate = isRangeMode
+    ? `${fromYear}-${String(fromMonth + 1).padStart(2, "0")}-01`
+    : `${selYear}-${String(selMonth + 1).padStart(2, "0")}-01`;
+
+  const lastDay = isRangeMode
+    ? new Date(toYear, toMonth + 1, 0).getDate()
+    : new Date(selYear, selMonth + 1, 0).getDate();
+
+  const toDate = isRangeMode
+    ? `${toYear}-${String(toMonth + 1).padStart(2, "0")}-${lastDay}`
+    : `${selYear}-${String(selMonth + 1).padStart(2, "0")}-${lastDay}`;
 
   const [employees, setEmployees] = useState([]);
   const [selectedEmp, setSelectedEmp] = useState("");
@@ -185,7 +200,17 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
 
   const fmt = n => "₹" + Number(n || 0).toLocaleString("en-IN");
 
-  const monthLabel = () => `${MONTHS[selMonth]} ${selYear}`;
+  const monthLabel = () => {
+    if (isRangeMode || (payslip?.period?.numMonths > 1)) {
+      const fM = MONTHS[new Date(fromDate).getMonth()];
+      const fY = new Date(fromDate).getFullYear();
+      const tM = MONTHS[new Date(toDate).getMonth()];
+      const tY = new Date(toDate).getFullYear();
+      if (fY === tY) return `${fM} – ${tM} ${fY}`;
+      return `${fM} ${fY} – ${tM} ${tY}`;
+    }
+    return `${MONTHS[selMonth]} ${selYear}`;
+  };
 
   const monthName = (m) => {
     if (!m) return "";
@@ -265,51 +290,134 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
         <>
 
           <div className="ps-controls-card">
-            <div className="ps-controls-row">
-
-
-              <div className="ps-control-field">
-                <label>Employee</label>
-                <select value={selectedEmp} onChange={e => {
-                  setSelectedEmp(e.target.value);
-                  setPayslip(null); setEditMode(false);
-                }}>
-                  <option value="">— Select Employee —</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.fullname} ({emp.employee_uav_id})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-
-              <div className="ps-control-field">
-                <label>Month</label>
-                <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setPayslip(null); }}>
-                  {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                </select>
-              </div>
-
-
-              <div className="ps-control-field">
-                <label>Year</label>
-                <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setPayslip(null); }}>
-                  {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-
+            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
               <button
-                className="generate-btn"
-                onClick={handleGenerate}
-                disabled={loading || !selectedEmp || readOnly}
+                type="button"
+                className={`shortcut-pill ${!isRangeMode ? "active" : ""}`}
+                style={{
+                  padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer",
+                  background: !isRangeMode ? "#4f46e5" : "#f1f5f9", color: !isRangeMode ? "#ffffff" : "#475569", border: "none"
+                }}
+                onClick={() => { setIsRangeMode(false); setPayslip(null); }}
               >
-                {loading ? " Loading…" : readOnly ? "View Only" : "⚡ Generate"}
+                📅 Single Month
+              </button>
+              <button
+                type="button"
+                className={`shortcut-pill ${isRangeMode ? "active" : ""}`}
+                style={{
+                  padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer",
+                  background: isRangeMode ? "#4f46e5" : "#f1f5f9", color: isRangeMode ? "#ffffff" : "#475569", border: "none"
+                }}
+                onClick={() => { setIsRangeMode(true); setPayslip(null); }}
+              >
+                🗓️ Multi-Month / Range (July - Sept)
               </button>
             </div>
 
+            {!isRangeMode ? (
+              <div className="ps-controls-row">
+                <div className="ps-control-field">
+                  <label>Employee</label>
+                  <select value={selectedEmp} onChange={e => {
+                    setSelectedEmp(e.target.value);
+                    setPayslip(null); setEditMode(false);
+                  }}>
+                    <option value="">— Select Employee —</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.fullname} ({emp.employee_uav_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="ps-shortcuts">
+                <div className="ps-control-field">
+                  <label>Month</label>
+                  <select value={selMonth} onChange={e => { setSelMonth(Number(e.target.value)); setPayslip(null); }}>
+                    {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                  </select>
+                </div>
+
+                <div className="ps-control-field">
+                  <label>Year</label>
+                  <select value={selYear} onChange={e => { setSelYear(Number(e.target.value)); setPayslip(null); }}>
+                    {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+
+                <button
+                  className="generate-btn"
+                  onClick={handleGenerate}
+                  disabled={loading || !selectedEmp || readOnly}
+                >
+                  {loading ? " Loading…" : readOnly ? "View Only" : "⚡ Generate"}
+                </button>
+              </div>
+            ) : (
+              <div className="ps-controls-row">
+                <div className="ps-control-field">
+                  <label>Employee</label>
+                  <select value={selectedEmp} onChange={e => {
+                    setSelectedEmp(e.target.value);
+                    setPayslip(null); setEditMode(false);
+                  }}>
+                    <option value="">— Select Employee —</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.fullname} ({emp.employee_uav_id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="ps-control-field">
+                  <label>From Month</label>
+                  <select value={fromMonth} onChange={e => { setFromMonth(Number(e.target.value)); setPayslip(null); }}>
+                    {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                  </select>
+                </div>
+
+                <div className="ps-control-field">
+                  <label>To Month</label>
+                  <select value={toMonth} onChange={e => { setToMonth(Number(e.target.value)); setPayslip(null); }}>
+                    {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                  </select>
+                </div>
+
+                <div className="ps-control-field">
+                  <label>Year</label>
+                  <select value={fromYear} onChange={e => { setFromYear(Number(e.target.value)); setToYear(Number(e.target.value)); setPayslip(null); }}>
+                    {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+
+                <button
+                  className="generate-btn"
+                  onClick={handleGenerate}
+                  disabled={loading || !selectedEmp || readOnly}
+                >
+                  {loading ? " Loading…" : readOnly ? "View Only" : "⚡ Generate Range"}
+                </button>
+              </div>
+            )}
+
+            <div className="ps-shortcuts" style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                className="shortcut-pill"
+                style={{ background: "#dbeafe", color: "#1e40af", fontWeight: "bold" }}
+                onClick={() => {
+                  setIsRangeMode(true);
+                  setFromMonth(6); // July
+                  setToMonth(8);   // September
+                  setFromYear(today.getFullYear());
+                  setToYear(today.getFullYear());
+                  setPayslip(null);
+                }}
+              >
+                🎯 July – Sept (3 Months)
+              </button>
               {[0, 1, 2].map(offset => {
                 const d = new Date();
                 d.setDate(1);
@@ -319,6 +427,7 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
                   : `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
                 return (
                   <button key={offset} className="shortcut-pill" onClick={() => {
+                    setIsRangeMode(false);
                     setSelMonth(d.getMonth());
                     setSelYear(d.getFullYear());
                     setPayslip(null);
@@ -618,8 +727,18 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
         <div className="modal-overlay" onClick={() => setShowPreview(false)}>
           <div className="payslip-print-wrapper" onClick={e => e.stopPropagation()}>
 
-            <div className="print-toolbar no-print">
-              <button className="close-preview-btn" onClick={() => setShowPreview(false)}>✕ Close</button>
+            <div className="print-toolbar no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "750px", margin: "0 auto 12px auto" }}>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <button className="close-preview-btn" onClick={() => setShowPreview(false)}>✕ Close</button>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#334155", fontWeight: "bold", background: "#f1f5f9", padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={showYtdPdf}
+                    onChange={e => setShowYtdPdf(e.target.checked)}
+                  />
+                  Show YTD Summary Box in PDF
+                </label>
+              </div>
               <button className="print-action-btn" onClick={() => window.print()}>🖨️ Print / Save PDF</button>
             </div>
 
@@ -738,33 +857,35 @@ export default function PayslipGeneration({ readOnly: propReadOnly }) {
               </div>
 
 
-              <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "20px", fontSize: "11px" }}>
-                <thead>
-                  <tr>
-                    <th colSpan={3} style={{ ...thEarn, textAlign: "center" }}>
-                      Year-to-Date Summary ({new Date(fromDate).getFullYear()})
-                    </th>
-                  </tr>
-                  <tr style={{ background: "#f0f0f0" }}>
-                    <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Gross</th>
-                    <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Deductions</th>
-                    <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Net</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
-                      {fmt(payslip.cumulative.ytd_gross + (payslip.is_approved ? 0 : payslip.salary.gross_salary))}
-                    </td>
-                    <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
-                      {fmt(payslip.cumulative.ytd_deductions + (payslip.is_approved ? 0 : payslip.salary.total_deductions))}
-                    </td>
-                    <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
-                      {fmt(payslip.cumulative.ytd_net + (payslip.is_approved ? 0 : payslip.salary.net_salary))}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              {showYtdPdf && (
+                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "20px", fontSize: "11px" }}>
+                  <thead>
+                    <tr>
+                      <th colSpan={3} style={{ ...thEarn, textAlign: "center" }}>
+                        Year-to-Date Summary ({new Date(fromDate).getFullYear()})
+                      </th>
+                    </tr>
+                    <tr style={{ background: "#f0f0f0" }}>
+                      <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Gross</th>
+                      <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Deductions</th>
+                      <th style={{ border: "1px solid #ccc", padding: "5px" }}>YTD Net</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
+                        {fmt(payslip.cumulative.ytd_gross + (payslip.is_approved ? 0 : payslip.salary.gross_salary))}
+                      </td>
+                      <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
+                        {fmt(payslip.cumulative.ytd_deductions + (payslip.is_approved ? 0 : payslip.salary.total_deductions))}
+                      </td>
+                      <td style={{ border: "1px solid #ccc", padding: "5px", textAlign: "right" }}>
+                        {fmt(payslip.cumulative.ytd_net + (payslip.is_approved ? 0 : payslip.salary.net_salary))}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
 
 
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
