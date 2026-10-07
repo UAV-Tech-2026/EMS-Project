@@ -26,8 +26,8 @@ router.get("/employees", verifyToken, isAdminOrSuper, async (req, res) => {
       FROM users u
       LEFT JOIN employees e ON u.id = e.user_id
       WHERE u.role IN ('employee', 'intern')
-        AND LOWER(COALESCE(u.status, 'active')) != 'inactive'
-        AND LOWER(COALESCE(e.status, 'active')) != 'inactive'
+        AND u.status ILIKE 'active'
+        AND e.status ILIKE 'active'
       ORDER BY e.employee_uav_id ASC
     `);
     res.json(result.rows);
