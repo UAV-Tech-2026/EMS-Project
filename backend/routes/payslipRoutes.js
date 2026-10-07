@@ -91,7 +91,7 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     const dailyRate = totalCalDays > 0 ? grossFixed / totalCalDays : 0;
     const lopDays = Number(att.unpaid_days || 0) + (Number(att.half_days || 0) * 0.5);
     const lopDeduction = Math.round(dailyRate * lopDays);
-    const otPay = Math.round(((grossFixed / numMonths) / 30 / 8) * Number(att.ot_hours || 0));
+    let otPay = Math.round(((grossFixed / numMonths) / 30 / 8) * Number(att.ot_hours || 0));
 
     if (approvedRes.rows.length > 0 && approvedRes.rows.length === numMonths) {
       basic = approvedRes.rows.reduce((sum, r) => sum + Number(r.basic), 0);
