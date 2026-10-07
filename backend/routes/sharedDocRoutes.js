@@ -186,6 +186,35 @@ router.get("/download/:id", verifyToken, async (req, res) => {
 });
 
 
+router.delete("/:id", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.user.role;
+
+    const docRes = await pool.query("SELECT * FROM shared_documents WHERE id = $1", [id]);
+    if (docRes.rows.length === 0) return res.status(404).json({ msg: "Document not found" });
+
+    const doc = docRes.rows[0];
+    // Only the sender or super_admin can delete
+    if (doc.shared_by !== req.user.id && userRole !== "super_admin") {
+      return res.status(403).json({ msg: "Not authorized to delete this document" });
+    }
+
+    // Delete file if it exists on disk (not a link)
+    if (doc.file_type !== "link" && doc.file_path) {
+      const absolutePath = path.resolve(doc.file_path);
+      if (fs.existsSync(absolutePath)) fs.unlinkSync(absolutePath);
+    }
+
+    await pool.query("DELETE FROM shared_documents WHERE id = $1", [id]);
+    res.json({ msg: "Document deleted successfully" });
+  } catch (err) {
+    console.error("DELETE SHARED DOC ERROR:", err.message);
+    res.status(500).json({ msg: "Server error while deleting document" });
+  }
+});
+
+
 router.get("/count", verifyToken, async (req, res) => {
   try {
     const userRole = req.user.role;

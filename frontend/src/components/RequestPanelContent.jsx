@@ -195,6 +195,7 @@ export default function RequestPanelContent({ role }) {
   const [users, setUsers] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
   const [targetUserId, setTargetUserId] = useState("");
+  const [targetUserRole, setTargetUserRole] = useState("");
   const fileInputRef = useRef();
 
   const [reqType, setReqType] = useState("manpower");
@@ -303,7 +304,7 @@ export default function RequestPanelContent({ role }) {
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("document_name", docName || selectedFile.name);
-    formData.append("target_role", targetRole);
+    formData.append("target_role", targetUserId ? targetUserRole : targetRole);
     formData.append("target_user_id", targetUserId || "");
     formData.append("message", shareMessage);
     try {
@@ -324,7 +325,7 @@ export default function RequestPanelContent({ role }) {
       await api.post("/shared-docs/share-link", {
         document_name: docName,
         drive_link: driveLink,
-        target_role: targetRole,
+        target_role: targetUserId ? targetUserRole : targetRole,
         target_user_id: targetUserId || null,
         message: shareMessage
       });
@@ -334,6 +335,16 @@ export default function RequestPanelContent({ role }) {
     } catch (err) {
       setMsg({ type: "error", text: err.response?.data?.msg || "Failed to share link." });
     } finally { setSubmitting(false); }
+  };
+
+  const handleDeleteDoc = async (docId) => {
+    if (!window.confirm("Delete this document from all inboxes?")) return;
+    try {
+      await api.delete(`/shared-docs/${docId}`);
+      setSharedDocs(prev => prev.filter(d => d.id !== docId));
+    } catch (err) {
+      alert(err.response?.data?.msg || "Failed to delete document");
+    }
   };
 
   const handleGeneralRequest = async () => {
@@ -847,10 +858,14 @@ export default function RequestPanelContent({ role }) {
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val.startsWith("user:")) {
-                    setTargetUserId(val.split(":")[1]);
+                    const uid = val.split(":")[1];
+                    const selectedUser = users.find(u => String(u.id) === uid);
+                    setTargetUserId(uid);
+                    setTargetUserRole(selectedUser?.role || "employee");
                     setTargetRole("");
                   } else {
                     setTargetUserId("");
+                    setTargetUserRole("");
                     setTargetRole(val);
                   }
                 }}
@@ -912,7 +927,12 @@ export default function RequestPanelContent({ role }) {
                     <div style={{ fontWeight: 600, fontSize: 14, color: "#1e293b" }}>{doc.document_name}</div>
                     <div style={{ fontSize: 11, color: "#94a3b8" }}>From: {doc.shared_by_name} • {new Date(doc.shared_at).toLocaleDateString()}</div>
                   </div>
-                  <button onClick={() => handleDownload(doc)} style={{ padding: 6, borderRadius: 6, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#4f46e5", cursor: "pointer" }}><Download size={14} /></button>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => handleDownload(doc)} style={{ padding: 6, borderRadius: 6, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#4f46e5", cursor: "pointer" }}><Download size={14} /></button>
+                    {isAdmin && (
+                      <button onClick={() => handleDeleteDoc(doc.id)} title="Delete document" style={{ padding: 6, borderRadius: 6, background: "#fff1f2", border: "1px solid #fecaca", color: "#dc2626", cursor: "pointer", fontSize: 13 }}>🗑</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
