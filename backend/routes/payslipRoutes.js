@@ -42,12 +42,15 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     const { userId, from, to } = req.query;
     if (!userId || !from || !to) return res.status(400).json({ msg: "Missing params" });
 
+    const uid = parseInt(userId, 10);
+    if (isNaN(uid)) return res.status(400).json({ msg: "Invalid user ID" });
+
     const empRes = await pool.query(`
       SELECT u.id, u.fullname, e.employee_uav_id, e.designation,
         COALESCE(e.basic_salary, 0) AS basic, COALESCE(e.hra, 0) AS hra,
         COALESCE(e.epf_amount, 0) AS epf, COALESCE(e.pt_amount, 0) AS pt
       FROM users u JOIN employees e ON u.id = e.user_id WHERE u.id = $1
-    `, [userId]);
+    `, [uid]);
     if (empRes.rows.length === 0) return res.status(404).json({ msg: "Employee not found" });
     const emp = empRes.rows[0];
 
@@ -63,7 +66,7 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
       SELECT * FROM payroll_history 
       WHERE user_id = $1 AND month BETWEEN $2 AND $3
       ORDER BY month ASC
-    `, [userId, startMonth, endMonth]);
+    `, [uid, startMonth, endMonth]);
 
     const attRes = await pool.query(`
       SELECT
@@ -75,8 +78,8 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
         ($2::date - $1::date + 1)::int                               AS total_calendar_days
       FROM attendance
       WHERE user_id = $3 AND attendance_date BETWEEN $1::date AND $2::date
-    `, [from, to, userId]);
-    const att = attRes.rows[0];
+    `, [from, to, uid]);
+    const att = attRes.rows[0] || {};
 
     let basic = Number(emp.basic) * numMonths;
     let hra = Number(emp.hra) * numMonths;
@@ -84,10 +87,11 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
     let pt = Number(emp.pt) * numMonths;
     let grossFixed = basic + hra;
 
-    const dailyRate = att.total_calendar_days > 0 ? grossFixed / att.total_calendar_days : 0;
-    const lopDays = Number(att.unpaid_days) + (Number(att.half_days) * 0.5);
+    const totalCalDays = Number(att.total_calendar_days) || (30 * numMonths);
+    const dailyRate = totalCalDays > 0 ? grossFixed / totalCalDays : 0;
+    const lopDays = Number(att.unpaid_days || 0) + (Number(att.half_days || 0) * 0.5);
     const lopDeduction = Math.round(dailyRate * lopDays);
-    const otPay = Math.round(((grossFixed / numMonths) / 30 / 8) * Number(att.ot_hours));
+    const otPay = Math.round(((grossFixed / numMonths) / 30 / 8) * Number(att.ot_hours || 0));
 
     if (approvedRes.rows.length > 0 && approvedRes.rows.length === numMonths) {
       basic = approvedRes.rows.reduce((sum, r) => sum + Number(r.basic), 0);
@@ -109,8 +113,8 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
         COALESCE(SUM(net_salary), 0)     AS ytd_net
       FROM payroll_history
       WHERE user_id = $1 AND month LIKE $2
-    `, [userId, `${year}-%`]);
-    const ytd = ytdRes.rows[0];
+    `, [uid, `${year}-%`]);
+    const ytd = ytdRes.rows[0] || { ytd_gross: 0, ytd_deductions: 0, ytd_net: 0 };
 
     const monthStr = numMonths > 1 ? `${startMonth} to ${endMonth}` : startMonth;
     const checkApproved = approvedRes.rows.length > 0 && approvedRes.rows.length === numMonths;
@@ -130,11 +134,11 @@ router.get("/generate", verifyToken, isAdminOrSuper, async (req, res) => {
         net_salary: netSalary
       },
       attendance: {
-        working_days: att.total_calendar_days,
-        present_days: att.present_days,
-        half_days: att.half_days,
+        working_days: totalCalDays,
+        present_days: Number(att.present_days || 0),
+        half_days: Number(att.half_days || 0),
         lop_days: lopDays,
-        ot_hours: att.ot_hours
+        ot_hours: Number(att.ot_hours || 0)
       },
       cumulative: {
         ytd_gross: Number(ytd.ytd_gross),
