@@ -242,7 +242,6 @@ export default function AdminPermissions() {
             <div style={{ display: "flex", justifyContent: "center" }}>
               <Toggle
                 checked={p.can_write}
-                disabled={!p.can_read}
                 onChange={(v) => setWrite(f.name, v)}
               />
             </div>
@@ -391,7 +390,6 @@ export default function AdminPermissions() {
                     <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
                     <Toggle
                       checked={p.can_write}
-                      disabled={!p.can_read}
                       onChange={(v) => setWrite(f.name, v)}
                       label="Write"
                     />
