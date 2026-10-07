@@ -130,10 +130,10 @@ router.get("/inbox", verifyToken, async (req, res) => {
         `SELECT sd.*, u.fullname as shared_by_name
          FROM shared_documents sd
          JOIN users u ON sd.shared_by = u.id
-         WHERE sd.target_role = $1 
+         WHERE sd.target_role = 'all'
             OR (sd.target_role = 'admins' AND $1 = 'admin')
-            OR sd.target_role = 'all' 
-            OR sd.target_user_id = $2
+            OR (sd.target_user_id = $2)
+            OR (sd.target_role = $1 AND (sd.target_user_id IS NULL OR sd.target_user_id = $2))
          ORDER BY sd.shared_at DESC`,
         [userRole, req.user.id]
       );
@@ -194,8 +194,8 @@ router.get("/count", verifyToken, async (req, res) => {
       result = await pool.query("SELECT COUNT(*) FROM shared_documents");
     } else {
       result = await pool.query(
-        "SELECT COUNT(*) FROM shared_documents WHERE target_role = $1 OR target_role = 'all'",
-        [userRole]
+        "SELECT COUNT(*) FROM shared_documents WHERE target_role = 'all' OR (target_role = $1 AND (target_user_id IS NULL OR target_user_id = $2)) OR target_user_id = $2",
+        [userRole, req.user.id]
       );
     }
     res.json({ count: parseInt(result.rows[0].count) });
