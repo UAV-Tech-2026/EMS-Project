@@ -1,0 +1,109 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{utf8}
+\usepackage[margin=1.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% Brand Colors matching official spec
+\definecolor{bannerblue}{RGB}{31, 64, 104}
+\definecolor{titleblue}{RGB}{31, 64, 104}
+\definecolor{cardbg}{RGB}{241, 245, 249}
+\definecolor{tableheader}{RGB}{235, 243, 250}
+\definecolor{subtletext}{RGB}{107, 114, 128}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% Top Header Banner (No Logo)
+\begin{tcolorbox}[
+  colback=bannerblue,
+  colframe=bannerblue,
+  arc=0mm,
+  boxrule=0pt,
+  left=14pt,
+  right=14pt,
+  top=12pt,
+  bottom=12pt
+]
+  {\Large \bfseries \color{white} UAV-Tech WorkStockPro \quad Employee Management System} \\[3pt]
+  {\small \color{white!85} OFFICIAL DOCUMENT TEMPLATE: MOM}
+\end{tcolorbox}
+
+\vspace{0.3cm}
+
+{\Huge \bfseries \color{titleblue} EMS}
+
+\vspace{0.15cm}
+
+{\small \color{subtletext} Document ID: \#4 | Status: Generated}
+
+\vspace{0.2cm}
+
+{\color{bannerblue}\hrule height 0.8pt}
+
+\vspace{0.3cm}
+
+% Details Metadata Box
+\begin{tcolorbox}[
+  colback=cardbg,
+  colframe=cardbg,
+  arc=1.5mm,
+  boxrule=0pt,
+  left=14pt,
+  right=14pt,
+  top=10pt,
+  bottom=10pt
+]
+  \begin{tabularx}{\linewidth}{@{} p{2.6cm} X p{2.4cm} X @{}}
+    \textbf{Date \& Time:} & 8 Oct 2026, 10:43 am & \textbf{Duration:} & 1 Hour \\[6pt]
+    \textbf{Organizer:} & A Divya Sree & \textbf{Generated:} & 8/10/2026
+  \end{tabularx}
+\end{tcolorbox}
+
+\vspace{0.4cm}
+
+% 1. Attendees & Participants
+{\large \bfseries \color{titleblue} 1. Attendees \& Participants}
+
+\vspace{0.15cm}
+
+\' Vihar - RND Manager, A Divya Sree - Software Developer
+
+\vspace{0.4cm}
+
+% 2. Agenda
+{\large \bfseries \color{titleblue} 2. Agenda}
+
+\vspace{0.15cm}
+
+Discussed updated features
+
+\vspace{0.4cm}
+
+% 3. Discussion Summary & Notes
+{\large \bfseries \color{titleblue} 3. Discussion Summary \& Notes}
+
+\vspace{0.15cm}
+
+Need to deploy upto tested features
+
+\vspace{0.4cm}
+
+% 4. Action Items & Assignments
+{\large \bfseries \color{titleblue} 4. Action Items \& Assignments}
+
+\vspace{0.2cm}
+
+\setlength{\arrayrulewidth}{0.5pt}\arrayrulecolor{cardbg}\begin{tabularx}{\linewidth}{@{} c X l l @{}}\rowcolor{tableheader}\textbf{\#} & \textbf{Task Description} & \textbf{Assignee} & \textbf{Due Date} \\ \hline 1 & EMS -- mom & Vihar & 10-10-2026 \\ \end{tabularx}
+
+\end{document}
+
+

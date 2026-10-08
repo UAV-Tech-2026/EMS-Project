@@ -30,9 +30,8 @@
 ]
   \begin{tabularx}{\linewidth}{@{} X r @{}}
     \raisebox{2pt}{\Huge \bfseries \color{white} Meeting Minutes} &
-    \IfFileExists{logo.png}{%
-      \fboxrule=0.8pt \fboxsep=4pt
-      \fcolorbox{white}{headerbg}{\includegraphics[height=1.0cm,keepaspectratio]{logo.png}}%
+    \IfFileExists{../../logo.png}{%
+      \colorbox{white}{\includegraphics[height=1.0cm,keepaspectratio]{../../logo.png}}%
     }{%
       \fboxrule=0.8pt \fboxsep=6pt
       \fcolorbox{white}{headerbg}{\color{white}\sffamily\small\bfseries [ YOUR LOGO ]}%
