@@ -168,18 +168,61 @@ export default function Settings() {
     }
   };
 
+  const compressImage = (file, maxWidth = 500, maxHeight = 500, quality = 0.85) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) return resolve(file);
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            "image/jpeg",
+            quality
+          );
+        };
+        img.onerror = () => resolve(file);
+      };
+      reader.onerror = () => resolve(file);
+    });
+  };
+
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("error", "File too large. Max 2MB allowed.");
-      e.target.value = "";
-      return;
-    }
-    const formData = new FormData();
-    formData.append("profile_pic", file);
+
     setPhotoUploading(true);
     try {
+      const compressedFile = await compressImage(file);
+      const formData = new FormData();
+      formData.append("profile_pic", compressedFile);
+
       const res = await api.post("/employees/upload-profile-pic", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
@@ -192,7 +235,7 @@ export default function Settings() {
       showToast("error", msg);
     } finally {
       setPhotoUploading(false);
-      e.target.value = ""; // reset so the same file can be re-selected if needed
+      e.target.value = "";
     }
   };
 
