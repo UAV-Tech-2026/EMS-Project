@@ -372,7 +372,7 @@ export default function Settings() {
                   label="Work Email"
                   value={profile.email}
                   onChange={(e) => setProfile(p => ({ ...p, email: e.target.value }))}
-                  disabled={!(JSON.parse(sessionStorage.getItem("user") || "{}").role === "admin" || JSON.parse(sessionStorage.getItem("user") || "{}").role === "superadmin")}
+                  disabled={!["admin", "superadmin", "super_admin"].includes(String(JSON.parse(sessionStorage.getItem("user") || "{}").role || "").toLowerCase())}
                 />
                 <Field label="Designation" value={profile.designation} disabled />
               </div>
