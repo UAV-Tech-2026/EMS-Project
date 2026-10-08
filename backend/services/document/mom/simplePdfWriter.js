@@ -7,6 +7,15 @@ import path from "path";
  * Formatted to match team lead exact specification:
  * Black top banner, Meeting Minutes header, UAV Logo, orange/copper section boxes.
  */
+function cleanItem(str) {
+  if (!str) return "";
+  let s = String(str).trim();
+  s = s.replace(/^["'“”«»\s]+|["'“”«»\s]+$/g, "");
+  s = s.replace(/^[-*•\d+.\s]+/, "");
+  s = s.replace(/^["'“”]+/, "");
+  return s.trim();
+}
+
 export function buildDocumentPdfBuffer(momData) {
   const title = momData.meeting_title || "WorkStock-Pro";
   
@@ -24,8 +33,8 @@ export function buildDocumentPdfBuffer(momData) {
     }
   }
 
-  const duration = momData.meeting_duration || "04:00 PM to 04:40 PM";
-  const organizer = momData.organizer || "Dr. R Sabari Vihar";
+  const duration = momData.meeting_duration || "1 Hour";
+  const organizer = momData.organizer || "System User";
 
   // Parse attendees
   let attendeesList = [];
@@ -33,10 +42,16 @@ export function buildDocumentPdfBuffer(momData) {
     const raw = typeof momData.attendees === "string" ? JSON.parse(momData.attendees) : momData.attendees;
     if (Array.isArray(raw)) {
       attendeesList = raw.map(att => typeof att === "string" ? att : (att.name || att.fullname || "Participant"));
+    } else if (typeof momData.attendees === "string") {
+      attendeesList = momData.attendees.split(/\r?\n/);
     }
   } catch {
-    attendeesList = [];
+    if (typeof momData.attendees === "string") {
+      attendeesList = momData.attendees.split(/\r?\n/);
+    }
   }
+
+  const cleanedAttendees = attendeesList.map(cleanItem).filter(Boolean);
 
   // Parse action items
   let actionItemsList = [];
@@ -47,8 +62,8 @@ export function buildDocumentPdfBuffer(momData) {
     actionItemsList = [];
   }
 
-  const agenda = momData.agenda || "Add the \"Performance Index\" feature and carry out some modifications.";
-  const summary = momData.summary || "1. Added the \"Performance Index\" feature.\n2. Verified Git branching.\n3. Determined how to revert to previous versions in GitHub and Docker Hub.\n4. Backed up the instances.\n5. Researched the testing environment: we build a Docker image and push it to Docker Hub, from where the development environment can pull it. Is this correct?\n6. From now on, all code pushes will be made from the company's GitHub.\n7. Git credentials need to be obtained from Vihar.\n8. Need to do research about the AI market study.";
+  const agenda = momData.agenda || "No specific agenda specified.";
+  const summary = momData.summary || "No discussion summary notes recorded.";
 
   // Sanitize text for PDF literal string
   function pdfEscape(text) {
@@ -65,8 +80,9 @@ export function buildDocumentPdfBuffer(momData) {
     const paragraphs = String(text).split(/\r?\n/);
     const lines = [];
     for (const para of paragraphs) {
-      if (!para.trim()) continue;
-      const words = para.trim().split(/\s+/);
+      const cleaned = cleanItem(para);
+      if (!cleaned) continue;
+      const words = cleaned.split(/\s+/);
       let currentLine = "";
       for (const w of words) {
         if ((currentLine + " " + w).length > maxChars) {
@@ -127,8 +143,8 @@ export function buildDocumentPdfBuffer(momData) {
   const gridTop = y;
   const gridWidth = 515;
 
-  const attLines = attendeesList.length > 0
-    ? attendeesList.map(a => `• ${a}`)
+  const attLines = cleanedAttendees.length > 0
+    ? cleanedAttendees.map(a => `• ${a}`)
     : ["• N/A"];
 
   const attHeight = Math.max(30, attLines.length * 16 + 10);
@@ -195,7 +211,7 @@ export function buildDocumentPdfBuffer(momData) {
 
   let sumY = y - 38;
   summaryLines.forEach((l) => {
-    addText(pdfEscape(l), 48, sumY, 10, "F1", [0.2, 0.2, 0.2]);
+    addText(`• ${pdfEscape(l)}`, 48, sumY, 10, "F1", [0.2, 0.2, 0.2]);
     sumY -= 16;
   });
 
@@ -210,7 +226,7 @@ export function buildDocumentPdfBuffer(momData) {
   if (actionItemsList.length === 0) {
     addText("No action items recorded for this meeting.", 48, y - 36, 10, "F1", [0.3, 0.3, 0.3]);
   } else {
-    const actStr = actionItemsList.map(a => typeof a === "string" ? a : (a.task || "Task")).join("; ");
+    const actStr = actionItemsList.map(a => typeof a === "string" ? cleanItem(a) : cleanItem(a.task || "Task")).join("; ");
     addText(pdfEscape(actStr), 48, y - 36, 10, "F1", [0.2, 0.2, 0.2]);
   }
 
@@ -248,3 +264,4 @@ export function buildDocumentPdfBuffer(momData) {
 
   return Buffer.from(pdfString, "ascii");
 }
+

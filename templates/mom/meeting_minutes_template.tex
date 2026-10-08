@@ -1,5 +1,5 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[utf8]{utf8}
+\usepackage[utf8]{inputenc}
 \usepackage[margin=1.2cm]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
@@ -30,11 +30,11 @@
 ]
   \begin{tabularx}{\linewidth}{@{} X r @{}}
     \raisebox{2pt}{\Huge \bfseries \color{white} Meeting Minutes} &
-    \IfFileExists{logo.png}{%
-      \colorbox{white}{\includegraphics[height=1.1cm,keepaspectratio]{logo.png}}%
+    \IfFileExists{logo.jpg}{%
+      \colorbox{white}{\includegraphics[height=1.1cm,keepaspectratio]{logo.jpg}}%
     }{%
-      \IfFileExists{../../logo.png}{%
-        \colorbox{white}{\includegraphics[height=1.1cm,keepaspectratio]{../../logo.png}}%
+      \IfFileExists{logo.png}{%
+        \colorbox{white}{\includegraphics[height=1.1cm,keepaspectratio]{logo.png}}%
       }{%
         \fboxrule=0.8pt \fboxsep=6pt
         \fcolorbox{white}{headerbg}{\color{white}\sffamily\small\bfseries [ YOUR LOGO ]}%
@@ -83,9 +83,9 @@
 \begin{tabularx}{\textwidth}{|X|}
 \hline
 \multicolumn{1}{|c|}{\textbf{Summary}} \\ \hline
-\begin{enumerate}[leftmargin=1.5em, nosep, topsep=4pt, bottomsep=4pt]
+\begin{itemize}[leftmargin=1.5em, label=\tiny$\bullet$, nosep, topsep=4pt, bottomsep=4pt]
 {{SUMMARY_ITEMS}}
-\end{enumerate}
+\end{itemize}
 \\ \hline
 \end{tabularx}
 
