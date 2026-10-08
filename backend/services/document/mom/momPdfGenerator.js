@@ -195,7 +195,7 @@ export async function generateMomPdf(momData) {
   return new Promise((resolve) => {
     execFile(
       latexBinary,
-      ["-interaction=nonstopmode", "-output-directory", tempDir, texFilePath],
+      ["-interaction=nonstopmode", "-disable-installer", "-output-directory", tempDir, texFilePath],
       { timeout: 30000 },
       (error, stdout, stderr) => {
         const tempPdfPath = path.join(tempDir, "document.pdf");

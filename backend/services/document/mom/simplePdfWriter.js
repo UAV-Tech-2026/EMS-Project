@@ -108,7 +108,14 @@ export function buildDocumentPdfBuffer(momData) {
   // 1. Black Header Banner matching screenshot
   addRect(40, 770, 515, 45, [0.12, 0.12, 0.12]);
   addText("Meeting Minutes", 55, 786, 20, "F2", [1, 1, 1]);
-  addText("[ YOUR LOGO ]", 460, 788, 10, "F1", [1, 1, 1]);
+  // UAV Logo Container (White Box in Top Right)
+  addRect(485, 772, 60, 41, [1, 1, 1]);
+  // Blue UAV Emblem (Chevron / Wing Icon)
+  streamCommands.push("0.08 0.42 0.72 rg");
+  streamCommands.push("515 807 m 498 793 l 504 793 l 515 802 l 526 793 l 532 793 l f");
+  streamCommands.push("502 795 m 528 795 l 528 797 l 502 797 l f");
+  // UAV Text
+  addText("UAV", 501, 775, 11, "F2", [0.12, 0.18, 0.28]);
 
   y = 745;
 
