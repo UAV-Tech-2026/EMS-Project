@@ -235,14 +235,14 @@ router.put("/update-profile", verifyToken, async (req, res) => {
       phoneChanged = true;
     }
 
-    if (email && (userRole === 'admin' || userRole === 'superadmin')) {
+    if (email && ['admin', 'superadmin', 'super_admin'].includes((userRole || '').toLowerCase())) {
       await client.query(
         "UPDATE users SET fullname = $1, phone = $2, email = $3 WHERE id = $4",
         [fullname, phone, email, req.user.id]
       );
       await client.query(
-        "UPDATE employees SET fullname = $1, phone = $2, email = $3 WHERE user_id = $4",
-        [fullname, phone, email, req.user.id]
+        "UPDATE employees SET fullname = $1, phone = $2 WHERE user_id = $3",
+        [fullname, phone, req.user.id]
       );
     } else {
       await client.query(
