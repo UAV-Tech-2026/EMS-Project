@@ -152,8 +152,9 @@ export default function Settings() {
       await api.put("/employees/update-profile", {
         fullname: profile.fullname.trim(),
         phone: newPhone,
+        email: profile.email.trim()
       });
-      syncsessionStorage({ fullname: profile.fullname.trim(), phone: newPhone });
+      syncsessionStorage({ fullname: profile.fullname.trim(), phone: newPhone, email: profile.email.trim() });
       
       if (phoneChanged) {
         showToast("success", "Profile updated! Please log out and back in to set up your new 2FA (QR code).");
@@ -367,11 +368,16 @@ export default function Settings() {
                   value={profile.phone}
                   onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))}
                 />
-                <Field label="Work Email" value={profile.email} disabled />
+                <Field
+                  label="Work Email"
+                  value={profile.email}
+                  onChange={(e) => setProfile(p => ({ ...p, email: e.target.value }))}
+                  disabled={!(JSON.parse(sessionStorage.getItem("user") || "{}").role === "admin" || JSON.parse(sessionStorage.getItem("user") || "{}").role === "superadmin")}
+                />
                 <Field label="Designation" value={profile.designation} disabled />
               </div>
               <p style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "24px", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
-                <strong>Note:</strong> Official details like Email and Designation are managed by HR/Admin. Please contact support to update these.
+                <strong>Note:</strong> Official details like Email and Designation are locked for standard employees. SuperAdmins can edit Email directly or via the Directory Panel.
               </p>
               <SaveButton onClick={handleSaveProfile} loading={profileSaving} label="Save Profile Changes" />
             </>

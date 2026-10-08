@@ -221,29 +221,39 @@ router.get("/my-profile", verifyToken, async (req, res) => {
 
 
 router.put("/update-profile", verifyToken, async (req, res) => {
-  const { fullname, phone } = req.body;
+  const { fullname, phone, email } = req.body;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     
-   
-    const userRes = await client.query("SELECT phone FROM users WHERE id = $1", [req.user.id]);
+    const userRes = await client.query("SELECT phone, role FROM users WHERE id = $1", [req.user.id]);
     const currentPhone = userRes.rows[0]?.phone;
+    const userRole = userRes.rows[0]?.role;
     
     let phoneChanged = false;
     if (phone && phone !== currentPhone) {
       phoneChanged = true;
     }
 
-    await client.query(
-      "UPDATE users SET fullname = $1, phone = $2 WHERE id = $3",
-      [fullname, phone, req.user.id]
-    );
-    
-    await client.query(
-      "UPDATE employees SET fullname = $1, phone = $2 WHERE user_id = $3",
-      [fullname, phone, req.user.id]
-    );
+    if (email && (userRole === 'admin' || userRole === 'superadmin')) {
+      await client.query(
+        "UPDATE users SET fullname = $1, phone = $2, email = $3 WHERE id = $4",
+        [fullname, phone, email, req.user.id]
+      );
+      await client.query(
+        "UPDATE employees SET fullname = $1, phone = $2, email = $3 WHERE user_id = $4",
+        [fullname, phone, email, req.user.id]
+      );
+    } else {
+      await client.query(
+        "UPDATE users SET fullname = $1, phone = $2 WHERE id = $3",
+        [fullname, phone, req.user.id]
+      );
+      await client.query(
+        "UPDATE employees SET fullname = $1, phone = $2 WHERE user_id = $3",
+        [fullname, phone, req.user.id]
+      );
+    }
 
     if (phoneChanged) {
      
